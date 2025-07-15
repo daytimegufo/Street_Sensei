@@ -1,0 +1,4627 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Back of Your Hand - Enhanced Map Challenge Game</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <script>
+        // CDN fallback system
+        window.leafletLoadAttempts = 0;
+        window.checkLibrariesLoaded = function() {
+            const leafletLoaded = typeof L !== 'undefined';
+            const turfLoaded = typeof turf !== 'undefined';
+            
+            console.log(`Libraries check: Leaflet=${leafletLoaded}, Turf=${turfLoaded}`);
+            
+            if (!leafletLoaded && window.leafletLoadAttempts < 3) {
+                window.leafletLoadAttempts++;
+                console.log(`Retrying Leaflet load attempt ${window.leafletLoadAttempts}/3...`);
+                
+                // Try alternative CDN
+                const script = document.createElement('script');
+                script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+                script.onload = function() {
+                    console.log('Leaflet loaded from alternative CDN');
+                };
+                script.onerror = function() {
+                    console.error('Failed to load Leaflet from alternative CDN');
+                };
+                document.head.appendChild(script);
+            }
+            
+            return { leaflet: leafletLoaded, turf: turfLoaded };
+        };
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+
+        .header {
+            background: #2d2d2d;
+            padding: 0.75rem 1rem;
+            border-bottom: 2px solid #444;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 70px;
+            position: relative;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                height: 60px;
+                padding: 0.5rem;
+            }
+        }
+
+        .title {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        @media (max-width: 768px) {
+            .title {
+                font-size: 1rem;
+            }
+        }
+
+        .stats {
+            display: flex;
+            gap: 1.5rem;
+            font-size: 0.85rem;
+        }
+
+        @media (max-width: 768px) {
+            .stats {
+                gap: 0.75rem;
+                font-size: 0.75rem;
+                flex-wrap: wrap;
+            }
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 60px;
+        }
+
+        .stat-value {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        @media (max-width: 768px) {
+            .stat-value {
+                font-size: 0.95rem;
+            }
+        }
+
+        .menu-toggle {
+            display: none;
+            background: #4CAF50;
+            border: none;
+            color: white;
+            padding: 0.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .menu-toggle {
+                display: block;
+            }
+        }
+
+        .game-container {
+            display: flex;
+            height: calc(100vh - 70px);
+        }
+
+        @media (max-width: 768px) {
+            .game-container {
+                height: calc(100vh - 60px - 60px);
+                flex-direction: column;
+            }
+        }
+
+        .sidebar {
+            width: 380px;
+            background: #2d2d2d;
+            border-right: 2px solid #444;
+            padding: 1.25rem;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                top: 60px;
+                left: 0;
+                width: 100vw;
+                height: calc(100vh - 60px - 60px);
+                z-index: 1000;
+                transform: translateX(-100%);
+                padding: 1rem;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+        }
+
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            background: #333;
+            touch-action: manipulation;
+        }
+
+        .setup-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .setup-section h3 {
+            margin-bottom: 0.75rem;
+            color: #4CAF50;
+            border-bottom: 1px solid #444;
+            padding-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .form-group {
+            margin-bottom: 0.75rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        select, input, button, textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #555;
+            border-radius: 6px;
+            background: #3d3d3d;
+            color: #fff;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        @media (max-width: 768px) {
+            select, input, button, textarea {
+                padding: 1rem;
+                font-size: 16px; /* Prevents zoom on iOS */
+                min-height: 48px; /* Touch-friendly size */
+            }
+        }
+
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+            touch-action: manipulation;
+        }
+
+        button:hover:not(:disabled) {
+            background: #45a049;
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: #666 !important;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        button.loading {
+            pointer-events: none;
+        }
+
+        .challenge-section {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #444;
+        }
+
+        .question-display {
+            background: #3d3d3d;
+            padding: 1.25rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .question-text {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .question-type {
+            font-size: 0.85rem;
+            color: #aaa;
+        }
+
+        .timer {
+            font-size: 1.75rem;
+            font-weight: bold;
+            color: #ff6b6b;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .distance-display {
+            background: #3d3d3d;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .results-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(45, 45, 45, 0.95);
+            padding: 2rem;
+            border-radius: 12px;
+            text-align: center;
+            z-index: 1000;
+            min-width: 300px;
+            backdrop-filter: blur(10px);
+            max-width: 90vw;
+        }
+
+        .score-display {
+            font-size: 1.75rem;
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 1rem;
+        }
+
+        .multiple-choice {
+            display: grid;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .choice-button {
+            padding: 1rem;
+            background: #3d3d3d;
+            border: 1px solid #555;
+            border-radius: 6px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        @media (max-width: 768px) {
+            .choice-button {
+                padding: 1.25rem;
+                font-size: 1rem;
+                min-height: 48px;
+            }
+        }
+
+        .choice-button:hover {
+            background: #4d4d4d;
+            border-color: #4CAF50;
+        }
+
+        .choice-button.correct {
+            background: #4CAF50;
+            border-color: #4CAF50;
+        }
+
+        .choice-button.incorrect {
+            background: #f44336;
+            border-color: #f44336;
+        }
+
+        .mode-tabs {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            margin-bottom: 1rem;
+            gap: 0.25rem;
+        }
+
+        .mode-tab {
+            padding: 0.5rem;
+            background: #3d3d3d;
+            border: 1px solid #555;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 0.8rem;
+            text-align: center;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        @media (max-width: 768px) {
+            .mode-tab {
+                padding: 0.75rem 0.5rem;
+                font-size: 0.75rem;
+                min-height: 48px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+        }
+
+        .mode-tab.active {
+            background: #4CAF50;
+            color: white;
+            border-color: #4CAF50;
+        }
+
+        .blinking {
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .map-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .map-control-btn {
+            width: 44px;
+            height: 44px;
+            background: rgba(45, 45, 45, 0.9);
+            border: 2px solid #4CAF50;
+            color: #4CAF50;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            touch-action: manipulation;
+            transition: all 0.2s;
+        }
+
+        @media (max-width: 768px) {
+            .map-control-btn {
+                width: 50px;
+                height: 50px;
+                font-size: 1.4rem;
+            }
+        }
+
+        .map-control-btn:hover {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .layer-toggle {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: rgba(45, 45, 45, 0.9);
+            border: 2px solid #4CAF50;
+            color: #4CAF50;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            touch-action: manipulation;
+            transition: all 0.2s;
+        }
+
+        @media (max-width: 768px) {
+            .layer-toggle {
+                bottom: 70px;
+                font-size: 0.75rem;
+                padding: 1rem;
+                min-height: 48px;
+            }
+        }
+
+        .layer-toggle:hover {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .debug-info {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            z-index: 1000;
+            max-width: 90vw;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            vertical-align: middle;
+            margin-right: 0.5rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message, .warning-message, .success-message, .info-message {
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .error-message {
+            background: #f44336;
+            color: white;
+        }
+
+        .warning-message {
+            background: #ff9800;
+            color: white;
+        }
+
+        .success-message {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .info-message {
+            background: #2196F3;
+            color: white;
+        }
+
+        /* Advanced Settings Panel */
+        .advanced-settings {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #333;
+            border-radius: 8px;
+            border: 1px solid #555;
+        }
+
+        .advanced-settings h3 {
+            color: #ff9800;
+            margin-bottom: 1rem;
+            font-size: 1rem;
+            border-bottom: 1px solid #555;
+            padding-bottom: 0.5rem;
+        }
+
+        .advanced-settings h4 {
+            color: #4CAF50;
+            margin: 1rem 0 0.5rem 0;
+            font-size: 0.9rem;
+            border-bottom: 1px solid #444;
+            padding-bottom: 0.25rem;
+        }
+
+        .editor-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .point-list {
+            max-height: 150px;
+            overflow-y: auto;
+            background: #2d2d2d;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .point-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.25rem;
+            margin: 0.25rem 0;
+            background: #4d4d4d;
+            border-radius: 4px;
+        }
+
+        .point-coords {
+            font-size: 0.8rem;
+            color: #ccc;
+        }
+
+        .point-remove {
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.7rem;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            display: block;
+            width: 100%;
+            padding: 0.75rem;
+            background: #2196F3;
+            color: white;
+            border-radius: 6px;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .file-input-label:hover {
+            background: #1976D2;
+        }
+
+        .problem-list {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #2d2d2d;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .problem-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            margin: 0.25rem 0;
+            background: #4d4d4d;
+            border-radius: 4px;
+        }
+
+        .problem-name {
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .problem-info {
+            font-size: 0.8rem;
+            color: #ccc;
+        }
+
+        .problem-actions {
+            display: flex;
+            gap: 0.25rem;
+        }
+
+        .btn-small {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.7rem;
+            border-radius: 3px;
+        }
+
+        .btn-edit {
+            background: #ff9800;
+        }
+
+        .btn-delete {
+            background: #f44336;
+        }
+
+        .current-location-btn {
+            background: #2196F3;
+            margin-top: 0.5rem;
+        }
+
+        .current-location-btn:hover {
+            background: #1976D2;
+        }
+
+        /* Location Services */
+        .location-status {
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin-top: 0.5rem;
+            font-size: 0.8rem;
+            text-align: center;
+        }
+
+        .location-status.success {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .location-status.error {
+            background: #f44336;
+            color: white;
+        }
+
+        .location-status.pending {
+            background: #ff9800;
+            color: white;
+        }
+
+        /* Hide advanced settings on mobile */
+        @media (max-width: 768px) {
+            .advanced-settings {
+                display: none !important;
+            }
+            
+            /* Hide advanced tools button on mobile */
+            #toggle-settings {
+                display: none;
+            }
+        }
+
+        /* Touch optimization */
+        @media (hover: none) and (pointer: coarse) {
+            .choice-button:hover,
+            .mode-tab:hover,
+            .map-control-btn:hover,
+            .layer-toggle:hover {
+                background: inherit;
+                color: inherit;
+                border-color: inherit;
+                transform: none;
+            }
+        }
+
+        /* Mobile Game Overlay - ゲーム中の地図上表示 */
+        .mobile-game-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 900;
+            pointer-events: none;
+        }
+
+        @media (max-width: 768px) {
+            .mobile-game-overlay.active {
+                display: block;
+            }
+        }
+
+        /* ゲーム中の出題表示 - 地図上部固定 */
+        .mobile-question-overlay {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            background: rgba(45, 45, 45, 0.95);
+            border-radius: 12px;
+            padding: 1rem;
+            backdrop-filter: blur(10px);
+            pointer-events: auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .mobile-question-text {
+            color: #fff;
+            font-size: 1.1rem;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .mobile-question-type {
+            color: #aaa;
+            font-size: 0.8rem;
+            text-align: center;
+        }
+
+        /* タイマーとスコア - 地図右上 */
+        .mobile-game-stats {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(45, 45, 45, 0.9);
+            border-radius: 8px;
+            padding: 0.75rem;
+            pointer-events: auto;
+            min-width: 80px;
+            text-align: center;
+        }
+
+        .mobile-timer {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 0.25rem;
+        }
+
+        .mobile-timer.warning {
+            color: #ff9800;
+        }
+
+        .mobile-timer.danger {
+            color: #ff6b6b;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .mobile-score {
+            font-size: 0.8rem;
+            color: #ccc;
+        }
+
+        /* 5択選択肢 - 地図下部 */
+        .mobile-choices-overlay {
+            position: absolute;
+            bottom: 70px;
+            left: 10px;
+            right: 10px;
+            pointer-events: auto;
+        }
+
+        .mobile-choices-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .mobile-choice-btn {
+            background: rgba(45, 45, 45, 0.95);
+            color: #fff;
+            border: 2px solid #555;
+            border-radius: 8px;
+            padding: 1rem 0.5rem;
+            font-size: 0.9rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            backdrop-filter: blur(10px);
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            word-wrap: break-word;
+            hyphens: auto;
+        }
+
+        .mobile-choice-btn:active {
+            transform: scale(0.95);
+        }
+
+        .mobile-choice-btn.correct {
+            background: rgba(76, 175, 80, 0.9);
+            border-color: #4CAF50;
+        }
+
+        .mobile-choice-btn.incorrect {
+            background: rgba(244, 67, 54, 0.9);
+            border-color: #f44336;
+        }
+
+        /* ゲーム結果表示 - 地図中央 */
+        .mobile-result-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(45, 45, 45, 0.95);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            pointer-events: auto;
+            backdrop-filter: blur(10px);
+            min-width: 250px;
+            max-width: 90%;
+        }
+
+        /* Bottom controls - スッキリしたデザイン */
+        .mobile-controls {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(45, 45, 45, 0.95);
+            backdrop-filter: blur(10px);
+            border-top: 2px solid #444;
+            padding: 0.75rem;
+            z-index: 1000;
+        }
+
+        @media (max-width: 768px) {
+            .mobile-controls {
+                display: flex;
+                justify-content: space-around;
+                align-items: center;
+            }
+        }
+
+        .mobile-control-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            min-width: 80px;
+            transition: all 0.2s;
+        }
+
+        .mobile-control-btn:active {
+            transform: scale(0.95);
+        }
+
+        .mobile-control-btn.secondary {
+            background: #ff9800;
+        }
+
+        .mobile-control-btn.danger {
+            background: #f44336;
+        }
+
+        /* ゲーム中はサイドバーを完全に隠す */
+        .game-playing .sidebar {
+            transform: translateX(-100%) !important;
+        }
+
+        /* ゲーム中のヘッダー簡素化 */
+        @media (max-width: 768px) {
+            .game-playing .header {
+                height: 0;
+                overflow: hidden;
+                padding: 0;
+            }
+
+            .game-playing .game-container {
+                height: 100vh;
+            }
+
+            .game-playing .mobile-controls {
+                bottom: 0;
+            }
+        }
+
+        /* 距離表示 - 地図左下 */
+        .mobile-distance-overlay {
+            position: absolute;
+            bottom: 80px;
+            left: 10px;
+            background: rgba(45, 45, 45, 0.9);
+            color: #fff;
+            padding: 0.75rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            pointer-events: auto;
+            max-width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <button class="menu-toggle" id="menu-toggle">☰</button>
+        <div class="title">Back of Your Hand - Enhanced</div>
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-value" id="score">0</div>
+                <div>Score</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="streak">0</div>
+                <div>Streak</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="total-questions">0</div>
+                <div>Questions</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="game-container">
+        <div class="sidebar" id="sidebar">
+            <!-- Game Section (always visible) -->
+            <div class="setup-section">
+                <h3>Game Mode</h3>
+                <div class="mode-tabs">
+                    <div class="mode-tab active" data-mode="street">Street</div>
+                    <div class="mode-tab" data-mode="facility">Facility</div>
+                    <div class="mode-tab" data-mode="intersection">Intersection</div>
+                    <div class="mode-tab" data-mode="reverse">Reverse</div>
+                </div>
+            </div>
+
+            <div class="setup-section">
+                <h3>Location & Range</h3>
+                <div class="form-group">
+                    <label for="location">Center Location</label>
+                    <input type="text" id="location" placeholder="Enter city or coordinates" value="Tokyo, Japan">
+                    <button id="update-location">Update Location</button>
+                    <button id="get-current-location" class="current-location-btn">📍 Use Current Location</button>
+                    <div id="location-status" class="location-status hidden"></div>
+                </div>
+                <div class="form-group">
+                    <label for="range">Range: <span id="range-display">5 km</span></label>
+                    <input type="range" id="range" min="1" max="50" value="5">
+                </div>
+            </div>
+
+            <div class="setup-section">
+                <h3>Difficulty</h3>
+                <div class="form-group">
+                    <select id="difficulty">
+                        <option value="tourist">Tourist (Easy)</option>
+                        <option value="resident">Resident (Medium)</option>
+                        <option value="taxi-driver">Taxi Driver (Hard)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="setup-section">
+                <h3>Data Source</h3>
+                <div class="form-group">
+                    <label for="region-select">Regional Network</label>
+                    <select id="region-select">
+                        <option value="south-kanto">南関東全域 (Complete Network)</option>
+                        <option value="tokyo-center">東京都心 (Center Only)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="loading-strategy">Loading Strategy</label>
+                    <select id="loading-strategy">
+                        <option value="immediate">⚡ 即座開始 (Fast Start)</option>
+                        <option value="balanced">⚖️ バランス型 (Balanced)</option>
+                        <option value="complete">🔄 完全読み込み (Complete)</option>
+                    </select>
+                    <small style="color: #aaa; font-size: 0.75rem; display: block; margin-top: 0.25rem;">
+                        即座開始: 10秒で開始可能、他は必要時に読み込み
+                    </small>
+                </div>
+            </div>
+
+            <div class="setup-section">
+                <button id="start-game">Start Game</button>
+                <button id="load-street-data" style="background: #ff9800; font-size: 0.85rem; margin-top: 0.5rem;">🗺️ Load Regional Roads</button>
+                <button id="toggle-settings" style="background: #666; font-size: 0.85rem; margin-top: 0.5rem;">🔧 Show Advanced Tools</button>
+                <div id="data-status" style="margin-top: 0.5rem; padding: 0.5rem; background: #5a2d2d; border-radius: 4px; font-size: 0.8rem; color: white;">
+                    ⚠️ Street mode requires regional data - click above to load complete road network
+                </div>
+            </div>
+
+            <!-- Advanced Settings Panel (Hidden by default) -->
+            <div class="advanced-settings hidden" id="advanced-settings">
+                <div class="setup-section">
+                    <h3>🔧 Advanced Tools (PC Only)</h3>
+                    
+                    <!-- Problem Editor -->
+                    <div class="editor-section">
+                        <h4>Problem Editor</h4>
+                        <div class="form-group">
+                            <label for="problem-name">Problem Name</label>
+                            <input type="text" id="problem-name" placeholder="Enter street/facility name">
+                        </div>
+                        <div class="form-group">
+                            <label for="problem-type">Problem Type</label>
+                            <select id="problem-type">
+                                <option value="street">Street</option>
+                                <option value="facility">Facility</option>
+                                <option value="intersection">Intersection</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="problem-description">Description</label>
+                            <textarea id="problem-description" placeholder="Brief description of the location" rows="2"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="problem-importance">Importance (1-100)</label>
+                            <input type="range" id="problem-importance" min="1" max="100" value="70">
+                            <span id="importance-display">70</span>
+                        </div>
+                        
+                        <h4>Location Points</h4>
+                        <p style="font-size: 0.8rem; color: #aaa; margin-bottom: 0.5rem;">
+                            Click on the map to add points for this problem
+                        </p>
+                        <div id="current-points" class="point-list">
+                            <div style="text-align: center; color: #666;">No points added yet</div>
+                        </div>
+                        <button id="clear-points" style="background: #f44336; margin-top: 0.5rem;">Clear All Points</button>
+                        
+                        <div style="margin-top: 0.5rem;">
+                            <button id="save-problem" style="background: #4CAF50;">Save Problem</button>
+                            <button id="cancel-edit" style="background: #666; margin-top: 0.25rem;">Cancel</button>
+                        </div>
+                        
+                        <h4>Custom Problems</h4>
+                        <div id="custom-problems" class="problem-list">
+                            <div style="text-align: center; color: #666;">No custom problems yet</div>
+                        </div>
+                    </div>
+
+                    <!-- KML Import -->
+                    <div class="editor-section">
+                        <h4>Import KML Data</h4>
+                        <div class="form-group">
+                            <div class="file-input-wrapper">
+                                <input type="file" id="kml-file" class="file-input" accept=".kml,.kmz">
+                                <label for="kml-file" class="file-input-label">📁 Choose KML File</label>
+                            </div>
+                        </div>
+                        <div id="import-status" class="hidden"></div>
+                        
+                        <h4>Sample KML Data</h4>
+                        <p style="font-size: 0.8rem; color: #aaa; margin-bottom: 0.5rem;">
+                            Load the provided Yamate-dori sample data:
+                        </p>
+                        <button id="load-sample-kml" style="background: #2196F3;">Load Yamate-dori Sample</button>
+                        
+                        <h4>Import Instructions</h4>
+                        <div style="font-size: 0.8rem; color: #ccc; line-height: 1.4;">
+                            <p><strong>Supported formats:</strong> KML files with LineString or Point geometries</p>
+                            <p><strong>Required fields:</strong> Name (required), Description (optional)</p>
+                            <p><strong>How to create KML:</strong></p>
+                            <ul style="margin-left: 1rem; margin-top: 0.5rem;">
+                                <li>Use Google My Maps to create custom maps</li>
+                                <li>Draw lines for streets or place markers for facilities</li>
+                                <li>Export as KML file</li>
+                                <li>Import here to use in the game</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="challenge-section hidden" id="challenge-section">
+                <div class="timer" id="timer">30</div>
+                
+                <div class="question-display">
+                    <div class="question-text" id="question-text">Click on the map to locate:</div>
+                    <div class="question-type" id="question-type">Street Challenge</div>
+                </div>
+
+                <div class="multiple-choice hidden" id="multiple-choice"></div>
+
+                <div class="distance-display hidden" id="distance-display">
+                    <div>Distance: <span id="distance">-</span></div>
+                    <div>Accuracy: <span id="accuracy">-</span></div>
+                </div>
+
+                <button id="next-question" class="hidden">Next Question</button>
+                <button id="show-answer" class="hidden" style="background: #ff9800;">Show Answer</button>
+                <button id="end-game" style="background: #f44336;">End Game</button>
+            </div>
+        </div>
+
+        <div class="map-container">
+            <div id="map"></div>
+            
+            <!-- Mobile Game Overlay - モバイルゲーム用オーバーレイ -->
+            <div class="mobile-game-overlay" id="mobile-game-overlay">
+                <!-- 出題内容表示 -->
+                <div class="mobile-question-overlay" id="mobile-question-overlay">
+                    <div class="mobile-question-text" id="mobile-question-text">地図をタップして場所を特定してください</div>
+                    <div class="mobile-question-type" id="mobile-question-type">道路チャレンジ</div>
+                </div>
+
+                <!-- タイマーとスコア -->
+                <div class="mobile-game-stats" id="mobile-game-stats">
+                    <div class="mobile-timer" id="mobile-timer">30</div>
+                    <div class="mobile-score">
+                        <div>Score: <span id="mobile-score">0</span></div>
+                        <div>Streak: <span id="mobile-streak">0</span></div>
+                    </div>
+                </div>
+
+                <!-- 5択選択肢 -->
+                <div class="mobile-choices-overlay hidden" id="mobile-choices-overlay">
+                    <div class="mobile-choices-grid" id="mobile-choices-grid">
+                        <!-- 動的に生成される -->
+                    </div>
+                </div>
+
+                <!-- 結果表示 -->
+                <div class="mobile-distance-overlay hidden" id="mobile-distance-overlay">
+                    <div>距離: <span id="mobile-distance">-</span></div>
+                    <div>精度: <span id="mobile-accuracy">-</span></div>
+                </div>
+            </div>
+            
+            <div class="map-controls">
+                <div class="map-control-btn" id="zoom-in" title="Zoom In">+</div>
+                <div class="map-control-btn" id="zoom-out" title="Zoom Out">−</div>
+            </div>
+            
+            <div class="layer-toggle" id="toggle-labels" title="Toggle Street Names">
+                街路名表示/非表示
+            </div>
+
+            <div class="results-overlay hidden" id="results-overlay">
+                <h2>Game Complete!</h2>
+                <div class="score-display" id="final-score">Score: 0</div>
+                <div id="final-stats"></div>
+                <button onclick="resetGame()">Play Again</button>
+            </div>
+
+            <div class="debug-info" id="debug-info">Loading map...</div>
+        </div>
+    </div>
+
+    <!-- Mobile Controls - 改善されたモバイルコントロール -->
+    <div class="mobile-controls">
+        <button class="mobile-control-btn" id="mobile-menu">📱 設定</button>
+        <button class="mobile-control-btn secondary" id="mobile-answer" class="hidden">💡 答え</button>
+        <button class="mobile-control-btn" id="mobile-next" class="hidden">▶️ 次へ</button>
+        <button class="mobile-control-btn danger" id="mobile-end" class="hidden">🏁 終了</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
+    <script>
+        function log(message) {
+            console.log(message);
+            const debugInfo = document.getElementById('debug-info');
+            if (debugInfo) {
+                const timestamp = new Date().toLocaleTimeString();
+                debugInfo.innerHTML = `[${timestamp}] ${message}`;
+                debugInfo.style.display = 'block';
+                
+                if (message.includes('successfully') || message.includes('ready')) {
+                    setTimeout(() => {
+                        debugInfo.style.display = 'none';
+                    }, 3000);
+                }
+                
+                if (message.includes('Error') || message.includes('Failed')) {
+                    debugInfo.style.background = '#f44336';
+                    debugInfo.style.color = 'white';
+                } else if (message.includes('successfully') || message.includes('ready')) {
+                    debugInfo.style.background = '#4CAF50';
+                    debugInfo.style.color = 'white';
+                } else {
+                    debugInfo.style.background = 'rgba(0,0,0,0.8)';
+                    debugInfo.style.color = 'white';
+                }
+            }
+        }
+
+        // Enhanced library loading check for Safari
+        function checkLibraryLoading() {
+            const checks = {
+                leaflet: typeof L !== 'undefined',
+                turf: typeof turf !== 'undefined',
+                dom: document.readyState === 'complete'
+            };
+            
+            log(`Library check: Leaflet=${checks.leaflet}, Turf=${checks.turf}, DOM=${checks.dom}`);
+            
+            // Safari specific debugging
+            if (navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome')) {
+                log('Safari detected - applying Safari-specific optimizations');
+                // Force script re-evaluation for Safari
+                if (!checks.leaflet) {
+                    setTimeout(() => {
+                        if (typeof L === 'undefined') {
+                            log('Safari: Force reloading Leaflet...');
+                            const script = document.createElement('script');
+                            script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+                            script.onload = () => {
+                                log('Safari: Leaflet reloaded successfully');
+                                setTimeout(initGame, 500);
+                            };
+                            document.head.appendChild(script);
+                        }
+                    }, 2000);
+                }
+            }
+            
+            return checks;
+        }
+
+        // Mobile-specific initialization with Safari fixes
+        function initializeForMobile() {
+            log('Initializing for mobile device...');
+            
+            // Safari specific fixes
+            if (navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome')) {
+                log('Applying Safari mobile optimizations...');
+                
+                // Prevent Safari zoom on input focus
+                document.addEventListener('touchstart', function(e) {
+                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') {
+                        e.target.style.fontSize = '16px';
+                    }
+                });
+                
+                // Force hardware acceleration for Safari
+                document.body.style.webkitTransform = 'translateZ(0)';
+                document.body.style.webkitBackfaceVisibility = 'hidden';
+            }
+            
+            if (!document.querySelector('meta[name="apple-mobile-web-app-capable"]')) {
+                const meta = document.createElement('meta');
+                meta.name = 'apple-mobile-web-app-capable';
+                meta.content = 'yes';
+                document.head.appendChild(meta);
+            }
+            
+            // Prevent bounce scrolling
+            document.body.style.overscroll = 'none';
+            document.body.style.webkitOverflowScrolling = 'touch';
+            
+            const mapContainer = document.getElementById('map');
+            if (mapContainer) {
+                mapContainer.style.transform = 'translateZ(0)';
+                mapContainer.style.webkitTransform = 'translateZ(0)';
+                mapContainer.style.webkitBackfaceVisibility = 'hidden';
+            }
+            
+            log('Mobile initialization complete');
+        }
+
+        // Mobile Game UI Functions
+        function initMobileGameUI() {
+            if (window.innerWidth > 768) return; // PC only
+            
+            log('Initializing mobile game UI...');
+            
+            // Hide desktop challenge section on mobile during game
+            const challengeSection = document.getElementById('challenge-section');
+            if (challengeSection) {
+                challengeSection.style.display = 'none';
+            }
+        }
+
+        function showMobileGameUI() {
+            if (window.innerWidth > 768) return;
+            
+            log('Showing mobile game UI...');
+            
+            const overlay = document.getElementById('mobile-game-overlay');
+            const body = document.body;
+            
+            if (overlay) {
+                overlay.classList.add('active');
+            }
+            
+            // Add game-playing class to body for CSS targeting
+            body.classList.add('game-playing');
+            
+            updateMobileGameStats();
+        }
+
+        function hideMobileGameUI() {
+            if (window.innerWidth > 768) return;
+            
+            const overlay = document.getElementById('mobile-game-overlay');
+            const body = document.body;
+            
+            if (overlay) {
+                overlay.classList.remove('active');
+            }
+            
+            body.classList.remove('game-playing');
+        }
+
+        function updateMobileGameStats() {
+            if (window.innerWidth > 768) return;
+            
+            // Update mobile stats display
+            const mobileScore = document.getElementById('mobile-score');
+            const mobileStreak = document.getElementById('mobile-streak');
+            const mobileTimer = document.getElementById('mobile-timer');
+            
+            if (mobileScore) mobileScore.textContent = gameState.score;
+            if (mobileStreak) mobileStreak.textContent = gameState.streak;
+            if (mobileTimer) {
+                mobileTimer.textContent = gameState.timer;
+                
+                // Update timer appearance
+                mobileTimer.classList.remove('warning', 'danger');
+                if (gameState.timer <= 5) {
+                    mobileTimer.classList.add('danger');
+                } else if (gameState.timer <= 10) {
+                    mobileTimer.classList.add('warning');
+                }
+            }
+        }
+
+        function updateMobileQuestion(questionText, questionType) {
+            if (window.innerWidth > 768) return;
+            
+            const mobileQuestionText = document.getElementById('mobile-question-text');
+            const mobileQuestionType = document.getElementById('mobile-question-type');
+            
+            if (mobileQuestionText) {
+                mobileQuestionText.textContent = questionText;
+            }
+            if (mobileQuestionType) {
+                mobileQuestionType.textContent = questionType;
+            }
+        }
+
+        function showMobileChoices(choices) {
+            if (window.innerWidth > 768) return;
+            
+            const overlay = document.getElementById('mobile-choices-overlay');
+            const grid = document.getElementById('mobile-choices-grid');
+            
+            if (!overlay || !grid) return;
+            
+            // Clear existing choices
+            grid.innerHTML = '';
+            
+            // Create choice buttons
+            choices.forEach((choice, index) => {
+                const button = document.createElement('button');
+                button.className = 'mobile-choice-btn';
+                button.textContent = choice.name;
+                button.onclick = () => handleMobileChoiceClick(choice, button);
+                grid.appendChild(button);
+            });
+            
+            overlay.classList.remove('hidden');
+        }
+
+        function hideMobileChoices() {
+            if (window.innerWidth > 768) return;
+            
+            const overlay = document.getElementById('mobile-choices-overlay');
+            if (overlay) {
+                overlay.classList.add('hidden');
+            }
+        }
+
+        function handleMobileChoiceClick(selectedChoice, button) {
+            // Disable all buttons
+            document.querySelectorAll('.mobile-choice-btn').forEach(btn => {
+                btn.disabled = true;
+                btn.style.pointerEvents = 'none';
+            });
+            
+            // Handle the answer (reuse existing logic)
+            handleReverseAnswer(selectedChoice, button);
+        }
+
+        function showMobileDistance(distance, accuracy) {
+            if (window.innerWidth > 768) return;
+            
+            const overlay = document.getElementById('mobile-distance-overlay');
+            const distanceEl = document.getElementById('mobile-distance');
+            const accuracyEl = document.getElementById('mobile-accuracy');
+            
+            if (overlay && distanceEl && accuracyEl) {
+                distanceEl.textContent = distance;
+                accuracyEl.textContent = accuracy;
+                overlay.classList.remove('hidden');
+            }
+        }
+
+        function hideMobileDistance() {
+            if (window.innerWidth > 768) return;
+            
+            const overlay = document.getElementById('mobile-distance-overlay');
+            if (overlay) {
+                overlay.classList.add('hidden');
+            }
+        }
+
+        // Check if Turf.js is loaded, if not load alternative or use fallback
+        if (typeof turf === 'undefined') {
+            console.warn('Turf.js not loaded, using fallback geometry functions');
+            
+            window.turf = {
+                point: function(coords) {
+                    return { geometry: { coordinates: coords, type: 'Point' } };
+                },
+                distance: function(from, to, options) {
+                    const lat1 = from.geometry.coordinates[1];
+                    const lon1 = from.geometry.coordinates[0];
+                    const lat2 = to.geometry.coordinates[1];
+                    const lon2 = to.geometry.coordinates[0];
+                    
+                    const R = 6371;
+                    const dLat = (lat2 - lat1) * Math.PI / 180;
+                    const dLon = (lon2 - lon1) * Math.PI / 180;
+                    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                             Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                             Math.sin(dLon/2) * Math.sin(dLon/2);
+                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                    const distance = R * c;
+                    
+                    return options && options.units === 'meters' ? distance * 1000 : distance;
+                },
+                lineString: function(coords) {
+                    return { geometry: { coordinates: coords, type: 'LineString' } };
+                },
+                nearestPointOnLine: function(line, point) {
+                    const coords = line.geometry.coordinates;
+                    let minDist = Infinity;
+                    let nearest = coords[0];
+                    
+                    for (let i = 0; i < coords.length; i++) {
+                        const dist = this.distance(
+                            { geometry: { coordinates: coords[i] } },
+                            point,
+                            { units: 'meters' }
+                        );
+                        if (dist < minDist) {
+                            minDist = dist;
+                            nearest = coords[i];
+                        }
+                    }
+                    
+                    return { geometry: { coordinates: nearest } };
+                },
+                midpoint: function(point1, point2) {
+                    const lat1 = point1.geometry.coordinates[1];
+                    const lon1 = point1.geometry.coordinates[0];
+                    const lat2 = point2.geometry.coordinates[1];
+                    const lon2 = point2.geometry.coordinates[0];
+                    
+                    return {
+                        geometry: {
+                            coordinates: [(lon1 + lon2) / 2, (lat1 + lat2) / 2]
+                        }
+                    };
+                }
+            };
+        }
+
+        // Game state
+        let gameState = {
+            isPlaying: false,
+            currentMode: 'street',
+            difficulty: 'tourist',
+            score: 0,
+            streak: 0,
+            totalQuestions: 0,
+            currentQuestion: null,
+            timer: 30,
+            timerInterval: null,
+            map: null,
+            gameArea: null,
+            userMarker: null,
+            correctMarker: null,
+            streetLayer: null,
+            facilityLayer: null,
+            center: { lat: 35.6762, lng: 139.6503 },
+            range: 5,
+            showLabels: true,
+            baseLayers: {},
+            streetData: null,
+            isLoadingData: false,
+            isMapInitialized: false,
+            settingsVisible: true,
+            customProblems: [],
+            editorMode: false,
+            currentEditPoints: [],
+            editingProblem: null,
+            askedQuestions: [],
+            currentLocation: null,
+            loadingStrategy: 'immediate',
+            backgroundLoading: false,
+            cacheEnabled: true,
+            dataQuality: 'partial',
+            initRetryCount: 0,
+            isMobileDevice: false,
+            networkStatus: 'unknown'
+        };
+
+        // Enhanced sample data with actual coordinates
+        const facilityQuestions = [
+            {
+                name: "東京タワー",
+                points: [[{ lat: 35.6586, lng: 139.7454 }]],
+                isEnclosedArea: false,
+                facilityType: "tower",
+                category: "tourism",
+                importance: 80,
+                description: "333mの赤い電波塔",
+                source: "default"
+            },
+            {
+                name: "東京駅",
+                points: [[{ lat: 35.6812, lng: 139.7671 }]],
+                isEnclosedArea: false,
+                facilityType: "station",
+                category: "transport",
+                importance: 90,
+                description: "東京の玄関口となる中央駅",
+                source: "default"
+            },
+            {
+                name: "渋谷スクランブル交差点",
+                points: [[{ lat: 35.6598, lng: 139.7006 }]],
+                isEnclosedArea: false,
+                facilityType: "intersection",
+                category: "landmark",
+                importance: 85,
+                description: "世界で最も有名な歩行者用交差点",
+                source: "default"
+            },
+            {
+                name: "皇居",
+                points: [[
+                    { lat: 35.6852, lng: 139.7528 },
+                    { lat: 35.6820, lng: 139.7580 },
+                    { lat: 35.6795, lng: 139.7550 },
+                    { lat: 35.6830, lng: 139.7500 },
+                    { lat: 35.6852, lng: 139.7528 }
+                ]],
+                isEnclosedArea: true,
+                facilityType: "palace",
+                category: "landmark",
+                importance: 95,
+                description: "日本の皇室の宮殿",
+                source: "default"
+            }
+        ];
+
+        const intersectionQuestions = [
+            {
+                name: "渋谷スクランブル交差点",
+                points: [[{ lat: 35.6598, lng: 139.7006 }]],
+                importance: 90,
+                description: "世界で最も混雑する歩行者用交差点",
+                source: "default"
+            },
+            {
+                name: "銀座四丁目交差点",
+                points: [[{ lat: 35.6717, lng: 139.7635 }]],
+                importance: 80,
+                description: "銀座の中心となる大きな交差点",
+                source: "default"
+            },
+            {
+                name: "新宿東口交差点",
+                points: [[{ lat: 35.6896, lng: 139.7006 }]],
+                importance: 75,
+                description: "新宿駅東口前の主要交差点",
+                source: "default"
+            }
+        ];
+
+        // Regional bbox configurations for full road network extraction
+        const REGIONAL_CONFIGS = {
+            'south-kanto': {
+                name: '南関東',
+                bbox: { south: 34.8, west: 138.8, north: 36.3, east: 140.9 },
+                majorRoads: [
+                    '環状七号線', '環状八号線', '甲州街道', '青梅街道', '目白通り', '明治通り',
+                    '昭和通り', '中央通り', '外苑東通り', '外苑西通り', '靖国通り', '新宿通り',
+                    '表参道', '竹下通り', '六本木通り', '麻布通り', '桜田通り', '第一京浜',
+                    '第二京浜', '産業道路', '多摩川通り', '世田谷通り', '駒沢通り', '玉川通り',
+                    '国道1号', '国道14号', '国道15号', '国道16号', '国道20号', '国道246号',
+                    '国道357号', '国道409号', '都道418号', '山手通り', '井の頭通り',
+                    '五日市街道', '小金井街道', '中野通り', '早稲田通り', '春日通り',
+                    '不忍通り', '言問通り', '水戸街道', '蔵前橋通り', '清洲橋通り'
+                ]
+            },
+            'tokyo-center': {
+                name: '東京都心',
+                bbox: { south: 35.6, west: 139.6, north: 35.75, east: 139.85 },
+                majorRoads: [
+                    '環状七号線', '環状八号線', '山手通り', '明治通り', '昭和通り',
+                    '中央通り', '外苑東通り', '靖国通り', '新宿通り', '表参道',
+                    '六本木通り', '桜田通り', '第一京浜', '国道1号', '国道14号',
+                    '国道15号', '国道20号', '国道246号'
+                ]
+            }
+        };
+
+        // Optimized loading strategy
+        const LOADING_STRATEGIES = {
+            'immediate': {
+                name: '即座開始 (Fast Start)',
+                description: '基本的な道路のみ事前読み込み、他は必要時に取得',
+                preloadCount: 10,
+                batchSize: 3,
+                delay: 1000
+            },
+            'balanced': {
+                name: 'バランス型 (Balanced)',
+                description: '重要な道路を段階的に読み込み',
+                preloadCount: 20,
+                batchSize: 4,
+                delay: 1500
+            },
+            'complete': {
+                name: '完全読み込み (Complete)',
+                description: '全道路を事前読み込み（時間がかかります）',
+                preloadCount: -1,
+                batchSize: 5,
+                delay: 2000
+            }
+        };
+
+        // Cache system for loaded road data
+        const ROAD_CACHE = {
+            data: new Map(),
+            
+            save: function(regionKey, strategyKey, roadData) {
+                const cacheKey = `${regionKey}-${strategyKey}`;
+                this.data.set(cacheKey, {
+                    roads: roadData,
+                    timestamp: Date.now(),
+                    version: '1.0'
+                });
+                
+                try {
+                    const compressed = JSON.stringify({
+                        roads: roadData.slice(0, 50),
+                        timestamp: Date.now()
+                    });
+                    localStorage.setItem(`roadCache_${cacheKey}`, compressed);
+                } catch (error) {
+                    console.warn('Could not save to localStorage:', error);
+                }
+            },
+            
+            load: function(regionKey, strategyKey) {
+                const cacheKey = `${regionKey}-${strategyKey}`;
+                
+                if (this.data.has(cacheKey)) {
+                    const cached = this.data.get(cacheKey);
+                    const age = Date.now() - cached.timestamp;
+                    if (age < 24 * 60 * 60 * 1000) {
+                        return cached.roads;
+                    }
+                }
+                
+                try {
+                    const stored = localStorage.getItem(`roadCache_${cacheKey}`);
+                    if (stored) {
+                        const parsed = JSON.parse(stored);
+                        const age = Date.now() - parsed.timestamp;
+                        if (age < 24 * 60 * 60 * 1000) {
+                            this.data.set(cacheKey, {
+                                roads: parsed.roads,
+                                timestamp: parsed.timestamp,
+                                version: '1.0'
+                            });
+                            return parsed.roads;
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Could not load from localStorage:', error);
+                }
+                
+                return null;
+            },
+            
+            exists: function(regionKey, strategyKey) {
+                return this.load(regionKey, strategyKey) !== null;
+            }
+        };
+
+        const streetQuestions = [
+            {
+                name: "表参道",
+                points: [[
+                    { lat: 35.6654, lng: 139.7134 },
+                    { lat: 35.6670, lng: 139.7110 },
+                    { lat: 35.6690, lng: 139.7085 },
+                    { lat: 35.6699, lng: 139.7079 }
+                ]],
+                importance: 85,
+                description: "明治神宮への参道として作られた並木道",
+                source: "default"
+            },
+            {
+                name: "竹下通り",
+                points: [[
+                    { lat: 35.6702, lng: 139.7063 },
+                    { lat: 35.6700, lng: 139.7060 },
+                    { lat: 35.6698, lng: 139.7057 }
+                ]],
+                importance: 75,
+                description: "原宿の若者文化の中心地",
+                source: "default"
+            },
+            {
+                name: "中央通り",
+                points: [[
+                    { lat: 35.6717, lng: 139.7635 },
+                    { lat: 35.6720, lng: 139.7640 },
+                    { lat: 35.6725, lng: 139.7645 },
+                    { lat: 35.6730, lng: 139.7650 }
+                ]],
+                importance: 80,
+                description: "銀座のメインストリート",
+                source: "default"
+            },
+            {
+                name: "青山通り",
+                points: [[
+                    { lat: 35.6650, lng: 139.7200 },
+                    { lat: 35.6670, lng: 139.7180 },
+                    { lat: 35.6690, lng: 139.7160 },
+                    { lat: 35.6710, lng: 139.7140 }
+                ]],
+                importance: 70,
+                description: "青山エリアを通る主要道路",
+                source: "default"
+            }
+        ];
+
+        // Sample Yamate-dori KML data
+        const yamateKmlData = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+    <Document>
+        <Placemark>
+            <name>山手通り</name>
+            <description>読み仮名: やまてどおり
+起点: 品川区東品川一丁目（新東海橋） →
+終点: 板橋区氷川町（仲宿）</description>
+            <LineString>
+                <coordinates>139.686036,35.713522,0.0 139.686069,35.713592,0.0 139.686283,35.714042,0.0 139.686876,35.715233,0.0 139.687218,35.716003,0.0 139.687307,35.716187,0.0</coordinates>
+            </LineString>
+        </Placemark>
+    </Document>
+</kml>`;
+
+        // Current regional configuration and loading strategy
+        let currentRegionalConfig = REGIONAL_CONFIGS['south-kanto'];
+        let currentLoadingStrategy = LOADING_STRATEGIES['immediate'];
+
+        // Initialize the game
+        function initGame() {
+            try {
+                log('Initializing enhanced game...');
+                
+                if (typeof L === 'undefined') {
+                    log('Leaflet not loaded, waiting...');
+                    setTimeout(initGame, 500);
+                    return;
+                }
+                
+                initMap();
+                bindEvents();
+                updateRangeDisplay();
+                updateImportanceDisplay();
+                loadCustomProblems();
+                
+                if (navigator.geolocation && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
+                    log('Geolocation available, attempting to get current location...');
+                    setTimeout(getCurrentLocation, 1000);
+                } else {
+                    if (gameState.map && currentRegionalConfig) {
+                        const bbox = currentRegionalConfig.bbox;
+                        const centerLat = (bbox.north + bbox.south) / 2;
+                        const centerLng = (bbox.east + bbox.west) / 2;
+                        gameState.center = { lat: centerLat, lng: centerLng };
+                        gameState.map.setView([centerLat, centerLng], 9);
+                        updateGameArea();
+                    }
+                }
+                
+                log('Enhanced game initialized successfully');
+            } catch (error) {
+                log('Error initializing game: ' + error.message);
+                console.error('Initialization error:', error);
+                
+                setTimeout(() => {
+                    log('Retrying game initialization...');
+                    initGame();
+                }, 2000);
+            }
+        }
+
+        function initMap() {
+            try {
+                log('Creating map...');
+                
+                const libCheck = checkLibraryLoading();
+                if (!libCheck.leaflet) {
+                    log('Leaflet not loaded yet, retrying...');
+                    setTimeout(initMap, 1000);
+                    return;
+                }
+                
+                const mapContainer = document.getElementById('map');
+                if (!mapContainer) {
+                    log('Map container not found, retrying...');
+                    setTimeout(initMap, 100);
+                    return;
+                }
+                
+                if (mapContainer._leaflet_id) {
+                    log('Removing existing map...');
+                    if (gameState.map) {
+                        gameState.map.remove();
+                        gameState.map = null;
+                    }
+                }
+                
+                if (window.innerWidth <= 768) {
+                    initializeForMobile();
+                }
+                
+                log('Initializing new map...');
+                gameState.map = L.map('map', {
+                    zoomControl: false,
+                    center: [gameState.center.lat, gameState.center.lng],
+                    zoom: 12,
+                    tap: true,
+                    tapTolerance: 15,
+                    touchZoom: true,
+                    bounceAtZoomLimits: false,
+                    preferCanvas: true,
+                    maxZoom: 18,
+                    minZoom: 8,
+                    zoomSnap: 0.5,
+                    zoomDelta: 0.5,
+                    wheelPxPerZoomLevel: 30
+                });
+                
+                log('Map object created, adding tiles...');
+                
+                const tileServers = [
+                    {
+                        url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        attribution: '© OpenStreetMap contributors',
+                        name: 'OpenStreetMap'
+                    },
+                    {
+                        url: 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
+                        attribution: '© OpenStreetMap contributors, © CARTO',
+                        subdomains: ['a', 'b', 'c', 'd'],
+                        name: 'CartoDB Light'
+                    },
+                    {
+                        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+                        attribution: '© Esri',
+                        name: 'ESRI'
+                    }
+                ];
+                
+                let tileLayerLoaded = false;
+                let currentTileIndex = 0;
+                
+                const tryLoadTileLayer = (withLabels = true) => {
+                    if (currentTileIndex >= tileServers.length) {
+                        log('All tile servers failed, using basic fallback');
+                        document.getElementById('map').style.background = '#e0e0e0';
+                        gameState.isMapInitialized = true;
+                        return;
+                    }
+                    
+                    const server = tileServers[currentTileIndex];
+                    log(`Trying tile server: ${server.name} (${currentTileIndex + 1}/${tileServers.length})`);
+                    
+                    const tileLayer = L.tileLayer(server.url, {
+                        attribution: server.attribution,
+                        maxZoom: 19,
+                        subdomains: server.subdomains || [],
+                        errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+                        timeout: 8000,
+                        detectRetina: true,
+                        updateWhenIdle: true,
+                        updateWhenZooming: false,
+                        keepBuffer: 2
+                    });
+                    
+                    tileLayer.on('loading', function() {
+                        log(`Loading tiles from ${server.name}...`);
+                    });
+                    
+                    tileLayer.on('load', function() {
+                        if (!tileLayerLoaded) {
+                            tileLayerLoaded = true;
+                            log(`Tiles loaded successfully from ${server.name}`);
+                            
+                            if (withLabels) {
+                                gameState.baseLayers.withLabels = tileLayer;
+                                if (server.name === 'CartoDB Light') {
+                                    gameState.baseLayers.withoutLabels = L.tileLayer(
+                                        'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_nolabels/{z}/{x}/{y}.png',
+                                        {
+                                            attribution: '© OpenStreetMap contributors, © CARTO',
+                                            subdomains: ['a', 'b', 'c', 'd'],
+                                            maxZoom: 19
+                                        }
+                                    );
+                                } else {
+                                    gameState.baseLayers.withoutLabels = tileLayer;
+                                }
+                            }
+                            
+                            setTimeout(() => {
+                                const debugInfo = document.getElementById('debug-info');
+                                if (debugInfo) {
+                                    debugInfo.style.display = 'none';
+                                }
+                            }, 2000);
+                        }
+                    });
+                    
+                    tileLayer.on('tileerror', function(e) {
+                        log(`Tile error from ${server.name}: ${e.error || 'Unknown error'}`);
+                        
+                        if (!tileLayerLoaded) {
+                            gameState.map.removeLayer(tileLayer);
+                            currentTileIndex++;
+                            setTimeout(() => tryLoadTileLayer(withLabels), 1000);
+                        }
+                    });
+                    
+                    setTimeout(() => {
+                        if (!tileLayerLoaded) {
+                            log(`Timeout for ${server.name}, trying next server...`);
+                            gameState.map.removeLayer(tileLayer);
+                            currentTileIndex++;
+                            tryLoadTileLayer(withLabels);
+                        }
+                    }, 10000);
+                    
+                    tileLayer.addTo(gameState.map);
+                };
+                
+                tryLoadTileLayer(true);
+                
+                gameState.streetLayer = L.layerGroup().addTo(gameState.map);
+                gameState.facilityLayer = L.layerGroup().addTo(gameState.map);
+
+                updateGameArea();
+                
+                gameState.isMapInitialized = true;
+                log('Map initialized successfully');
+                
+                gameState.map.on('click', function(e) {
+                    log('Map click detected at: ' + e.latlng.lat.toFixed(4) + ', ' + e.latlng.lng.toFixed(4));
+                    handleMapClick(e);
+                });
+                
+                gameState.map.whenReady(function() {
+                    log('Map is ready for interaction');
+                    setTimeout(() => {
+                        gameState.map.invalidateSize();
+                        log('Map size invalidated and ready');
+                    }, 500);
+                });
+                
+                gameState.map.on('moveend', function() {
+                    log('Map moved to: ' + gameState.map.getCenter().lat.toFixed(4) + ', ' + gameState.map.getCenter().lng.toFixed(4));
+                });
+                
+                if (window.innerWidth <= 768) {
+                    gameState.map.on('zoomstart', function() {
+                        log('Mobile zoom started');
+                    });
+                    
+                    gameState.map.on('zoomend', function() {
+                        log('Mobile zoom ended at level: ' + gameState.map.getZoom());
+                    });
+                }
+                
+            } catch (error) {
+                log('Error creating map: ' + error.message);
+                console.error('Map initialization error:', error);
+                
+                setTimeout(() => {
+                    log('Retrying map initialization...');
+                    gameState.isMapInitialized = false;
+                    initMap();
+                }, 3000);
+            }
+        }
+
+        // **修正されたloadRegionalRoadsOptimized関数**
+        function loadRegionalRoadsOptimized(regionKey = 'south-kanto', strategyKey = 'immediate') {
+            return new Promise((resolve, reject) => {
+                if (gameState.isLoadingData) {
+                    log('Already loading data...');
+                    resolve(false);
+                    return;
+                }
+                
+                const config = REGIONAL_CONFIGS[regionKey];
+                const strategy = LOADING_STRATEGIES[strategyKey];
+                
+                if (!config || !strategy) {
+                    reject(new Error('Invalid configuration'));
+                    return;
+                }
+                
+                currentRegionalConfig = config;
+                currentLoadingStrategy = strategy;
+                
+                // Check cache first
+                const cacheKey = `${regionKey}-${strategyKey}`;
+                const cachedData = ROAD_CACHE.load(regionKey, strategyKey);
+                if (cachedData && cachedData.length > 0) {
+                    gameState.streetData = cachedData;
+                    log(`Loaded ${cachedData.length} roads from cache`);
+                    showSuccess(`✅ キャッシュから${cachedData.length}道路を読み込み完了！`);
+                    updateDataStatus();
+                    resolve(true);
+                    return;
+                }
+                
+                gameState.isLoadingData = true;
+                
+                const loadBtn = document.getElementById('load-street-data');
+                if (loadBtn) {
+                    loadBtn.innerHTML = '<span class="loading"></span>Loading Roads...';
+                    loadBtn.disabled = true;
+                    loadBtn.classList.add('loading');
+                }
+                
+                log(`Loading roads with ${strategy.name} strategy for ${config.name}...`);
+                
+                // Prioritize roads by importance
+                const prioritizedRoads = [...config.majorRoads].sort((a, b) => {
+                    const importanceA = getStaticRoadImportance(a);
+                    const importanceB = getStaticRoadImportance(b);
+                    return importanceB - importanceA;
+                });
+                
+                // Determine how many roads to load initially
+                const roadsToLoad = strategy.preloadCount === -1 ? 
+                    prioritizedRoads : 
+                    prioritizedRoads.slice(0, strategy.preloadCount);
+                
+                const allRoads = [];
+                let processedRoads = 0;
+                const totalRoads = roadsToLoad.length;
+                
+                // Process roads in optimized batches
+                const processBatchOptimized = async (roadBatch, batchIndex) => {
+                    const batchQueries = roadBatch.map(road => `way["name"="${road}"](${config.bbox.south},${config.bbox.west},${config.bbox.north},${config.bbox.east})`);
+                    
+                    const query = `
+                        [out:json][timeout:30];
+                        (
+                            ${batchQueries.join(';\n            ')};
+                        );
+                        out geom;
+                    `;
+                    
+                    const encodedQuery = encodeURIComponent(query);
+                    const url = `https://overpass-api.de/api/interpreter?data=${encodedQuery}`;
+                    
+                    log(`${strategy.name}: Batch ${batchIndex + 1}/${Math.ceil(totalRoads / strategy.batchSize)}: ${roadBatch.join(', ')}`);
+                    
+                    try {
+                        const response = await fetch(url);
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        
+                        const data = await response.json();
+                        
+                        if (data.elements && data.elements.length > 0) {
+                            const processedElements = processOverpassDataRegional(data.elements);
+                            allRoads.push(...processedElements);
+                        }
+                        
+                        processedRoads += roadBatch.length;
+                        
+                        // Update progress with strategy info
+                        if (loadBtn) {
+                            const progress = Math.round((processedRoads / totalRoads) * 100);
+                            loadBtn.innerHTML = `<span class="loading"></span>${strategy.name} ${progress}%`;
+                        }
+                        
+                        // Optimized delay
+                        if (batchIndex < Math.ceil(totalRoads / strategy.batchSize) - 1) {
+                            await new Promise(resolve => setTimeout(resolve, strategy.delay));
+                        }
+                        
+                    } catch (error) {
+                        log(`Error in batch ${batchIndex + 1}: ${error.message}`);
+                    }
+                };
+                
+                // Process batches with optimized timing
+                const processBatches = async () => {
+                    const batchSize = strategy.batchSize;
+                    for (let i = 0; i < roadsToLoad.length; i += batchSize) {
+                        const batch = roadsToLoad.slice(i, i + batchSize);
+                        await processBatchOptimized(batch, Math.floor(i / batchSize));
+                    }
+                    
+                    // Final processing and caching
+                    if (allRoads.length > 0) {
+                        gameState.streetData = allRoads;
+                        
+                        // Save to cache
+                        ROAD_CACHE.save(regionKey, strategyKey, allRoads);
+                        
+                        const breakdown = getStreetBreakdownByDifficulty();
+                        const completeRoads = allRoads.filter(r => r.isComplete).length;
+                        
+                        showSuccess(`🎉 ${strategy.name}完了! ${allRoads.length}道路 (${completeRoads}完全). Tourist: ${breakdown.tourist}, Resident: ${breakdown.resident}, Taxi: ${breakdown.taxi}`);
+                        
+                        // Start background loading for remaining roads if strategy is not complete
+                        if (strategy.preloadCount !== -1 && prioritizedRoads.length > strategy.preloadCount) {
+                            startBackgroundLoading(regionKey, prioritizedRoads.slice(strategy.preloadCount));
+                        }
+                        
+                        updateDataStatus();
+                        resolve(true);
+                    } else {
+                        throw new Error('No road data found for this region');
+                    }
+                };
+                
+                processBatches().catch(error => {
+                    log('Error loading optimized roads: ' + error.message);
+                    showWarning(`Failed to load regional data: ${error.message}. Using fallback data.`);
+                    
+                    gameState.streetData = streetQuestions;
+                    updateDataStatus();
+                    resolve(false);
+                }).finally(() => {
+                    gameState.isLoadingData = false;
+                    if (loadBtn) {
+                        loadBtn.textContent = '🔄 Reload Roads';
+                        loadBtn.disabled = false;
+                        loadBtn.classList.remove('loading');
+                    }
+                });
+            });
+        }
+
+        // Static road importance scoring for prioritization
+        function getStaticRoadImportance(roadName) {
+            const veryFamousRoads = {
+                '環状七号線': 95, '環状八号線': 95, '山手通り': 90,
+                '甲州街道': 90, '青梅街道': 85, '明治通り': 85,
+                '昭和通り': 85, '中央通り': 85, '外苑東通り': 80,
+                '靖国通り': 80, '新宿通り': 80, '表参道': 90,
+                '六本木通り': 75, '国道1号': 95, '国道14号': 90,
+                '国道15号': 90, '国道16号': 90, '国道20号': 95,
+                '国道246号': 90, '国道357号': 85
+            };
+            
+            const wellKnownRoads = {
+                '井の頭通り': 75, '玉川通り': 75, '世田谷通り': 70,
+                '駒沢通り': 70, '多摩川通り': 70, '五日市街道': 70,
+                '小金井街道': 70, '中野通り': 65, '早稲田通り': 65,
+                '春日通り': 65, '不忍通り': 60, '言問通り': 60
+            };
+            
+            if (veryFamousRoads[roadName]) {
+                return veryFamousRoads[roadName];
+            }
+            if (wellKnownRoads[roadName]) {
+                return wellKnownRoads[roadName];
+            }
+            
+            // Default importance based on road type indicators
+            if (roadName.includes('国道')) return 85;
+            if (roadName.includes('環状')) return 90;
+            if (roadName.includes('通り')) return 65;
+            if (roadName.includes('街道')) return 75;
+            
+            return 50; // Default importance
+        }
+        
+        // Background loading for remaining roads
+        let backgroundLoadingActive = false;
+        
+        function startBackgroundLoading(regionKey, remainingRoads) {
+            if (backgroundLoadingActive || remainingRoads.length === 0) {
+                return;
+            }
+            
+            backgroundLoadingActive = true;
+            log(`Starting background loading for ${remainingRoads.length} additional roads...`);
+            
+            const config = REGIONAL_CONFIGS[regionKey];
+            const strategy = { batchSize: 3, delay: 3000 }; // Slower for background
+            
+            const processBackgroundBatch = async (roadBatch) => {
+                try {
+                    const batchQueries = roadBatch.map(road => `way["name"="${road}"](${config.bbox.south},${config.bbox.west},${config.bbox.north},${config.bbox.east})`);
+                    
+                    const query = `
+                        [out:json][timeout:25];
+                        (
+                            ${batchQueries.join(';\n            ')};
+                        );
+                        out geom;
+                    `;
+                    
+                    const encodedQuery = encodeURIComponent(query);
+                    const url = `https://overpass-api.de/api/interpreter?data=${encodedQuery}`;
+                    
+                    const response = await fetch(url);
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.elements && data.elements.length > 0) {
+                            const processedElements = processOverpassDataRegional(data.elements);
+                            if (processedElements.length > 0) {
+                                // Add to existing street data
+                                gameState.streetData.push(...processedElements);
+                                log(`Background: Added ${processedElements.length} roads (${roadBatch.join(', ')})`);
+                                
+                                // Update cache
+                                const strategyKey = currentLoadingStrategy.name.includes('即座') ? 'immediate' : 
+                                                  currentLoadingStrategy.name.includes('バランス') ? 'balanced' : 'complete';
+                                ROAD_CACHE.save(regionKey, strategyKey, gameState.streetData);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    log(`Background loading error: ${error.message}`);
+                }
+            };
+            
+            // Process remaining roads slowly in background
+            const processAllBackground = async () => {
+                for (let i = 0; i < remainingRoads.length; i += strategy.batchSize) {
+                    if (!backgroundLoadingActive) break; // Allow stopping
+                    
+                    const batch = remainingRoads.slice(i, i + strategy.batchSize);
+                    await processBackgroundBatch(batch);
+                    
+                    if (i + strategy.batchSize < remainingRoads.length) {
+                        await new Promise(resolve => setTimeout(resolve, strategy.delay));
+                    }
+                }
+                
+                backgroundLoadingActive = false;
+                log('Background loading completed');
+            };
+            
+            // Start background processing
+            setTimeout(processAllBackground, 5000); // Wait 5 seconds before starting
+        }
+        
+        // Stop background loading
+        function stopBackgroundLoading() {
+            backgroundLoadingActive = false;
+            log('Background loading stopped');
+        }
+
+        function processOverpassDataRegional(elements) {
+            const roads = [];
+            const roadMap = new Map();
+            
+            log(`Processing ${elements.length} elements for regional road network...`);
+            
+            elements.forEach((element, index) => {
+                if (element.type === 'way' && element.tags && element.tags.name && element.geometry) {
+                    const name = element.tags.name;
+                    const points = element.geometry.map(node => ({ lat: node.lat, lng: node.lon }));
+                    
+                    if (points.length < 2) {
+                        return;
+                    }
+                    
+                    const allNames = collectAllStreetNames(element.tags);
+                    const primaryName = allNames[0];
+                    
+                    const roadData = {
+                        name: primaryName,
+                        allNames: allNames,
+                        points: [points],
+                        importance: calculateImportanceFromTags(element.tags),
+                        description: getStreetDescription(element.tags),
+                        osmId: element.id,
+                        highway: element.tags.highway,
+                        source: 'overpass-regional',
+                        segmentLength: calculateSegmentLength(points),
+                        isComplete: false
+                    };
+                    
+                    if (roadMap.has(primaryName)) {
+                        const existing = roadMap.get(primaryName);
+                        existing.points.push(points);
+                        existing.importance = Math.max(existing.importance, roadData.importance);
+                        existing.segmentLength += roadData.segmentLength;
+                        existing.allNames = [...new Set([...existing.allNames, ...allNames])];
+                        
+                        log(`Merged segment for ${primaryName} (total segments: ${existing.points.length})`);
+                    } else {
+                        roadMap.set(primaryName, roadData);
+                    }
+                }
+            });
+            
+            roadMap.forEach((road, name) => {
+                const segmentCount = road.points.length;
+                const totalLength = road.segmentLength;
+                
+                road.isComplete = segmentCount >= 3 || totalLength >= 5;
+                
+                if (segmentCount > 1) {
+                    const longestSegment = road.points.reduce((longest, current) => 
+                        current.length > longest.length ? current : longest
+                    );
+                    road.points = [longestSegment, ...road.points.filter(p => p !== longestSegment)];
+                    log(`${name}: ${segmentCount} segments, ${totalLength.toFixed(1)}km total, complete: ${road.isComplete}`);
+                } else {
+                    log(`${name}: Single segment, ${totalLength.toFixed(1)}km, complete: ${road.isComplete}`);
+                }
+                
+                roads.push(road);
+                
+                const aliasText = road.allNames.length > 1 ? 
+                    ` (${road.allNames.length} names)` : '';
+                log(`Added regional road: ${name}${aliasText} (importance: ${road.importance}, segments: ${segmentCount})`);
+            });
+            
+            roads.sort((a, b) => {
+                if (a.isComplete !== b.isComplete) {
+                    return a.isComplete ? -1 : 1;
+                }
+                return b.importance - a.importance;
+            });
+            
+            log(`Processed ${roads.length} roads for regional network`);
+            log(`Complete roads: ${roads.filter(r => r.isComplete).length}`);
+            
+            log(`Top 10 regional roads by priority:`);
+            roads.slice(0, 10).forEach((road, i) => {
+                const status = road.isComplete ? '✓' : '○';
+                const aliasText = road.allNames.length > 1 ? ` (${road.allNames.length} names)` : '';
+                log(`${i+1}. ${status} ${road.name}${aliasText} (${road.importance}, ${road.points.length} segments)`);
+            });
+            
+            return roads;
+        }
+
+        function collectAllStreetNames(tags) {
+            const names = [];
+            
+            if (tags.name) names.push(tags.name);
+            
+            if (tags.alt_name) {
+                tags.alt_name.split(';').forEach(name => {
+                    if (name.trim() && !names.includes(name.trim())) {
+                        names.push(name.trim());
+                    }
+                });
+            }
+            
+            if (tags.official_name && !names.includes(tags.official_name)) {
+                names.push(tags.official_name);
+            }
+            
+            if (tags['name:en'] && !names.includes(tags['name:en'])) {
+                names.push(tags['name:en']);
+            }
+            if (tags['name:ja'] && !names.includes(tags['name:ja'])) {
+                names.push(tags['name:ja']);
+            }
+            
+            if (tags.ref) {
+                const routeName = `${tags.highway === 'trunk' ? '国道' : '都道'}${tags.ref}号線`;
+                if (!names.includes(routeName)) {
+                    names.push(routeName);
+                }
+            }
+            
+            if (tags['route:name']) {
+                if (!names.includes(tags['route:name'])) {
+                    names.push(tags['route:name']);
+                }
+            }
+            
+            const mainName = names[0] || '';
+            if (mainName.includes('環状') || mainName.includes('環七') || mainName.includes('環八')) {
+                if (mainName.includes('環状七号線') && !names.includes('環七通り')) {
+                    names.push('環七通り');
+                }
+                if (mainName.includes('環状八号線') && !names.includes('環八通り')) {
+                    names.push('環八通り');
+                }
+            }
+            
+            return names.length > 0 ? names : ['未名称道路'];
+        }
+
+        function calculateSegmentLength(points) {
+            if (points.length < 2) return 0;
+            
+            let totalLength = 0;
+            for (let i = 1; i < points.length; i++) {
+                totalLength += calculateSimpleDistance(
+                    points[i-1].lat, points[i-1].lng,
+                    points[i].lat, points[i].lng
+                );
+            }
+            return totalLength;
+        }
+
+        function calculateImportanceFromTags(tags) {
+            const highway = tags.highway;
+            const name = tags.name || '';
+            
+            const baseImportance = {
+                'motorway': 100,
+                'trunk': 95,
+                'primary': 90,
+                'secondary': 75,
+                'tertiary': 60,
+                'unclassified': 45,
+                'residential': 30,
+                'service': 20,
+                'footway': 15,
+                'path': 10,
+                'cycleway': 15
+            };
+            
+            let importance = baseImportance[highway] || 25;
+            
+            const veryFamousStreets = [
+                '竹下通り', 'takeshita',
+                '表参道', 'omotesando', 
+                '明治通り', 'meiji',
+                '青山通り', 'aoyama',
+                '六本木通り', 'roppongi',
+                '外苑東通り', 'gaien',
+                '靖国通り', 'yasukuni',
+                '新宿通り', 'shinjuku',
+                '甲州街道', 'koshu',
+                '環七通り', 'kanana',
+                '環八通り', 'kanhachi'
+            ];
+            
+            const wellKnownStreets = [
+                '中央通り', 'chuo',
+                '銀座', 'ginza',
+                '渋谷', 'shibuya',
+                '原宿', 'harajuku',
+                '新橋', 'shimbashi',
+                '赤坂', 'akasaka',
+                '麻布', 'azabu',
+                '恵比寿', 'ebisu',
+                '代官山', 'daikanyama',
+                '目黒', 'meguro'
+            ];
+            
+            const majorDesignations = [
+                'route', '国道', '都道', '246', '414', '首都高',
+                '通り', 'street', 'avenue', 'dori'
+            ];
+            
+            const lowerName = name.toLowerCase();
+            
+            if (veryFamousStreets.some(famous => 
+                lowerName.includes(famous.toLowerCase()) || 
+                famous.toLowerCase().includes(lowerName))) {
+                importance += 35;
+                log(`Major boost for very famous street: ${name}`);
+            }
+            else if (wellKnownStreets.some(known => 
+                lowerName.includes(known.toLowerCase()) || 
+                known.toLowerCase().includes(lowerName))) {
+                importance += 20;
+                log(`Medium boost for well-known street: ${name}`);
+            }
+            else if (majorDesignations.some(major => 
+                lowerName.includes(major.toLowerCase()))) {
+                importance += 10;
+                log(`Small boost for major designation: ${name}`);
+            }
+            
+            const genericNames = [
+                '住宅', 'residential', '無名', '私道', 'private'
+            ];
+            if (genericNames.some(generic => lowerName.includes(generic))) {
+                importance -= 15;
+            }
+            
+            return Math.max(10, Math.min(importance, 100));
+        }
+
+        function getStreetDescription(tags) {
+            const highway = tags.highway;
+            const name = tags.name || '';
+            
+            const descriptions = {
+                '竹下通り': '原宿の若者文化の中心地',
+                '青山通り': '青山エリアを通る主要道路',
+                '表参道': '明治神宮への参道として作られた並木道',
+                '明治通り': '原宿・表参道を通る主要道路',
+                '中央通り': '銀座のメインストリート'
+            };
+            
+            if (descriptions[name]) {
+                return descriptions[name];
+            }
+            
+            const typeDescriptions = {
+                'primary': '主要道路',
+                'secondary': '幹線道路',
+                'tertiary': '地域道路',
+                'residential': '住宅街の道路',
+                'unclassified': '一般道路',
+                'footway': '歩道',
+                'cycleway': '自転車道'
+            };
+            
+            return typeDescriptions[highway] || '道路';
+        }
+
+        // Location Services
+        function getCurrentLocation() {
+            const status = document.getElementById('location-status');
+            if (status) {
+                status.className = 'location-status pending';
+                status.innerHTML = '<span class="loading"></span>Getting current location...';
+                status.classList.remove('hidden');
+            }
+
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 300000
+            };
+
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    
+                    gameState.currentLocation = { lat, lng };
+                    gameState.center = { lat, lng };
+                    
+                    if (gameState.map) {
+                        gameState.map.setView([lat, lng], 14);
+                        updateGameArea();
+                    }
+                    
+                    const locationInput = document.getElementById('location');
+                    if (locationInput) {
+                        locationInput.value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                    }
+                    
+                    if (status) {
+                        status.className = 'location-status success';
+                        status.textContent = '✅ Location updated to current position';
+                    }
+                    
+                    setTimeout(() => {
+                        const regionSelect = document.getElementById('region-select');
+                        const strategySelect = document.getElementById('loading-strategy');
+                        
+                        const selectedRegion = regionSelect ? regionSelect.value : 'south-kanto';
+                        const selectedStrategy = strategySelect ? strategySelect.value : 'immediate';
+                        
+                        loadRegionalRoadsOptimized(selectedRegion, selectedStrategy);
+                    }, 1000);
+                    
+                    log(`Current location: ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+                },
+                function(error) {
+                    let message = 'Failed to get location: ';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            message += 'Permission denied';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            message += 'Position unavailable';
+                            break;
+                        case error.TIMEOUT:
+                            message += 'Timeout';
+                            break;
+                        default:
+                            message += 'Unknown error';
+                            break;
+                    }
+                    
+                    if (status) {
+                        status.className = 'location-status error';
+                        status.textContent = '❌ ' + message;
+                    }
+                    
+                    log('Geolocation error: ' + message);
+                },
+                options
+            );
+        }
+
+        // Problem Editor Functions
+        function addPointFromMap(lat, lng) {
+            const advancedSettings = document.getElementById('advanced-settings');
+            if (!advancedSettings || advancedSettings.classList.contains('hidden')) {
+                return;
+            }
+            
+            gameState.currentEditPoints.push({ lat, lng });
+            updatePointsList();
+            
+            const marker = L.marker([lat, lng], {
+                icon: L.divIcon({
+                    className: 'edit-point-marker',
+                    html: '<div style="background: #2196F3; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white;"></div>',
+                    iconSize: [12, 12]
+                })
+            }).addTo(gameState.facilityLayer);
+            
+            showInfo(`Point added: ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+        }
+
+        function updatePointsList() {
+            const container = document.getElementById('current-points');
+            
+            if (gameState.currentEditPoints.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: #666;">No points added yet</div>';
+                return;
+            }
+            
+            container.innerHTML = '';
+            gameState.currentEditPoints.forEach((point, index) => {
+                const pointDiv = document.createElement('div');
+                pointDiv.className = 'point-item';
+                pointDiv.innerHTML = `
+                    <span class="point-coords">${point.lat.toFixed(6)}, ${point.lng.toFixed(6)}</span>
+                    <button class="point-remove" onclick="removePoint(${index})">Remove</button>
+                `;
+                container.appendChild(pointDiv);
+            });
+        }
+
+        function removePoint(index) {
+            gameState.currentEditPoints.splice(index, 1);
+            updatePointsList();
+            
+            gameState.facilityLayer.clearLayers();
+            gameState.currentEditPoints.forEach(point => {
+                L.marker([point.lat, point.lng], {
+                    icon: L.divIcon({
+                        className: 'edit-point-marker',
+                        html: '<div style="background: #2196F3; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white;"></div>',
+                        iconSize: [12, 12]
+                    })
+                }).addTo(gameState.facilityLayer);
+            });
+        }
+
+        function clearPoints() {
+            gameState.currentEditPoints = [];
+            updatePointsList();
+            gameState.facilityLayer.clearLayers();
+        }
+
+        function saveProblem() {
+            const name = document.getElementById('problem-name').value.trim();
+            const type = document.getElementById('problem-type').value;
+            const description = document.getElementById('problem-description').value.trim();
+            const importance = parseInt(document.getElementById('problem-importance').value);
+            
+            if (!name) {
+                showWarning('Please enter a problem name');
+                return;
+            }
+            
+            if (gameState.currentEditPoints.length === 0) {
+                showWarning('Please add at least one point for this problem');
+                return;
+            }
+            
+            const problem = {
+                name,
+                type,
+                description: description || `Custom ${type}`,
+                importance,
+                points: [gameState.currentEditPoints.slice()],
+                isEnclosedArea: gameState.currentEditPoints.length > 3 && type === 'facility',
+                source: 'custom',
+                id: Date.now()
+            };
+            
+            if (gameState.editingProblem) {
+                const index = gameState.customProblems.findIndex(p => p.id === gameState.editingProblem.id);
+                if (index !== -1) {
+                    gameState.customProblems[index] = problem;
+                    problem.id = gameState.editingProblem.id;
+                }
+                gameState.editingProblem = null;
+                showSuccess('Problem updated successfully!');
+            } else {
+                gameState.customProblems.push(problem);
+                showSuccess('Problem saved successfully!');
+            }
+            
+            saveCustomProblems();
+            updateCustomProblemsList();
+            clearProblemEditor();
+        }
+
+        function clearProblemEditor() {
+            document.getElementById('problem-name').value = '';
+            document.getElementById('problem-description').value = '';
+            document.getElementById('problem-importance').value = '70';
+            updateImportanceDisplay();
+            clearPoints();
+        }
+
+        function updateCustomProblemsList() {
+            const container = document.getElementById('custom-problems');
+            
+            if (gameState.customProblems.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: #666;">No custom problems yet</div>';
+                return;
+            }
+            
+            container.innerHTML = '';
+            gameState.customProblems.forEach(problem => {
+                const problemDiv = document.createElement('div');
+                problemDiv.className = 'problem-item';
+                problemDiv.innerHTML = `
+                    <div>
+                        <div class="problem-name">${problem.name}</div>
+                        <div class="problem-info">${problem.type} - Importance: ${problem.importance}</div>
+                    </div>
+                    <div class="problem-actions">
+                        <button class="btn-small btn-edit" onclick="editProblem(${problem.id})">Edit</button>
+                        <button class="btn-small btn-delete" onclick="deleteProblem(${problem.id})">Delete</button>
+                    </div>
+                `;
+                container.appendChild(problemDiv);
+            });
+        }
+
+        function editProblem(problemId) {
+            const problem = gameState.customProblems.find(p => p.id === problemId);
+            if (!problem) return;
+            
+            gameState.editingProblem = problem;
+            
+            document.getElementById('problem-name').value = problem.name;
+            document.getElementById('problem-type').value = problem.type;
+            document.getElementById('problem-description').value = problem.description;
+            document.getElementById('problem-importance').value = problem.importance;
+            updateImportanceDisplay();
+            
+            gameState.currentEditPoints = problem.points[0].slice();
+            updatePointsList();
+            
+            gameState.facilityLayer.clearLayers();
+            gameState.currentEditPoints.forEach(point => {
+                L.marker([point.lat, point.lng], {
+                    icon: L.divIcon({
+                        className: 'edit-point-marker',
+                        html: '<div style="background: #2196F3; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white;"></div>',
+                        iconSize: [12, 12]
+                    })
+                }).addTo(gameState.facilityLayer);
+            });
+            
+            showInfo('Editing problem: ' + problem.name);
+        }
+
+        function deleteProblem(problemId) {
+            if (confirm('Are you sure you want to delete this problem?')) {
+                gameState.customProblems = gameState.customProblems.filter(p => p.id !== problemId);
+                saveCustomProblems();
+                updateCustomProblemsList();
+                showInfo('Problem deleted');
+            }
+        }
+
+        function saveCustomProblems() {
+            try {
+                const data = JSON.stringify(gameState.customProblems);
+                window.localStorage?.setItem('customProblems', data);
+            } catch (error) {
+                console.warn('Could not save custom problems:', error);
+            }
+        }
+
+        function loadCustomProblems() {
+            try {
+                const data = window.localStorage?.getItem('customProblems');
+                if (data) {
+                    gameState.customProblems = JSON.parse(data);
+                    updateCustomProblemsList();
+                }
+            } catch (error) {
+                console.warn('Could not load custom problems:', error);
+                gameState.customProblems = [];
+            }
+        }
+
+        // KML Import Functions
+        function handleKmlFile(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const kmlContent = e.target.result;
+                    parseKmlData(kmlContent);
+                } catch (error) {
+                    showError('Failed to read KML file: ' + error.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function parseKmlData(kmlContent) {
+            try {
+                showInfo('Parsing KML data...');
+                
+                const parser = new DOMParser();
+                const kmlDoc = parser.parseFromString(kmlContent, 'text/xml');
+                
+                const placemarks = kmlDoc.getElementsByTagName('Placemark');
+                let importedCount = 0;
+                
+                for (let i = 0; i < placemarks.length; i++) {
+                    const placemark = placemarks[i];
+                    const name = placemark.getElementsByTagName('name')[0]?.textContent;
+                    const description = placemark.getElementsByTagName('description')[0]?.textContent || '';
+                    
+                    if (!name) continue;
+                    
+                    const lineString = placemark.getElementsByTagName('LineString')[0];
+                    const point = placemark.getElementsByTagName('Point')[0];
+                    
+                    let coordinates = null;
+                    let problemType = 'facility';
+                    
+                    if (lineString) {
+                        const coordsText = lineString.getElementsByTagName('coordinates')[0]?.textContent;
+                        if (coordsText) {
+                            coordinates = parseCoordinateString(coordsText);
+                            problemType = 'street';
+                        }
+                    } else if (point) {
+                        const coordsText = point.getElementsByTagName('coordinates')[0]?.textContent;
+                        if (coordsText) {
+                            coordinates = parseCoordinateString(coordsText);
+                            problemType = 'facility';
+                        }
+                    }
+                    
+                    if (coordinates && coordinates.length > 0) {
+                        const problem = {
+                            name: name.trim(),
+                            type: problemType,
+                            description: description.trim() || `Imported ${problemType}`,
+                            importance: 75,
+                            points: [coordinates],
+                            isEnclosedArea: false,
+                            source: 'imported',
+                            id: Date.now() + i
+                        };
+                        
+                        gameState.customProblems.push(problem);
+                        importedCount++;
+                    }
+                }
+                
+                if (importedCount > 0) {
+                    saveCustomProblems();
+                    updateCustomProblemsList();
+                    showSuccess(`Successfully imported ${importedCount} problems from KML file!`);
+                } else {
+                    showWarning('No valid placemarks found in KML file');
+                }
+                
+            } catch (error) {
+                showError('Failed to parse KML: ' + error.message);
+            }
+        }
+
+        function parseCoordinateString(coordsText) {
+            const coordinates = [];
+            const lines = coordsText.trim().split(/\s+/);
+            
+            for (const line of lines) {
+                const parts = line.split(',');
+                if (parts.length >= 2) {
+                    const lng = parseFloat(parts[0]);
+                    const lat = parseFloat(parts[1]);
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        coordinates.push({ lat, lng });
+                    }
+                }
+            }
+            
+            return coordinates;
+        }
+
+        function loadSampleKml() {
+            showInfo('Loading Yamate-dori sample data...');
+            parseKmlData(yamateKmlData);
+        }
+
+        function updateGameArea() {
+            try {
+                if (gameState.gameArea) {
+                    gameState.map.removeLayer(gameState.gameArea);
+                }
+                
+                gameState.gameArea = L.circle([gameState.center.lat, gameState.center.lng], {
+                    radius: gameState.range * 1000,
+                    fillColor: '#4CAF50',
+                    fillOpacity: 0.1,
+                    color: '#4CAF50',
+                    weight: 2
+                }).addTo(gameState.map);
+                
+                log('Game area updated');
+            } catch (error) {
+                log('Error updating game area: ' + error.message);
+            }
+        }
+
+        function bindEvents() {
+            try {
+                log('Binding events...');
+                
+                const menuToggle = document.getElementById('menu-toggle');
+                const sidebar = document.getElementById('sidebar');
+                if (menuToggle && sidebar) {
+                    menuToggle.addEventListener('click', () => {
+                        sidebar.classList.toggle('open');
+                    });
+                }
+
+                document.querySelectorAll('.mode-tab').forEach(tab => {
+                    tab.addEventListener('click', (e) => {
+                        log('Mode tab clicked: ' + e.target.dataset.mode);
+                        document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+                        e.target.classList.add('active');
+                        gameState.currentMode = e.target.dataset.mode;
+                    });
+                });
+
+                const rangeSlider = document.getElementById('range');
+                if (rangeSlider) {
+                    rangeSlider.addEventListener('input', (e) => {
+                        gameState.range = parseInt(e.target.value);
+                        updateRangeDisplay();
+                        updateGameArea();
+                    });
+                }
+
+                const importanceSlider = document.getElementById('problem-importance');
+                if (importanceSlider) {
+                    importanceSlider.addEventListener('input', updateImportanceDisplay);
+                }
+
+                const difficultySelect = document.getElementById('difficulty');
+                if (difficultySelect) {
+                    difficultySelect.addEventListener('change', (e) => {
+                        gameState.difficulty = e.target.value;
+                        log('Difficulty changed to: ' + gameState.difficulty);
+                    });
+                }
+
+                const startBtn = document.getElementById('start-game');
+                if (startBtn) {
+                    startBtn.addEventListener('click', () => {
+                        log('Start game clicked');
+                        startGame();
+                    });
+                }
+
+                const updateLocationBtn = document.getElementById('update-location');
+                if (updateLocationBtn) {
+                    updateLocationBtn.addEventListener('click', () => {
+                        log('Update location clicked');
+                        updateLocation();
+                    });
+                }
+
+                const getCurrentLocationBtn = document.getElementById('get-current-location');
+                if (getCurrentLocationBtn) {
+                    getCurrentLocationBtn.addEventListener('click', () => {
+                        log('Get current location clicked');
+                        getCurrentLocation();
+                    });
+                }
+
+                const locationInput = document.getElementById('location');
+                if (locationInput) {
+                    locationInput.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') {
+                            updateLocation();
+                        }
+                    });
+                }
+
+                const loadDataBtn = document.getElementById('load-street-data');
+                if (loadDataBtn) {
+                    loadDataBtn.addEventListener('click', () => {
+                        log('Load regional roads clicked');
+                        const regionSelect = document.getElementById('region-select');
+                        const strategySelect = document.getElementById('loading-strategy');
+                        
+                        const selectedRegion = regionSelect ? regionSelect.value : 'south-kanto';
+                        const selectedStrategy = strategySelect ? strategySelect.value : 'immediate';
+                        
+                        loadRegionalRoadsOptimized(selectedRegion, selectedStrategy);
+                    });
+                }
+
+                const regionSelect = document.getElementById('region-select');
+                if (regionSelect) {
+                    regionSelect.addEventListener('change', (e) => {
+                        const selectedRegion = e.target.value;
+                        log('Region changed to: ' + selectedRegion);
+                        currentRegionalConfig = REGIONAL_CONFIGS[selectedRegion];
+                        
+                        if (gameState.map && currentRegionalConfig) {
+                            const bbox = currentRegionalConfig.bbox;
+                            const centerLat = (bbox.north + bbox.south) / 2;
+                            const centerLng = (bbox.east + bbox.west) / 2;
+                            gameState.center = { lat: centerLat, lng: centerLng };
+                            gameState.map.setView([centerLat, centerLng], 9);
+                            updateGameArea();
+                        }
+                    });
+                }
+
+                const strategySelect = document.getElementById('loading-strategy');
+                if (strategySelect) {
+                    strategySelect.addEventListener('change', (e) => {
+                        const selectedStrategy = e.target.value;
+                        currentLoadingStrategy = LOADING_STRATEGIES[selectedStrategy];
+                        log('Loading strategy changed to: ' + currentLoadingStrategy.name);
+                        
+                        const description = strategySelect.nextElementSibling;
+                        if (description) {
+                            description.textContent = currentLoadingStrategy.description;
+                        }
+                    });
+                }
+
+                const toggleSettingsBtn = document.getElementById('toggle-settings');
+                if (toggleSettingsBtn) {
+                    toggleSettingsBtn.addEventListener('click', () => {
+                        toggleSettings();
+                    });
+                }
+
+                const nextBtn = document.getElementById('next-question');
+                if (nextBtn) {
+                    nextBtn.addEventListener('click', () => {
+                        log('Next question clicked');
+                        nextQuestion();
+                    });
+                }
+
+                const showAnswerBtn = document.getElementById('show-answer');
+                if (showAnswerBtn) {
+                    showAnswerBtn.addEventListener('click', () => {
+                        log('Show answer clicked');
+                        showAnswer();
+                    });
+                }
+
+                const endBtn = document.getElementById('end-game');
+                if (endBtn) {
+                    endBtn.addEventListener('click', () => {
+                        log('End game clicked');
+                        endGame();
+                    });
+                }
+
+                const saveBtn = document.getElementById('save-problem');
+                if (saveBtn) {
+                    saveBtn.addEventListener('click', saveProblem);
+                }
+
+                const cancelBtn = document.getElementById('cancel-edit');
+                if (cancelBtn) {
+                    cancelBtn.addEventListener('click', () => {
+                        clearProblemEditor();
+                        gameState.editingProblem = null;
+                        showInfo('Edit cancelled');
+                    });
+                }
+
+                const clearPointsBtn = document.getElementById('clear-points');
+                if (clearPointsBtn) {
+                    clearPointsBtn.addEventListener('click', clearPoints);
+                }
+
+                const kmlFileInput = document.getElementById('kml-file');
+                if (kmlFileInput) {
+                    kmlFileInput.addEventListener('change', (e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                            handleKmlFile(file);
+                        }
+                    });
+                }
+
+                const loadSampleBtn = document.getElementById('load-sample-kml');
+                if (loadSampleBtn) {
+                    loadSampleBtn.addEventListener('click', loadSampleKml);
+                }
+
+                const zoomInBtn = document.getElementById('zoom-in');
+                if (zoomInBtn) {
+                    zoomInBtn.addEventListener('click', () => {
+                        if (gameState.map) {
+                            gameState.map.zoomIn();
+                        }
+                    });
+                }
+
+                const zoomOutBtn = document.getElementById('zoom-out');
+                if (zoomOutBtn) {
+                    zoomOutBtn.addEventListener('click', () => {
+                        if (gameState.map) {
+                            gameState.map.zoomOut();
+                        }
+                    });
+                }
+
+                const toggleLabelsBtn = document.getElementById('toggle-labels');
+                if (toggleLabelsBtn) {
+                    toggleLabelsBtn.addEventListener('click', () => {
+                        toggleLabels();
+                    });
+                }
+
+                const mobileMenuBtn = document.getElementById('mobile-menu');
+                if (mobileMenuBtn) {
+                    mobileMenuBtn.addEventListener('click', () => {
+                        sidebar.classList.toggle('open');
+                    });
+                }
+
+                const mobileNextBtn = document.getElementById('mobile-next');
+                if (mobileNextBtn) {
+                    mobileNextBtn.addEventListener('click', () => {
+                        nextQuestion();
+                    });
+                }
+
+                const mobileAnswerBtn = document.getElementById('mobile-answer');
+                if (mobileAnswerBtn) {
+                    mobileAnswerBtn.addEventListener('click', () => {
+                        showAnswer();
+                    });
+                }
+
+                const mobileEndBtn = document.getElementById('mobile-end');
+                if (mobileEndBtn) {
+                    mobileEndBtn.addEventListener('click', () => {
+                        endGame();
+                    });
+                }
+
+                document.addEventListener('click', (e) => {
+                    if (window.innerWidth <= 768) {
+                        const sidebar = document.getElementById('sidebar');
+                        const menuToggle = document.getElementById('menu-toggle');
+                        const mobileMenu = document.getElementById('mobile-menu');
+                        
+                        if (!sidebar.contains(e.target) && 
+                            e.target !== menuToggle && 
+                            e.target !== mobileMenu) {
+                            sidebar.classList.remove('open');
+                        }
+                    }
+                });
+
+                log('Events bound successfully');
+            } catch (error) {
+                log('Error binding events: ' + error.message);
+                console.error('Event binding error:', error);
+            }
+        }
+
+        function toggleSettings() {
+            gameState.settingsVisible = !gameState.settingsVisible;
+            const toggleBtn = document.getElementById('toggle-settings');
+            const advancedSettings = document.getElementById('advanced-settings');
+            
+            if (gameState.settingsVisible) {
+                if (advancedSettings) advancedSettings.classList.add('hidden');
+                toggleBtn.textContent = '🔧 Show Advanced Tools';
+            } else {
+                if (advancedSettings) advancedSettings.classList.remove('hidden');
+                toggleBtn.textContent = '⚙️ Hide Advanced Tools';
+            }
+        }
+
+        function toggleLabels() {
+            try {
+                log('Toggle labels clicked. Current state: ' + gameState.showLabels);
+                gameState.showLabels = !gameState.showLabels;
+                
+                gameState.map.eachLayer(function(layer) {
+                    if (layer instanceof L.TileLayer) {
+                        gameState.map.removeLayer(layer);
+                    }
+                });
+                
+                if (gameState.showLabels) {
+                    gameState.baseLayers.withLabels.addTo(gameState.map);
+                    document.getElementById('toggle-labels').textContent = '街路名非表示';
+                    log('Switched to labels ON');
+                } else {
+                    gameState.baseLayers.withoutLabels.addTo(gameState.map);
+                    document.getElementById('toggle-labels').textContent = '街路名表示';
+                    log('Switched to labels OFF');
+                }
+                
+                setTimeout(() => {
+                    gameState.map.invalidateSize();
+                }, 200);
+                
+                log('Labels toggled successfully to: ' + (gameState.showLabels ? 'shown' : 'hidden'));
+            } catch (error) {
+                log('Error toggling labels: ' + error.message);
+                console.error('Toggle labels error:', error);
+            }
+        }
+
+        function updateDataStatus() {
+            const statusDiv = document.getElementById('data-status');
+            if (statusDiv) {
+                if (gameState.streetData && gameState.streetData.length > 0) {
+                    const source = gameState.streetData[0]?.source || 'fallback';
+                    const isRegional = source === 'overpass-regional';
+                    
+                    if (isRegional) {
+                        const completeRoads = gameState.streetData.filter(r => r.isComplete).length;
+                        const breakdown = getStreetBreakdownByDifficulty();
+                        const regionName = currentRegionalConfig?.name || '地域';
+                        const strategyName = currentLoadingStrategy?.name || '標準';
+                        
+                        const fromCache = gameState.streetData.some(r => r.cached === true);
+                        const cacheIcon = fromCache ? '💾' : '🌐';
+                        
+                        const bgStatus = backgroundLoadingActive ? '⏳ 追加読み込み中' : '';
+                        
+                        statusDiv.innerHTML = `
+                            <div>${cacheIcon} ${regionName}道路ネットワーク (${strategyName})</div>
+                            <div style="font-size: 0.7rem; margin-top: 0.3rem; color: #ccc;">
+                                ${gameState.streetData.length} roads (${completeRoads} complete) ${bgStatus}
+                            </div>
+                            <div style="font-size: 0.65rem; margin-top: 0.2rem;">
+                                Tourist: ${breakdown.tourist} | Resident: ${breakdown.resident} | Taxi: ${breakdown.taxi}
+                            </div>
+                        `;
+                        statusDiv.style.background = '#2d5a2d';
+                    } else {
+                        const breakdown = getStreetBreakdownByDifficulty();
+                        
+                        statusDiv.innerHTML = `
+                            <div>✅ ${gameState.streetData.length} streets loaded (${source === 'overpass' ? 'OSM data' : 'sample data'})</div>
+                            <div style="font-size: 0.7rem; margin-top: 0.3rem;">
+                                Tourist: ${breakdown.tourist} | Resident: ${breakdown.resident} | Taxi: ${breakdown.taxi}
+                            </div>
+                        `;
+                        statusDiv.style.background = source === 'overpass' ? '#2d5a2d' : '#5a4d2d';
+                    }
+                } else {
+                    const strategyDesc = currentLoadingStrategy?.description || '';
+                    
+                    statusDiv.innerHTML = `
+                        <div>⚠️ 道路データが読み込まれていません</div>
+                        <div style="font-size: 0.7rem; margin-top: 0.3rem; color: #ccc;">
+                            選択中: ${currentLoadingStrategy?.name || '即座開始'}
+                        </div>
+                        <div style="font-size: 0.65rem; margin-top: 0.2rem;">
+                            上の「Load Regional Roads」ボタンで読み込み開始
+                        </div>
+                    `;
+                    statusDiv.style.background = '#5a2d2d';
+                }
+            }
+        }
+
+        function getStreetBreakdownByDifficulty() {
+            if (!gameState.streetData) return { tourist: 0, resident: 0, taxi: 0 };
+            
+            const tourist = gameState.streetData.filter(q => q.importance >= 80).length;
+            const resident = gameState.streetData.filter(q => q.importance >= 60).length;
+            const taxi = gameState.streetData.filter(q => q.importance >= 40).length;
+            
+            return { tourist, resident, taxi };
+        }
+
+        function geocodeLocation(locationName) {
+            return new Promise((resolve, reject) => {
+                log('Geocoding location: ' + locationName);
+                
+                const coordPattern = /^(-?\d+\.?\d*),\s*(-?\d+\.?\d*)$/;
+                const coordMatch = locationName.match(coordPattern);
+                
+                if (coordMatch) {
+                    const lat = parseFloat(coordMatch[1]);
+                    const lng = parseFloat(coordMatch[2]);
+                    if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                        resolve({ lat, lng, display_name: `${lat}, ${lng}` });
+                        return;
+                    }
+                }
+                
+                fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationName)}&limit=1`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && data.length > 0) {
+                            const result = data[0];
+                            resolve({
+                                lat: parseFloat(result.lat),
+                                lng: parseFloat(result.lon),
+                                display_name: result.display_name
+                            });
+                        } else {
+                            reject(new Error('Location not found'));
+                        }
+                    })
+                    .catch(error => {
+                        log('Geocoding error: ' + error.message);
+                        reject(error);
+                    });
+            });
+        }
+
+        function updateLocation() {
+            const locationInput = document.getElementById('location');
+            const locationValue = locationInput ? locationInput.value.trim() : '';
+            
+            if (!locationValue) {
+                showWarning('Please enter a location');
+                return;
+            }
+            
+            log('Updating location to: ' + locationValue);
+            
+            const updateBtn = document.getElementById('update-location');
+            let originalText = 'Update Location';
+            if (updateBtn) {
+                originalText = updateBtn.textContent;
+                updateBtn.innerHTML = '<span class="loading"></span>Loading...';
+                updateBtn.disabled = true;
+                updateBtn.classList.add('loading');
+            }
+            
+            geocodeLocation(locationValue)
+                .then(result => {
+                    gameState.center = { lat: result.lat, lng: result.lng };
+                    
+                    if (gameState.map) {
+                        gameState.map.setView([result.lat, result.lng], 12);
+                        updateGameArea();
+                    }
+                    
+                    if (locationInput) {
+                        locationInput.value = result.display_name.split(',').slice(0, 2).join(',');
+                    }
+                    
+                    log('Location updated successfully to: ' + result.lat + ', ' + result.lng);
+                    
+                    setTimeout(() => {
+                        const regionSelect = document.getElementById('region-select');
+                        const strategySelect = document.getElementById('loading-strategy');
+                        
+                        const selectedRegion = regionSelect ? regionSelect.value : 'south-kanto';
+                        const selectedStrategy = strategySelect ? strategySelect.value : 'immediate';
+                        
+                        loadRegionalRoadsOptimized(selectedRegion, selectedStrategy);
+                    }, 500);
+                })
+                .catch(error => {
+                    showWarning('Could not find location: ' + locationValue + '. Please try a different location.');
+                    log('Location update failed: ' + error.message);
+                })
+                .finally(() => {
+                    if (updateBtn) {
+                        updateBtn.textContent = originalText;
+                        updateBtn.disabled = false;
+                        updateBtn.classList.remove('loading');
+                    }
+                });
+        }
+
+        function isWithinGameArea(lat, lng) {
+            try {
+                if (typeof turf !== 'undefined') {
+                    const point = turf.point([lng, lat]);
+                    const center = turf.point([gameState.center.lng, gameState.center.lat]);
+                    const distance = turf.distance(center, point, { units: 'kilometers' });
+                    return distance <= gameState.range;
+                } else {
+                    const R = 6371;
+                    const dLat = (lat - gameState.center.lat) * Math.PI / 180;
+                    const dLng = (lng - gameState.center.lng) * Math.PI / 180;
+                    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                             Math.cos(gameState.center.lat * Math.PI / 180) * Math.cos(lat * Math.PI / 180) *
+                             Math.sin(dLng/2) * Math.sin(dLng/2);
+                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                    const distance = R * c;
+                    return distance <= gameState.range;
+                }
+            } catch (error) {
+                log('Error checking game area: ' + error.message);
+                return true;
+            }
+        }
+
+        function filterQuestionsByDifficulty(questions) {
+            if (!questions || questions.length === 0) return [];
+            
+            let filtered = questions.filter(q => {
+                const point = q.points[0][0];
+                return isWithinGameArea(point.lat, point.lng);
+            });
+            
+            let importanceFiltered;
+            
+            if (gameState.difficulty === 'tourist') {
+                importanceFiltered = filtered.filter(q => q.importance >= 80);
+                log(`Tourist mode: ${importanceFiltered.length} streets with importance >= 80`);
+                
+                if (importanceFiltered.length < 10) {
+                    importanceFiltered = filtered.filter(q => q.importance >= 70);
+                    log(`Tourist mode (relaxed): ${importanceFiltered.length} streets with importance >= 70`);
+                }
+                if (importanceFiltered.length < 5) {
+                    importanceFiltered = filtered.filter(q => q.importance >= 60);
+                    log(`Tourist mode (very relaxed): ${importanceFiltered.length} streets with importance >= 60`);
+                }
+                
+            } else if (gameState.difficulty === 'resident') {
+                importanceFiltered = filtered.filter(q => q.importance >= 60);
+                log(`Resident mode: ${importanceFiltered.length} streets with importance >= 60`);
+                
+                if (importanceFiltered.length < 20) {
+                    importanceFiltered = filtered.filter(q => q.importance >= 50);
+                    log(`Resident mode (relaxed): ${importanceFiltered.length} streets with importance >= 50`);
+                }
+                
+            } else {
+                importanceFiltered = filtered.filter(q => q.importance >= 40);
+                log(`Taxi Driver mode: ${importanceFiltered.length} streets with importance >= 40`);
+                
+                if (importanceFiltered.length < 50) {
+                    importanceFiltered = filtered.filter(q => q.importance >= 30);
+                    log(`Taxi Driver mode (relaxed): ${importanceFiltered.length} streets with importance >= 30`);
+                }
+            }
+            
+            if (importanceFiltered.length === 0) {
+                log(`No streets found for ${gameState.difficulty} difficulty, using top 20 streets`);
+                importanceFiltered = filtered.slice(0, 20);
+            }
+            
+            importanceFiltered.sort((a, b) => b.importance - a.importance);
+            
+            const maxPoolSize = {
+                'tourist': 50,
+                'resident': 150, 
+                'taxi-driver': 300
+            };
+            
+            const finalFiltered = importanceFiltered.slice(0, maxPoolSize[gameState.difficulty] || 150);
+            
+            log(`Final filtered result for ${gameState.difficulty}: ${finalFiltered.length} streets`);
+            if (finalFiltered.length > 0) {
+                log(`Importance range: ${finalFiltered[finalFiltered.length-1].importance} - ${finalFiltered[0].importance}`);
+            }
+            
+            return finalFiltered;
+        }
+
+        function startGame() {
+            try {
+                log('Starting game...');
+                
+                if (gameState.currentMode === 'street' && (!gameState.streetData || gameState.streetData.length === 0)) {
+                    showWarning('Street mode requires data to be loaded first. Please click "Load Regional Roads" before starting the game.');
+                    return;
+                }
+                
+                gameState.isPlaying = true;
+                gameState.score = 0;
+                gameState.streak = 0;
+                gameState.totalQuestions = 0;
+                gameState.askedQuestions = [];
+                
+                const challengeSection = document.getElementById('challenge-section');
+                const startBtn = document.getElementById('start-game');
+                
+                if (challengeSection) {
+                    challengeSection.classList.remove('hidden');
+                }
+                if (startBtn) {
+                    startBtn.style.display = 'none';
+                }
+                
+                updateMobileControls();
+                
+                if (gameState.map) {
+                    gameState.map.invalidateSize();
+                    setTimeout(() => {
+                        gameState.map.invalidateSize();
+                    }, 100);
+                }
+                
+                setTimeout(() => {
+                    if (gameState.showLabels) {
+                        toggleLabels();
+                    }
+                }, 300);
+                
+                if (gameState.map) {
+                    gameState.map.dragging.enable();
+                    gameState.map.touchZoom.enable();
+                    gameState.map.doubleClickZoom.enable();
+                    gameState.map.scrollWheelZoom.enable();
+                    gameState.map.boxZoom.enable();
+                    gameState.map.keyboard.enable();
+                }
+                
+                nextQuestion();
+                updateUI();
+                
+                log('Game started successfully - map interaction enabled');
+            } catch (error) {
+                log('Error starting game: ' + error.message);
+                console.error('Start game error:', error);
+            }
+        }
+
+        function nextQuestion() {
+            try {
+                log('Loading next question...');
+                
+                clearGameElements();
+                gameState.totalQuestions++;
+                
+                gameState.timer = 30;
+                startTimer();
+
+                generateQuestion();
+                
+                const distanceDisplay = document.getElementById('distance-display');
+                const nextBtn = document.getElementById('next-question');
+                const showAnswerBtn = document.getElementById('show-answer');
+                const multipleChoice = document.getElementById('multiple-choice');
+                
+                if (distanceDisplay) distanceDisplay.classList.add('hidden');
+                if (nextBtn) nextBtn.classList.add('hidden');
+                if (showAnswerBtn) showAnswerBtn.classList.remove('hidden');
+                if (multipleChoice) multipleChoice.classList.add('hidden');
+                
+                if (gameState.currentMode === 'reverse') {
+                    showReverseChallenge();
+                }
+                
+                updateUI();
+                updateMobileControls();
+                
+                log('Next question loaded');
+            } catch (error) {
+                log('Error loading next question: ' + error.message);
+                console.error('Next question error:', error);
+            }
+        }
+
+        function generateQuestion() {
+            try {
+                let questions;
+                
+                switch (gameState.currentMode) {
+                    case 'facility':
+                        questions = [...facilityQuestions, ...gameState.customProblems.filter(p => p.type === 'facility')];
+                        break;
+                    case 'intersection':
+                        questions = [...intersectionQuestions, ...gameState.customProblems.filter(p => p.type === 'intersection')];
+                        break;
+                    case 'reverse':
+                        questions = [...facilityQuestions, ...intersectionQuestions, ...gameState.customProblems.filter(p => p.type !== 'street')];
+                        break;
+                    default:
+                        const streetQuestions = gameState.streetData || [];
+                        const customStreets = gameState.customProblems.filter(p => p.type === 'street');
+                        questions = [...streetQuestions, ...customStreets];
+                        
+                        if (questions.length === 0) {
+                            showWarning('No street data loaded yet. Please click "Load Regional Roads" to get actual OpenStreetMap data.');
+                            return;
+                        }
+                }
+
+                const filteredQuestions = filterQuestionsByDifficulty(questions);
+                
+                const availableQuestions = filteredQuestions.filter(q => 
+                    !gameState.askedQuestions.some(asked => asked.name === q.name)
+                );
+                
+                let selectedQuestion;
+                if (availableQuestions.length > 0) {
+                    selectedQuestion = availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
+                } else if (filteredQuestions.length > 0) {
+                    gameState.askedQuestions = [];
+                    selectedQuestion = filteredQuestions[Math.floor(Math.random() * filteredQuestions.length)];
+                } else {
+                    selectedQuestion = questions[Math.floor(Math.random() * questions.length)];
+                }
+                
+                if (!selectedQuestion) {
+                    showWarning('No questions available. Please load street data first.');
+                    return;
+                }
+                
+                gameState.currentQuestion = selectedQuestion;
+                gameState.askedQuestions.push(selectedQuestion);
+                
+                const questionText = document.getElementById('question-text');
+                const questionType = document.getElementById('question-type');
+                
+                if (questionText) {
+                    questionText.textContent = gameState.currentMode === 'reverse' ? 
+                        `強調表示された場所は何ですか？` : 
+                        `見つけてください: ${gameState.currentQuestion.name}`;
+                }
+                
+                if (questionType) {
+                    questionType.textContent = `${getModeName(gameState.currentMode)}チャレンジ`;
+                }
+                
+                log('Question generated: ' + gameState.currentQuestion.name);
+                
+            } catch (error) {
+                log('Error generating question: ' + error.message);
+                console.error('Generate question error:', error);
+            }
+        }
+
+        function createEnhancedRegionalStreetPopup(question) {
+            let content = `<strong>${question.name}</strong>`;
+            
+            if (question.allNames && question.allNames.length > 1) {
+                const altNames = question.allNames.slice(1);
+                if (altNames.length > 0) {
+                    content += `<br><small style="color: #666;">別名: ${altNames.join(', ')}</small>`;
+                }
+            }
+            
+            if (question.description) {
+                content += `<br><em>${question.description}</em>`;
+            }
+            
+            const segmentCount = question.points ? question.points.length : 1;
+            const totalLength = question.segmentLength ? question.segmentLength.toFixed(1) : 'N/A';
+            const isComplete = question.isComplete ? '✓ Complete' : '○ Partial';
+            
+            content += `<br><div style="margin-top: 8px; padding: 6px; background: #f0f0f0; border-radius: 3px; color: #333;">`;
+            content += `<strong>道路ネットワーク情報:</strong><br>`;
+            content += `• 状態: ${isComplete}<br>`;
+            content += `• セグメント数: ${segmentCount}<br>`;
+            content += `• 総延長: ${totalLength}km<br>`;
+            content += `• 重要度: ${question.importance}/100`;
+            content += `</div>`;
+            
+            content += '<br><div style="margin-top: 10px; padding: 8px; background: #f8f9fa; border-radius: 4px; border-left: 3px solid #4CAF50;">';
+            content += '<div style="font-size: 0.85em; font-weight: bold; color: #333; margin-bottom: 6px;">📖 詳細情報を調べる:</div>';
+            
+            const primaryName = question.name;
+            const wikiUrl = `https://ja.wikipedia.org/wiki/Special:Search/${encodeURIComponent(primaryName)}`;
+            const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(primaryName + ' 道路')}`;
+            
+            content += `<div style="font-size: 0.85em;">`;
+            content += `• <a href="${wikiUrl}" target="_blank" style="color: #4CAF50; text-decoration: none;">Wikipedia</a><br>`;
+            content += `• <a href="${googleUrl}" target="_blank" style="color: #4CAF50; text-decoration: none;">Google検索</a>`;
+            content += `</div>`;
+            
+            content += '<div style="font-size: 0.75em; color: #666; margin-top: 4px;">※ 地域道路ネットワークからの完全なルート情報</div>';
+            content += '</div>';
+            
+            return content;
+        }
+
+        function createEnhancedStreetPopupContent(question) {
+            let content = `<strong>${question.name}</strong>`;
+            
+            if (question.allNames && question.allNames.length > 1) {
+                const altNames = question.allNames.slice(1);
+                if (altNames.length > 0) {
+                    content += `<br><small style="color: #666;">別名: ${altNames.join(', ')}</small>`;
+                }
+            }
+            
+            if (question.description) {
+                content += `<br><em>${question.description}</em>`;
+            }
+            
+            content += '<br><div style="margin-top: 10px; padding: 8px; background: #f8f9fa; border-radius: 4px; border-left: 3px solid #4CAF50;">';
+            content += '<div style="font-size: 0.85em; font-weight: bold; color: #333; margin-bottom: 6px;">📖 詳細情報を調べる:</div>';
+            
+            const primaryName = question.name;
+            const wikiUrl = `https://ja.wikipedia.org/wiki/Special:Search/${encodeURIComponent(primaryName)}`;
+            const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(primaryName + ' 道路')}`;
+            
+            content += `<div style="font-size: 0.85em;">`;
+            content += `• <a href="${wikiUrl}" target="_blank" style="color: #4CAF50; text-decoration: none;">Wikipedia</a><br>`;
+            content += `• <a href="${googleUrl}" target="_blank" style="color: #4CAF50; text-decoration: none;">Google検索</a>`;
+            content += `</div>`;
+            
+            content += '<div style="font-size: 0.75em; color: #666; margin-top: 4px;">※ Wikipediaで正式名称や詳細な路線情報が見つかる場合があります</div>';
+            content += '</div>';
+            
+            return content;
+        }
+
+        function showAnswer() {
+            try {
+                if (!gameState.currentQuestion) return;
+
+                const question = gameState.currentQuestion;
+                
+                if (gameState.currentMode === 'street') {
+                    if (typeof turf !== 'undefined' && turf.lineString) {
+                        question.points.forEach((segmentPoints, index) => {
+                            const lineString = turf.lineString(segmentPoints.map(p => [p.lng, p.lat]));
+                            
+                            const streetPath = L.geoJSON(lineString, {
+                                style: {
+                                    color: index === 0 ? '#ff6b6b' : '#ff9999',
+                                    weight: index === 0 ? 6 : 4,
+                                    opacity: index === 0 ? 0.9 : 0.7,
+                                    className: `road-segment-${index}`
+                                }
+                            }).addTo(gameState.streetLayer);
+                        });
+                        
+                        const mainSegment = question.points[0];
+                        const midpoint = turf.midpoint(
+                            turf.point([mainSegment[0].lng, mainSegment[0].lat]),
+                            turf.point([mainSegment[mainSegment.length - 1].lng, mainSegment[mainSegment.length - 1].lat])
+                        );
+                        
+                        const popupContent = createEnhancedRegionalStreetPopup(question);
+                        
+                        const popup = L.popup({
+                            maxWidth: 450,
+                            className: 'street-info-popup'
+                        })
+                            .setLatLng([midpoint.geometry.coordinates[1], midpoint.geometry.coordinates[0]])
+                            .setContent(popupContent)
+                            .openOn(gameState.map);
+                    } else {
+                        question.points.forEach((segmentPoints, index) => {
+                            const streetPath = L.polyline(segmentPoints.map(p => [p.lat, p.lng]), {
+                                color: index === 0 ? '#ff6b6b' : '#ff9999',
+                                weight: index === 0 ? 6 : 4,
+                                opacity: index === 0 ? 0.9 : 0.7
+                            }).addTo(gameState.streetLayer);
+                        });
+                        
+                        const mainSegment = question.points[0];
+                        const midIndex = Math.floor(mainSegment.length / 2);
+                        const midPoint = mainSegment[midIndex];
+                        
+                        const popupContent = createEnhancedRegionalStreetPopup(question);
+                        
+                        const popup = L.popup({
+                            maxWidth: 450,
+                            className: 'street-info-popup'
+                        })
+                            .setLatLng([midPoint.lat, midPoint.lng])
+                            .setContent(popupContent)
+                            .openOn(gameState.map);
+                    }
+                        
+                } else if (gameState.currentMode === 'facility') {
+                    if (question.isEnclosedArea) {
+                        const facilityArea = L.polygon(question.points[0], {
+                            color: '#ff6b6b',
+                            fillColor: '#ff6b6b',
+                            fillOpacity: 0.4,
+                            weight: 3
+                        }).addTo(gameState.facilityLayer);
+                    } else {
+                        const facilityMarker = L.marker([question.points[0][0].lat, question.points[0][0].lng], {
+                            icon: L.divIcon({
+                                html: '<div style="background: #ff6b6b; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white;"></div>',
+                                iconSize: [20, 20]
+                            })
+                        }).addTo(gameState.facilityLayer);
+                    }
+                    
+                    const point = question.points[0][0];
+                    let facilityContent = `<strong>${question.name}</strong>`;
+                    if (question.description) {
+                        facilityContent += `<br>${question.description}`;
+                    }
+                    facilityContent += `<br><div style="margin-top: 8px; font-size: 0.85em;">`;
+                    facilityContent += `<a href="https://ja.wikipedia.org/wiki/Special:Search/${encodeURIComponent(question.name)}" target="_blank" style="color: #4CAF50; text-decoration: none;">📖 Wikipedia検索</a>`;
+                    facilityContent += `</div>`;
+                    
+                    const popup = L.popup()
+                        .setLatLng([point.lat, point.lng])
+                        .setContent(facilityContent)
+                        .openOn(gameState.map);
+                        
+                } else if (gameState.currentMode === 'intersection') {
+                    const intersectionMarker = L.marker([question.points[0][0].lat, question.points[0][0].lng], {
+                        icon: L.divIcon({
+                            html: '<div style="background: #ff6b6b; width: 25px; height: 25px; border-radius: 50%; border: 3px solid white;"></div>',
+                            iconSize: [25, 25]
+                        })
+                    }).addTo(gameState.facilityLayer);
+                    
+                    let intersectionContent = `<strong>${question.name}</strong>`;
+                    if (question.description) {
+                        intersectionContent += `<br>${question.description}`;
+                    }
+                    intersectionContent += `<br><div style="margin-top: 8px; font-size: 0.85em;">`;
+                    intersectionContent += `<a href="https://ja.wikipedia.org/wiki/Special:Search/${encodeURIComponent(question.name)}" target="_blank" style="color: #4CAF50; text-decoration: none;">📖 Wikipedia検索</a>`;
+                    intersectionContent += `</div>`;
+                    
+                    const popup = L.popup()
+                        .setLatLng([question.points[0][0].lat, question.points[0][0].lng])
+                        .setContent(intersectionContent)
+                        .openOn(gameState.map);
+                }
+
+                const showAnswerBtn = document.getElementById('show-answer');
+                const nextBtn = document.getElementById('next-question');
+                const mobileAnswer = document.getElementById('mobile-answer');
+                const mobileNext = document.getElementById('mobile-next');
+                
+                if (showAnswerBtn) showAnswerBtn.classList.add('hidden');
+                if (nextBtn) nextBtn.classList.remove('hidden');
+                if (mobileAnswer) mobileAnswer.classList.add('hidden');
+                if (mobileNext) mobileNext.classList.remove('hidden');
+                
+                stopTimer();
+                log('Answer shown');
+            } catch (error) {
+                log('Error showing answer: ' + error.message);
+                console.error('Show answer error:', error);
+            }
+        }
+
+        function handleMapClick(e) {
+            try {
+                const userLatLng = e.latlng;
+                
+                const advancedSettings = document.getElementById('advanced-settings');
+                if (!gameState.settingsVisible && advancedSettings && !advancedSettings.classList.contains('hidden')) {
+                    addPointFromMap(userLatLng.lat, userLatLng.lng);
+                    return;
+                }
+                
+                if (!gameState.isPlaying || gameState.currentMode === 'reverse') {
+                    log('Map click ignored - not in playing mode or reverse mode');
+                    return;
+                }
+
+                log('Map click at: ' + userLatLng.lat + ', ' + userLatLng.lng);
+                
+                if (!isWithinGameArea(userLatLng.lat, userLatLng.lng)) {
+                    showWarning('クリック位置がゲームエリア外です。緑の円内をクリックしてください。');
+                    return;
+                }
+
+                let distance, accuracy, points;
+
+                if (gameState.currentMode === 'street') {
+                    distance = calculateDistanceToStreetTurf(userLatLng, gameState.currentQuestion.points[0]);
+                } else {
+                    if (typeof turf !== 'undefined') {
+                        const userPoint = turf.point([userLatLng.lng, userLatLng.lat]);
+                        const targetPoint = turf.point([
+                            gameState.currentQuestion.points[0][0].lng,
+                            gameState.currentQuestion.points[0][0].lat
+                        ]);
+                        distance = turf.distance(userPoint, targetPoint, { units: 'meters' });
+                    } else {
+                        distance = calculateSimpleDistance(
+                            userLatLng.lat, userLatLng.lng,
+                            gameState.currentQuestion.points[0][0].lat,
+                            gameState.currentQuestion.points[0][0].lng
+                        ) * 1000;
+                    }
+                }
+
+                const distanceKm = (distance / 1000).toFixed(2);
+
+                const maxDistance = gameState.range * 1000;
+                accuracy = Math.max(0, 100 - (distance / maxDistance) * 100);
+                
+                const baseScore = Math.round(accuracy);
+                const timeBonus = Math.max(0, gameState.timer * 2);
+                const streakBonus = gameState.streak * 5;
+                
+                if (accuracy >= 95) {
+                    points = Math.round(baseScore * 1.5) + timeBonus + streakBonus;
+                } else if (accuracy >= 80) {
+                    points = Math.round(baseScore * 1.2) + timeBonus + streakBonus;
+                } else {
+                    points = baseScore + Math.round(timeBonus * 0.5) + streakBonus;
+                }
+
+                clearUserMarkers();
+                
+                gameState.userMarker = L.marker([userLatLng.lat, userLatLng.lng], {
+                    icon: L.divIcon({
+                        className: 'user-marker',
+                        html: '<div style="background: #2196F3; width: 15px; height: 15px; border-radius: 50%; border: 2px solid white;"></div>',
+                        iconSize: [15, 15]
+                    })
+                }).addTo(gameState.map);
+
+                showAnswer();
+
+                if (gameState.currentMode === 'street') {
+                    const nearestPoint = findNearestPointOnStreetTurf(userLatLng, gameState.currentQuestion.points[0]);
+                    if (nearestPoint) {
+                        L.polyline([userLatLng, [nearestPoint[1], nearestPoint[0]]], {
+                            color: '#2196F3',
+                            weight: 2,
+                            dashArray: '5, 5'
+                        }).addTo(gameState.streetLayer);
+                    }
+                } else {
+                    const correctLatLng = L.latLng(
+                        gameState.currentQuestion.points[0][0].lat,
+                        gameState.currentQuestion.points[0][0].lng
+                    );
+                    L.polyline([userLatLng, correctLatLng], {
+                        color: '#2196F3',
+                        weight: 2,
+                        dashArray: '5, 5'
+                    }).addTo(gameState.facilityLayer);
+                }
+
+                gameState.score += points;
+                if (points > 70) {
+                    gameState.streak++;
+                } else {
+                    gameState.streak = 0;
+                }
+
+                const distanceEl = document.getElementById('distance');
+                const accuracyEl = document.getElementById('accuracy');
+                const distanceDisplay = document.getElementById('distance-display');
+                
+                if (distanceEl) distanceEl.textContent = `${distanceKm} km`;
+                if (accuracyEl) accuracyEl.textContent = `${accuracy.toFixed(1)}% (+${points}点)`;
+                if (distanceDisplay) distanceDisplay.classList.remove('hidden');
+
+                stopTimer();
+                updateUI();
+                
+                log(`Answer processed: ${distanceKm}km, ${accuracy.toFixed(1)}% accuracy, ${points} points`);
+            } catch (error) {
+                log('Error handling map click: ' + error.message);
+                console.error('Map click error:', error);
+            }
+        }
+
+        function calculateDistanceToStreetTurf(userLatLng, streetPoints) {
+            try {
+                if (typeof turf !== 'undefined' && turf.nearestPointOnLine) {
+                    const userPoint = turf.point([userLatLng.lng, userLatLng.lat]);
+                    const lineString = turf.lineString(streetPoints.map(p => [p.lng, p.lat]));
+                    const nearestPoint = turf.nearestPointOnLine(lineString, userPoint);
+                    return turf.distance(userPoint, nearestPoint, { units: 'meters' });
+                } else {
+                    let minDistance = Infinity;
+                    for (let i = 0; i < streetPoints.length; i++) {
+                        const streetPoint = streetPoints[i];
+                        const distance = calculateSimpleDistance(
+                            userLatLng.lat, userLatLng.lng,
+                            streetPoint.lat, streetPoint.lng
+                        );
+                        minDistance = Math.min(minDistance, distance);
+                    }
+                    return minDistance * 1000;
+                }
+            } catch (error) {
+                log('Error calculating distance with Turf: ' + error.message);
+                const targetPoint = streetPoints[0];
+                return calculateSimpleDistance(
+                    userLatLng.lat, userLatLng.lng,
+                    targetPoint.lat, targetPoint.lng
+                ) * 1000;
+            }
+        }
+
+        function findNearestPointOnStreetTurf(userLatLng, streetPoints) {
+            try {
+                if (typeof turf !== 'undefined' && turf.nearestPointOnLine) {
+                    const userPoint = turf.point([userLatLng.lng, userLatLng.lat]);
+                    const lineString = turf.lineString(streetPoints.map(p => [p.lng, p.lat]));
+                    const nearestPoint = turf.nearestPointOnLine(lineString, userPoint);
+                    return nearestPoint.geometry.coordinates;
+                } else {
+                    let minDistance = Infinity;
+                    let closestPoint = streetPoints[0];
+                    for (let i = 0; i < streetPoints.length; i++) {
+                        const distance = calculateSimpleDistance(
+                            userLatLng.lat, userLatLng.lng,
+                            streetPoints[i].lat, streetPoints[i].lng
+                        );
+                        if (distance < minDistance) {
+                            minDistance = distance;
+                            closestPoint = streetPoints[i];
+                        }
+                    }
+                    return [closestPoint.lng, closestPoint.lat];
+                }
+            } catch (error) {
+                log('Error finding nearest point with Turf: ' + error.message);
+                return [streetPoints[0].lng, streetPoints[0].lat];
+            }
+        }
+
+        function calculateSimpleDistance(lat1, lng1, lat2, lng2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                     Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                     Math.sin(dLng/2) * Math.sin(dLng/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        function clearGameElements() {
+            try {
+                clearUserMarkers();
+                if (gameState.streetLayer) gameState.streetLayer.clearLayers();
+                if (gameState.facilityLayer) gameState.facilityLayer.clearLayers();
+                if (gameState.map) gameState.map.closePopup();
+            } catch (error) {
+                log('Error clearing game elements: ' + error.message);
+            }
+        }
+
+        function clearUserMarkers() {
+            try {
+                if (gameState.userMarker && gameState.map) {
+                    gameState.map.removeLayer(gameState.userMarker);
+                    gameState.userMarker = null;
+                }
+                if (gameState.correctMarker && gameState.map) {
+                    gameState.map.removeLayer(gameState.correctMarker);
+                    gameState.correctMarker = null;
+                }
+            } catch (error) {
+                log('Error clearing markers: ' + error.message);
+            }
+        }
+
+        function startTimer() {
+            try {
+                stopTimer();
+                gameState.timerInterval = setInterval(() => {
+                    gameState.timer--;
+                    updateTimer();
+                    
+                    if (gameState.timer <= 0) {
+                        handleTimeout();
+                    }
+                }, 1000);
+            } catch (error) {
+                log('Error starting timer: ' + error.message);
+            }
+        }
+
+        function stopTimer() {
+            if (gameState.timerInterval) {
+                clearInterval(gameState.timerInterval);
+                gameState.timerInterval = null;
+            }
+        }
+
+        function handleTimeout() {
+            try {
+                stopTimer();
+                gameState.streak = 0;
+                
+                if (gameState.currentMode === 'reverse') {
+                    document.querySelectorAll('.choice-button').forEach(btn => {
+                        btn.disabled = true;
+                        if (btn.textContent === gameState.currentQuestion.name) {
+                            btn.classList.add('correct');
+                        }
+                    });
+                } else {
+                    showAnswer();
+                }
+                
+                updateUI();
+                const nextBtn = document.getElementById('next-question');
+                const mobileNext = document.getElementById('mobile-next');
+                if (nextBtn) nextBtn.classList.remove('hidden');
+                if (mobileNext) mobileNext.classList.remove('hidden');
+                
+                log('Timer expired');
+            } catch (error) {
+                log('Error handling timeout: ' + error.message);
+            }
+        }
+
+        function updateTimer() {
+            const timerEl = document.getElementById('timer');
+            if (timerEl) {
+                timerEl.textContent = gameState.timer;
+                
+                if (gameState.timer <= 5) {
+                    timerEl.style.color = '#ff6b6b';
+                    timerEl.classList.add('blinking');
+                } else if (gameState.timer <= 10) {
+                    timerEl.style.color = '#ff9800';
+                    timerEl.classList.remove('blinking');
+                } else {
+                    timerEl.style.color = '#4CAF50';
+                    timerEl.classList.remove('blinking');
+                }
+            }
+        }
+
+        function updateUI() {
+            try {
+                const scoreEl = document.getElementById('score');
+                const streakEl = document.getElementById('streak');
+                const totalQuestionsEl = document.getElementById('total-questions');
+                
+                if (scoreEl) scoreEl.textContent = gameState.score;
+                if (streakEl) streakEl.textContent = gameState.streak;
+                if (totalQuestionsEl) totalQuestionsEl.textContent = gameState.totalQuestions;
+            } catch (error) {
+                log('Error updating UI: ' + error.message);
+            }
+        }
+
+        function updateMobileControls() {
+            const mobileNext = document.getElementById('mobile-next');
+            const mobileAnswer = document.getElementById('mobile-answer');
+            const mobileEnd = document.getElementById('mobile-end');
+            
+            if (gameState.isPlaying) {
+                if (mobileNext) mobileNext.classList.add('hidden');
+                if (mobileAnswer) mobileAnswer.classList.remove('hidden');
+                if (mobileEnd) mobileEnd.classList.remove('hidden');
+            } else {
+                if (mobileNext) mobileNext.classList.add('hidden');
+                if (mobileAnswer) mobileAnswer.classList.add('hidden');
+                if (mobileEnd) mobileEnd.classList.add('hidden');
+            }
+        }
+
+        function updateRangeDisplay() {
+            const display = document.getElementById('range-display');
+            if (display) {
+                display.textContent = `${gameState.range} km`;
+            }
+        }
+
+        function updateImportanceDisplay() {
+            const slider = document.getElementById('problem-importance');
+            const display = document.getElementById('importance-display');
+            if (slider && display) {
+                display.textContent = slider.value;
+            }
+        }
+
+        function showWarning(message) {
+            showMessage(message, 'warning-message');
+        }
+
+        function showSuccess(message) {
+            showMessage(message, 'success-message');
+        }
+
+        function showError(message) {
+            showMessage(message, 'error-message');
+        }
+
+        function showInfo(message) {
+            showMessage(message, 'info-message');
+        }
+
+        function showMessage(message, className) {
+            const sidebar = document.querySelector('.sidebar');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = className;
+            messageDiv.textContent = message;
+            sidebar.insertBefore(messageDiv, sidebar.firstChild);
+            
+            setTimeout(() => {
+                if (messageDiv.parentNode) {
+                    messageDiv.parentNode.removeChild(messageDiv);
+                }
+            }, 5000);
+        }
+
+        function getModeName(mode) {
+            const names = {
+                'street': '道路',
+                'facility': '施設',
+                'intersection': '交差点',
+                'reverse': '逆'
+            };
+            return names[mode] || mode;
+        }
+
+        function showReverseChallenge() {
+            try {
+                const point = gameState.currentQuestion.points[0][0];
+                
+                if (gameState.currentQuestion.isEnclosedArea) {
+                    const polygon = L.polygon(gameState.currentQuestion.points[0], {
+                        className: 'blinking',
+                        color: '#ff6b6b',
+                        fillColor: '#ff6b6b',
+                        fillOpacity: 0.4,
+                        weight: 3
+                    }).addTo(gameState.facilityLayer);
+                } else {
+                    const marker = L.marker([point.lat, point.lng], {
+                        icon: L.divIcon({
+                            className: 'blinking',
+                            html: '<div style="background: #ff6b6b; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white;"></div>',
+                            iconSize: [20, 20]
+                        })
+                    }).addTo(gameState.facilityLayer);
+                }
+
+                const choices = generateMultipleChoices();
+                const choiceContainer = document.getElementById('multiple-choice');
+                
+                if (choiceContainer) {
+                    choiceContainer.innerHTML = '';
+                    choiceContainer.classList.remove('hidden');
+
+                    choices.forEach((choice, index) => {
+                        const button = document.createElement('button');
+                        button.className = 'choice-button';
+                        button.textContent = choice.name;
+                        button.onclick = () => handleReverseAnswer(choice, button);
+                        choiceContainer.appendChild(button);
+                    });
+                }
+
+                const showAnswerBtn = document.getElementById('show-answer');
+                if (showAnswerBtn) {
+                    showAnswerBtn.classList.add('hidden');
+                }
+                
+                log('Reverse challenge shown');
+            } catch (error) {
+                log('Error showing reverse challenge: ' + error.message);
+                console.error('Reverse challenge error:', error);
+            }
+        }
+
+        function generateMultipleChoices() {
+            try {
+                const correct = gameState.currentQuestion;
+                const allOptions = [...facilityQuestions, ...intersectionQuestions, ...gameState.customProblems.filter(p => p.type !== 'street')];
+                const incorrectOptions = allOptions.filter(q => q.name !== correct.name);
+                
+                const shuffled = incorrectOptions.sort(() => 0.5 - Math.random());
+                const choices = [correct, ...shuffled.slice(0, 3)];
+                
+                return choices.sort(() => 0.5 - Math.random());
+            } catch (error) {
+                log('Error generating choices: ' + error.message);
+                return [gameState.currentQuestion];
+            }
+        }
+
+        function handleReverseAnswer(selectedChoice, button) {
+            try {
+                const isCorrect = selectedChoice.name === gameState.currentQuestion.name;
+                
+                document.querySelectorAll('.choice-button').forEach(btn => {
+                    btn.disabled = true;
+                    if (btn.textContent === gameState.currentQuestion.name) {
+                        btn.classList.add('correct');
+                    } else if (btn === button && !isCorrect) {
+                        btn.classList.add('incorrect');
+                    }
+                });
+
+                if (isCorrect) {
+                    const timeBonus = Math.max(0, gameState.timer * 2);
+                    const baseScore = 100;
+                    const streakBonus = gameState.streak * 10;
+                    const totalScore = baseScore + timeBonus + streakBonus;
+                    
+                    gameState.score += totalScore;
+                    gameState.streak++;
+                    log(`Correct answer! Score: ${totalScore} (base: ${baseScore}, time: ${timeBonus}, streak: ${streakBonus})`);
+                } else {
+                    gameState.streak = 0;
+                    log('Incorrect answer');
+                }
+
+                stopTimer();
+                updateUI();
+                
+                setTimeout(() => {
+                    const nextBtn = document.getElementById('next-question');
+                    const mobileNext = document.getElementById('mobile-next');
+                    if (nextBtn) nextBtn.classList.remove('hidden');
+                    if (mobileNext) mobileNext.classList.remove('hidden');
+                    
+                    const showAnswerBtn = document.getElementById('show-answer');
+                    const mobileAnswer = document.getElementById('mobile-answer');
+                    if (showAnswerBtn) showAnswerBtn.classList.add('hidden');
+                    if (mobileAnswer) mobileAnswer.classList.add('hidden');
+                }, 1500);
+            } catch (error) {
+                log('Error handling reverse answer: ' + error.message);
+            }
+        }
+
+        function endGame() {
+            try {
+                log('Ending game...');
+                
+                gameState.isPlaying = false;
+                stopTimer();
+                
+                if (!gameState.showLabels) {
+                    toggleLabels();
+                }
+                
+                const finalScoreEl = document.getElementById('final-score');
+                const finalStatsEl = document.getElementById('final-stats');
+                const resultsOverlay = document.getElementById('results-overlay');
+                
+                if (finalScoreEl) {
+                    finalScoreEl.textContent = `Final Score: ${gameState.score}`;
+                }
+                
+                if (finalStatsEl) {
+                    const avgScore = gameState.totalQuestions > 0 ? Math.round(gameState.score / gameState.totalQuestions) : 0;
+                    const maxStreak = gameState.streak;
+                    const accuracy = gameState.totalQuestions > 0 ? Math.round((gameState.score / (gameState.totalQuestions * 150)) * 100) : 0;
+                    
+                    finalStatsEl.innerHTML = `
+                        <div>Questions Answered: ${gameState.totalQuestions}</div>
+                        <div>Best Streak: ${maxStreak}</div>
+                        <div>Average Score: ${avgScore} points per question</div>
+                        <div>Overall Accuracy: ${accuracy}%</div>
+                        <div>Game Mode: ${getModeName(gameState.currentMode)}</div>
+                        <div>Difficulty: ${gameState.difficulty}</div>
+                        <div>Range: ${gameState.range}km</div>
+                    `;
+                }
+                
+                if (resultsOverlay) {
+                    resultsOverlay.classList.remove('hidden');
+                }
+                
+                updateMobileControls();
+                
+                log('Game ended');
+            } catch (error) {
+                log('Error ending game: ' + error.message);
+            }
+        }
+
+        function resetGame() {
+            try {
+                log('Resetting game...');
+                
+                gameState.isPlaying = false;
+                gameState.score = 0;
+                gameState.streak = 0;
+                gameState.totalQuestions = 0;
+                gameState.timer = 30;
+                gameState.askedQuestions = [];
+                
+                clearGameElements();
+                stopTimer();
+                
+                const challengeSection = document.getElementById('challenge-section');
+                const resultsOverlay = document.getElementById('results-overlay');
+                const startBtn = document.getElementById('start-game');
+                
+                if (challengeSection) challengeSection.classList.add('hidden');
+                if (resultsOverlay) resultsOverlay.classList.add('hidden');
+                if (startBtn) startBtn.style.display = 'block';
+                
+                if (!gameState.showLabels) {
+                    toggleLabels();
+                }
+                
+                updateMobileControls();
+                
+                updateUI();
+                log('Game reset complete');
+            } catch (error) {
+                log('Error resetting game: ' + error.message);
+            }
+        }
+
+        // Global functions for editor
+        window.removePoint = removePoint;
+        window.editProblem = editProblem;
+        window.deleteProblem = deleteProblem;
+        window.resetGame = resetGame;
+
+        // Initialize game when page loads with multiple fallbacks
+        document.addEventListener('DOMContentLoaded', function() {
+            log('DOM loaded, checking dependencies...');
+            
+            function checkLeafletAndInit() {
+                if (typeof L !== 'undefined') {
+                    log('Leaflet detected, initializing game...');
+                    setTimeout(initGame, 100);
+                } else {
+                    log('Leaflet not loaded yet, waiting...');
+                    setTimeout(checkLeafletAndInit, 200);
+                }
+            }
+            
+            checkLeafletAndInit();
+        });
+
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                if (!gameState.isMapInitialized) {
+                    log('Backup initialization triggered');
+                    initGame();
+                }
+            }, 1000);
+        });
+
+        setTimeout(() => {
+            if (!gameState.isMapInitialized) {
+                log('Emergency initialization attempt...');
+                if (typeof L !== 'undefined') {
+                    initGame();
+                } else {
+                    log('ERROR: Leaflet failed to load. Please refresh the page.');
+                    const debugInfo = document.getElementById('debug-info');
+                    if (debugInfo) {
+                        debugInfo.innerHTML = 'ERROR: Map library failed to load. <button onclick="location.reload()" style="background:#f44336;color:white;border:none;padding:0.5rem;border-radius:4px;margin-left:0.5rem;">Refresh Page</button>';
+                        debugInfo.style.display = 'block';
+                        debugInfo.style.background = '#f44336';
+                    }
+                }
+            }
+        }, 5000);
+
+        window.addEventListener('resize', function() {
+            if (gameState.map) {
+                setTimeout(() => {
+                    gameState.map.invalidateSize();
+                    log('Map size invalidated after resize');
+                }, 200);
+            }
+        });
+
+        window.addEventListener('orientationchange', function() {
+            log('Orientation changed, invalidating map size...');
+            setTimeout(() => {
+                if (gameState.map) {
+                    gameState.map.invalidateSize();
+                    if (window.innerWidth <= 768) {
+                        gameState.map.setView(gameState.map.getCenter(), gameState.map.getZoom(), { animate: false });
+                    }
+                }
+            }, 1000);
+        });
+
+        if ('ontouchstart' in window) {
+            log('Touch device detected, applying touch optimizations...');
+            
+            document.addEventListener('touchstart', function(e) {
+                if (e.touches.length > 1) {
+                    e.preventDefault();
+                }
+            }, { passive: false });
+            
+            let lastTouchEnd = 0;
+            document.addEventListener('touchend', function(e) {
+                const now = (new Date()).getTime();
+                if (now - lastTouchEnd <= 300) {
+                    e.preventDefault();
+                }
+                lastTouchEnd = now;
+            }, false);
+        }
+
+        if ('onLine' in navigator) {
+            window.addEventListener('online', function() {
+                log('Network connection restored');
+                if (!gameState.isMapInitialized) {
+                    log('Attempting to reinitialize map...');
+                    initGame();
+                }
+            });
+            
+            window.addEventListener('offline', function() {
+                log('Network connection lost');
+            });
+        }
+
+        if ('visibilityState' in document) {
+            document.addEventListener('visibilitychange', function() {
+                if (document.visibilityState === 'visible') {
+                    log('Page became visible, checking map state...');
+                    if (gameState.map) {
+                        setTimeout(() => {
+                            gameState.map.invalidateSize();
+                        }, 500);
+                    }
+                } else {
+                    log('Page became hidden, pausing background operations...');
+                    stopBackgroundLoading();
+                }
+            });
+        }
+
+        log('Enhanced Back of Your Hand game script loaded successfully');
+        
+        if (window.innerWidth <= 768) {
+            log('Mobile device detected - Enhanced mobile mode enabled');
+        }
+    </script>
+</body>
+</html>
