@@ -3001,11 +3001,11 @@
                     }, 100);
                 }
                 
-                setTimeout(() => {
-                    if (gameState.showLabels) {
-                        toggleLabels();
-                    }
-                }, 300);
+                // Hide street name labels during game
+                if (gameState.showLabels) {
+                    log('Hiding street name labels for game challenge');
+                    toggleLabels();
+                }
                 
                 if (gameState.map) {
                     gameState.map.dragging.enable();
@@ -3019,7 +3019,7 @@
                 nextQuestion();
                 updateUI();
                 
-                log('Game started successfully - map interaction enabled');
+                log('Game started successfully - map interaction enabled, street labels hidden');
             } catch (error) {
                 log('Error starting game: ' + error.message);
                 console.error('Start game error:', error);
@@ -3453,16 +3453,161 @@
             }
         }
 
+        function toggleLabels() {
+            try {
+                log('Toggle labels clicked. Current state: ' + gameState.showLabels);
+                gameState.showLabels = !gameState.showLabels;
+                
+                // Remove current tile layer
+                gameState.map.eachLayer(function(layer) {
+                    if (layer instanceof L.TileLayer) {
+                        gameState.map.removeLayer(layer);
+                    }
+                });
+                
+                // Add appropriate tile layer
+                if (gameState.showLabels) {
+                    if (gameState.baseLayers.withLabels) {
+                        gameState.baseLayers.withLabels.addTo(gameState.map);
+                    }
+                    document.getElementById('toggle-labels').textContent = '街路名非表示';
+                    log('Switched to labels ON');
+                } else {
+                    if (gameState.baseLayers.withoutLabels) {
+                        gameState.baseLayers.withoutLabels.addTo(gameState.map);
+                    } else {
+                        // Fallback to no-labels version
+                        const noLabelsLayer = L.tileLayer(
+                            'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_nolabels/{z}/{x}/{y}.png',
+                            {
+                                attribution: '© OpenStreetMap contributors, © CARTO',
+                                subdomains: ['a', 'b', 'c', 'd'],
+                                maxZoom: 19
+                            }
+                        );
+                        noLabelsLayer.addTo(gameState.map);
+                    }
+                    document.getElementById('toggle-labels').textContent = '街路名表示';
+                    log('Switched to labels OFF');
+                }
+                
+                // Invalidate map size after layer change
+                setTimeout(() => {
+                    gameState.map.invalidateSize();
+                }, 200);
+                
+                log('Labels toggled successfully to: ' + (gameState.showLabels ? 'shown' : 'hidden'));
+            } catch (error) {
+                log('Error toggling labels: ' + error.message);
+                console.error('Toggle labels error:', error);
+            }
+        }
+
+        function toggleSettings() {
+            gameState.settingsVisible = !gameState.settingsVisible;
+            const toggleBtn = document.getElementById('toggle-settings');
+            const advancedSettings = document.getElementById('advanced-settings');
+            
+            if (gameState.settingsVisible) {
+                if (advancedSettings) advancedSettings.classList.add('hidden');
+                toggleBtn.textContent = '🔧 Show Advanced Tools';
+            } else {
+                if (advancedSettings) advancedSettings.classList.remove('hidden');
+                toggleBtn.textContent = '⚙️ Hide Advanced Tools';
+            }
+        }
+
+        function endGame() {
+            try {
+                log('Ending game...');
+                
+                gameState.isPlaying = false;
+                stopTimer();
+                
+                // Restore street name labels when game ends
+                if (!gameState.showLabels) {
+                    log('Restoring street name labels after game end');
+                    toggleLabels();
+                }
+                
+                const finalScoreEl = document.getElementById('final-score');
+                const finalStatsEl = document.getElementById('final-stats');
+                const resultsOverlay = document.getElementById('results-overlay');
+                
+                if (finalScoreEl) {
+                    finalScoreEl.textContent = `Final Score: ${gameState.score}`;
+                }
+                
+                if (finalStatsEl) {
+                    const avgScore = gameState.totalQuestions > 0 ? Math.round(gameState.score / gameState.totalQuestions) : 0;
+                    const maxStreak = gameState.streak;
+                    const accuracy = gameState.totalQuestions > 0 ? Math.round((gameState.score / (gameState.totalQuestions * 150)) * 100) : 0;
+                    
+                    finalStatsEl.innerHTML = `
+                        <div>Questions Answered: ${gameState.totalQuestions}</div>
+                        <div>Best Streak: ${maxStreak}</div>
+                        <div>Average Score: ${avgScore} points per question</div>
+                        <div>Overall Accuracy: ${accuracy}%</div>
+                        <div>Game Mode: ${getModeName(gameState.currentMode)}</div>
+                        <div>Difficulty: ${gameState.difficulty}</div>
+                        <div>Range: ${gameState.range}km</div>
+                    `;
+                }
+                
+                if (resultsOverlay) {
+                    resultsOverlay.classList.remove('hidden');
+                }
+                
+                updateMobileControls();
+                
+                log('Game ended');
+            } catch (error) {
+                log('Error ending game: ' + error.message);
+            }
+        }
+
+        function resetGame() {
+            try {
+                log('Resetting game...');
+                
+                gameState.isPlaying = false;
+                gameState.score = 0;
+                gameState.streak = 0;
+                gameState.totalQuestions = 0;
+                gameState.timer = 30;
+                gameState.askedQuestions = [];
+                
+                clearGameElements();
+                stopTimer();
+                
+                const challengeSection = document.getElementById('challenge-section');
+                const resultsOverlay = document.getElementById('results-overlay');
+                const startBtn = document.getElementById('start-game');
+                
+                if (challengeSection) challengeSection.classList.add('hidden');
+                if (resultsOverlay) resultsOverlay.classList.add('hidden');
+                if (startBtn) startBtn.style.display = 'block';
+                
+                // Restore street name labels when game resets
+                if (!gameState.showLabels) {
+                    log('Restoring street name labels after game reset');
+                    toggleLabels();
+                }
+                
+                updateMobileControls();
+                updateUI();
+                log('Game reset complete');
+            } catch (error) {
+                log('Error resetting game: ' + error.message);
+            }
+        }
+
         // Placeholder functions for remaining functionality
         function showAnswer() { log('Show answer function placeholder'); }
         function handleMapClick(e) { log('Map click handler placeholder'); }
         function showReverseChallenge() { log('Reverse challenge placeholder'); }
         function generateMultipleChoices() { return []; }
         function handleReverseAnswer(choice, button) { log('Reverse answer handler placeholder'); }
-        function endGame() { log('End game function placeholder'); }
-        function resetGame() { log('Reset game function placeholder'); }
-        function toggleSettings() { log('Toggle settings placeholder'); }
-        function toggleLabels() { log('Toggle labels placeholder'); }
         function loadCustomProblems() { log('Load custom problems placeholder'); }
 
         // Global functions for editor
