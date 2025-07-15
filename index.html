@@ -2200,6 +2200,59 @@
             }
         };
 
+        async function loadRegionalRoadsOptimized(regionKey = 'south-kanto', strategyKey = 'immediate') {
+            try {
+                const region = REGIONAL_CONFIGS[regionKey];
+                if (!region) {
+                    log('Invalid region key: ' + regionKey);
+                    return;
+                }
+
+                const strategy = LOADING_STRATEGIES[strategyKey] || LOADING_STRATEGIES['immediate'];
+                currentRegionalConfig = region;
+                currentLoadingStrategy = strategy;
+
+                const cached = ROAD_CACHE.load(regionKey, strategyKey);
+                if (cached) {
+                    log('Using cached regional roads');
+                    gameState.streetData = cached.map(r => ({ ...r, cached: true, source: 'overpass-regional' }));
+                    updateDataStatus();
+                    return;
+                }
+
+                const bbox = region.bbox;
+                const query = `[out:json][timeout:60];way["highway"](${bbox.south},${bbox.west},${bbox.north},${bbox.east});out geom;`;
+                log('Fetching Overpass data...');
+                const res = await fetch('https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(query));
+                if (!res.ok) {
+                    throw new Error('HTTP ' + res.status);
+                }
+                const data = await res.json();
+                const roads = [];
+                for (const el of data.elements) {
+                    if (el.type === 'way' && el.geometry && el.geometry.length > 1) {
+                        const coords = el.geometry.map(pt => ({ lat: pt.lat, lng: pt.lon }));
+                        roads.push({
+                            name: el.tags && el.tags.name ? el.tags.name : 'Unnamed Road',
+                            points: [coords],
+                            importance: 50,
+                            description: el.tags && el.tags.name ? el.tags.name : 'OSM road',
+                            source: 'overpass-regional',
+                            isComplete: true,
+                            segmentLength: calculateSegmentLength(coords)
+                        });
+                    }
+                }
+
+                gameState.streetData = roads;
+                ROAD_CACHE.save(regionKey, strategyKey, roads);
+                updateDataStatus();
+                log(`Loaded ${roads.length} roads from Overpass`);
+            } catch (error) {
+                log('Error loading regional roads: ' + error.message);
+            }
+        }
+
         const streetQuestions = [
             {
                 name: "表参道",
@@ -2214,14 +2267,27 @@
                 source: "default"
             },
             {
-                name: "竹下通り",
+                name: "六本木通り",
                 points: [[
-                    { lat: 35.6702, lng: 139.7063 },
-                    { lat: 35.6700, lng: 139.7060 },
-                    { lat: 35.6698, lng: 139.7057 }
+                    { lat: 35.6620, lng: 139.7290 },
+                    { lat: 35.6635, lng: 139.7305 },
+                    { lat: 35.6650, lng: 139.7320 },
+                    { lat: 35.6665, lng: 139.7335 }
+                ]],
+                importance: 90,
+                description: "六本木エリアを通る主要道路",
+                source: "default"
+            },
+            {
+                name: "明治通り",
+                points: [[
+                    { lat: 35.6762, lng: 139.7006 },
+                    { lat: 35.6775, lng: 139.7020 },
+                    { lat: 35.6788, lng: 139.7034 },
+                    { lat: 35.6800, lng: 139.7048 }
                 ]],
                 importance: 75,
-                description: "原宿の若者文化の中心地",
+                description: "新宿から渋谷を結ぶ重要な道路",
                 source: "default"
             },
             {
@@ -4073,13 +4139,15 @@
         function showReverseChallenge() { log('Reverse challenge placeholder'); }
         function generateMultipleChoices() { return []; }
         function handleReverseAnswer(choice, button) { log('Reverse answer handler placeholder'); }
-        function loadCustomProblems() { log('Load custom problems placeholder'); }
 
         // Global functions for editor
         window.removePoint = function() { log('Remove point placeholder'); };
         window.editProblem = function() { log('Edit problem placeholder'); };
         window.deleteProblem = function() { log('Delete problem placeholder'); };
         window.resetGame = resetGame;
+        window.saveProblem = saveProblem;
+        window.loadCustomProblems = loadCustomProblems;
+        window.loadRegionalRoadsOptimized = loadRegionalRoadsOptimized;
 
         // Initialize game when page loads with multiple fallbacks
         document.addEventListener('DOMContentLoaded', function() {
