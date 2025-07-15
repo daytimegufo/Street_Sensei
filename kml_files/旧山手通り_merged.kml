@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
+    <Document id="5041">
+        <Placemark id="5043">
+            <Style id="5046">
+                <LineStyle id="5047">
+                    <colorMode>normal</colorMode>
+                    <width>4</width>
+                </LineStyle>
+            </Style>
+            <Style id="5050">
+                <LineStyle id="5051">
+                    <colorMode>normal</colorMode>
+                    <width>4</width>
+                </LineStyle>
+            </Style>
+            <Style id="5054">
+                <LineStyle id="5055">
+                    <colorMode>normal</colorMode>
+                    <width>4</width>
+                </LineStyle>
+            </Style>
+            <Style id="5058">
+                <LineStyle id="5059">
+                    <colorMode>normal</colorMode>
+                    <width>4</width>
+                </LineStyle>
+            </Style>
+            <Style id="5062">
+                <LineStyle id="5063">
+                    <colorMode>normal</colorMode>
+                    <width>4</width>
+                </LineStyle>
+            </Style>
+            <Style id="5066">
+                <LineStyle id="5067">
+                    <colorMode>normal</colorMode>
+                    <width>4</width>
+                </LineStyle>
+            </Style>
+            <Style id="5070">
+                <LineStyle id="5071">
+                    <colorMode>normal</colorMode>
+                    <width>4</width>
+                </LineStyle>
+            </Style>
+            <Style id="5074">
+                <LineStyle id="5075">
+                    <colorMode>normal</colorMode>
+                    <width>4</width>
+                </LineStyle>
+            </Style>
+            <Style id="5078">
+                <LineStyle id="5079">
+                    <colorMode>normal</colorMode>
+                    <width>4</width>
+                </LineStyle>
+            </Style>
+            <Style id="5082">
+                <LineStyle id="5083">
+                    <colorMode>normal</colorMode>
+                    <width>4</width>
+                </LineStyle>
+            </Style>
+            <Style id="5086">
+                <LineStyle id="5087">
+                    <colorMode>normal</colorMode>
+                    <width>4</width>
+                </LineStyle>
+            </Style>
+            <name>旧山手通り</name>
+            <description>読み仮名: きゅうやまてどおり
+起点: 渋谷区猿楽町（鎗ヶ崎交差点） →
+終点: 渋谷区神泉町（渋目陸橋）</description>
+            <MultiGeometry id="5042">
+                <LineString id="5044">
+                    <coordinates>139.6911903,35.6572971,0.0 139.6912601,35.6571574,0.0 139.6913367,35.6570044,0.0 139.6913736,35.6569269,0.0 139.6914765,35.65663,0.0</coordinates>
+                </LineString>
+                <LineString id="5048">
+                    <coordinates>139.6914765,35.65663,0.0 139.6913151,35.6568595,0.0 139.6912957,35.6568991,0.0 139.6912471,35.6569983,0.0</coordinates>
+                </LineString>
+                <LineString id="5052">
+                    <coordinates>139.6914765,35.65663,0.0 139.6918144,35.6559699,0.0 139.6918539,35.6558953,0.0 139.6919263,35.6557897,0.0 139.6923901,35.6551621,0.0 139.6926078,35.6548584,0.0 139.6926816,35.6547749,0.0</coordinates>
+                </LineString>
+                <LineString id="5056">
+                    <coordinates>139.6926816,35.6547749,0.0 139.692745,35.6547014,0.0</coordinates>
+                </LineString>
+                <LineString id="5060">
+                    <coordinates>139.6926816,35.6547749,0.0 139.692745,35.6547014,0.0</coordinates>
+                </LineString>
+                <LineString id="5064">
+                    <coordinates>139.692745,35.6547014,0.0 139.6928254,35.6546045,0.0</coordinates>
+                </LineString>
+                <LineString id="5068">
+                    <coordinates>139.692745,35.6547014,0.0 139.6928254,35.6546045,0.0</coordinates>
+                </LineString>
+                <LineString id="5072">
+                    <coordinates>139.6928254,35.6546045,0.0 139.6930988,35.6542353,0.0 139.6931352,35.6541907,0.0 139.6932132,35.6540937,0.0 139.6933863,35.6538876,0.0 139.6934479,35.6538186,0.0 139.6934912,35.6537796,0.0 139.6939638,35.6533535,0.0 139.6942178,35.6531247,0.0 139.6945838,35.6527929,0.0 139.6949669,35.652453,0.0 139.6950384,35.6523861,0.0 139.6955274,35.6519463,0.0 139.6957001,35.6517957,0.0 139.6957371,35.6517627,0.0 139.6957783,35.6517238,0.0 139.6966322,35.6509656,0.0 139.6966759,35.6509268,0.0 139.6967777,35.6508364,0.0 139.6968085,35.650807,0.0 139.6969811,35.6506537,0.0 139.6971223,35.6505268,0.0 139.6973239,35.6503382,0.0 139.6982091,35.649544,0.0 139.6983042,35.6494619,0.0 139.698365,35.6494132,0.0 139.6984609,35.6493401,0.0 139.6986946,35.6491648,0.0 139.6989078,35.6490195,0.0 139.6991768,35.6488435,0.0 139.699302,35.6487735,0.0 139.6994298,35.6487079,0.0 139.6995622,35.6486485,0.0 139.6997026,35.6485957,0.0 139.6999477,35.6485146,0.0 139.7000773,35.64847,0.0 139.7001989,35.648421,0.0 139.7003049,35.6483706,0.0 139.7004189,35.6483114,0.0 139.7005366,35.6482419,0.0 139.7005907,35.6482079,0.0 139.7010242,35.647927,0.0 139.7016487,35.6475544,0.0 139.7018097,35.6474583,0.0 139.7018809,35.6474128,0.0 139.7019428,35.647363,0.0 139.7019912,35.6473047,0.0 139.7020921,35.6471642,0.0 139.7020972,35.6471571,0.0 139.7023413,35.6468153,0.0 139.7023896,35.6467335,0.0 139.7024136,35.6466637,0.0</coordinates>
+                </LineString>
+                <LineString id="5076">
+                    <coordinates>139.6931352,35.6541907,0.0 139.6930988,35.6542353,0.0 139.6928254,35.6546045,0.0</coordinates>
+                </LineString>
+                <LineString id="5080">
+                    <coordinates>139.7024136,35.6466637,0.0 139.7023531,35.6465668,0.0</coordinates>
+                </LineString>
+                <LineString id="5084">
+                    <coordinates>139.7024979,35.6465795,0.0 139.7024136,35.6466637,0.0</coordinates>
+                </LineString>
+            </MultiGeometry>
+        </Placemark>
+    </Document>
+</kml>
