@@ -1017,10 +1017,35 @@
                 <h3>Difficulty</h3>
                 <div class="form-group">
                     <select id="difficulty">
+                        <option value="user-created-tokyo">🗾 ユーザー作成（東京都通称道路名）</option>
                         <option value="tourist">Tourist (Easy)</option>
                         <option value="resident">Resident (Medium)</option>
                         <option value="taxi-driver">Taxi Driver (Hard)</option>
                     </select>
+                </div>
+                <div class="form-group" id="user-created-options" style="display: none;">
+                    <label for="kml-source">KMLファイルソース</label>
+                    <select id="kml-source">
+                        <option value="github">GitHub リポジトリ</option>
+                        <option value="custom">カスタムファイル</option>
+                        <option value="local">ローカルファイル</option>
+                    </select>
+                    <div id="github-options" style="margin-top: 0.5rem;">
+                        <label for="kml-selection">道路選択 (複数選択可)</label>
+                        <select id="kml-selection" multiple style="height: 120px;">
+                            <option value="all">📍 全ての道路（推奨）</option>
+                            <option value="rokubongi">六本木通り</option>
+                            <option value="yasukuni">靖国通り</option>
+                            <option value="meiji">明治通り</option>
+                        </select>
+                        <small style="color: #aaa; font-size: 0.75rem; display: block; margin-top: 0.25rem;">
+                            Ctrl/Cmd+クリックで複数選択
+                        </small>
+                    </div>
+                    <button id="load-user-kml" style="background: #2196F3; margin-top: 0.5rem;">📥 選択した道路データを読み込み</button>
+                    <div id="user-kml-status" style="margin-top: 0.5rem; padding: 0.5rem; background: #444; border-radius: 4px; font-size: 0.8rem;">
+                        💡 東京都の主要道路150本以上から選択可能
+                    </div>
                 </div>
             </div>
 
@@ -1597,31 +1622,35 @@
                 source: "default"
             },
             {
-                name: "渋谷スクランブル交差点",
-                points: [[{ lat: 35.6598, lng: 139.7006 }]],
+                name: "東京スカイツリー",
+                points: [[{ lat: 35.6895, lng: 139.6917 }]],
                 isEnclosedArea: false,
-                facilityType: "intersection",
-                category: "landmark",
-                importance: 85,
-                description: "世界で最も有名な歩行者用交差点",
+                facilityType: "tower",
+                category: "tourism",
+                importance: 95,
+                description: "634mの世界一高い電波塔",
                 source: "default"
             },
             {
-                name: "皇居",
-                points: [[
-                    { lat: 35.6852, lng: 139.7528 },
-                    { lat: 35.6820, lng: 139.7580 },
-                    { lat: 35.6795, lng: 139.7550 },
-                    { lat: 35.6830, lng: 139.7500 },
-                    { lat: 35.6852, lng: 139.7528 }
-                ]],
+                name: "浅草寺",
+                points: [[{ lat: 35.7148, lng: 139.7967 }]],
                 isEnclosedArea: true,
-                facilityType: "palace",
-                category: "landmark",
+                facilityType: "temple",
+                category: "culture",
                 importance: 95,
-                description: "日本の皇室の宮殿",
+                description: "東京最古の寺院で雷門が有名",
                 source: "default"
-            }
+            },
+            {
+                name: "東京ドームシティ",
+                points: [[{ lat: 35.7056, lng: 139.7514 }]],
+                isEnclosedArea: true,
+                facilityType: "stadium",
+                category: "entertainment",
+                importance: 75,
+                description: "野球場と遊園地が一体となった施設",
+                source: "default"
+            },
         ];
 
         const intersectionQuestions = [
@@ -1630,6 +1659,20 @@
                 points: [[{ lat: 35.6598, lng: 139.7006 }]],
                 importance: 90,
                 description: "世界で最も混雑する歩行者用交差点",
+                source: "default"
+            },
+            {
+                name: "秋葉原電気街口交差点",
+                points: [[{ lat: 35.6984, lng: 139.7730 }]],
+                importance: 85,
+                description: "秋葉原の中心となる主要交差点",
+                source: "default"
+            },
+            {
+                name: "池袋西口交差点",
+                points: [[{ lat: 35.7295, lng: 139.7100 }]],
+                importance: 80,
+                description: "池袋駅西口前の大きな交差点",
                 source: "default"
             },
             {
