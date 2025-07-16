@@ -1954,19 +1954,21 @@
                 const tileServers = [
                     {
                         url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        nolabelsUrl: 'https://tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',  // 実際にラベルの少ないタイルを用意
+                        nolabelsUrl: 'https://tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
                         attribution: '© OpenStreetMap contributors',
                         name: 'OpenStreetMap',
                         subdomains: ['a', 'b', 'c', 'd']
                     },
                     {
                         url: 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
+                        nolabelsUrl: 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_nolabels/{z}/{x}/{y}.png',
                         attribution: '© OpenStreetMap contributors, © CARTO',
                         subdomains: ['a', 'b', 'c', 'd'],
                         name: 'CartoDB Light'
                     },
                     {
                         url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+                        nolabelsUrl: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
                         attribution: '© Esri',
                         name: 'ESRI'
                     }
@@ -1982,14 +1984,16 @@
                         gameState.isMapInitialized = true;
                         return;
                     }
-                    
+
                     const server = tileServers[currentTileIndex];
                     log(`Trying tile server: ${server.name} (${currentTileIndex + 1}/${tileServers.length})`);
-                    
-                    const tileLayer = L.tileLayer(server.url, {
+
+                    const template = withLabels ? server.url : (server.nolabelsUrl || server.url);
+
+                    const tileLayer = L.tileLayer(template, {
                         attribution: server.attribution,
-                        maxZoom: 19,
                         subdomains: server.subdomains || [],
+                        maxZoom: 19,
                         errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
                         timeout: 8000,
                         detectRetina: true,
@@ -2006,33 +2010,34 @@
                         if (!tileLayerLoaded) {
                             tileLayerLoaded = true;
                             log(`Tiles loaded successfully from ${server.name}`);
-                            
-                            if (withLabels) {
-                                gameState.baseLayers.withLabels = tileLayer;
-                                if (server.name === 'CartoDB Light') {
-                                    gameState.baseLayers.withoutLabels = L.tileLayer(
-                                        'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_nolabels/{z}/{x}/{y}.png',
-                                        {
-                                            attribution: '© OpenStreetMap contributors, © CARTO',
-                                            subdomains: ['a', 'b', 'c', 'd'],
-                                            maxZoom: 19
-                                        }
-                                    );
-                                } else {
-                                    gameState.baseLayers.withoutLabels = tileLayer;
-                                }
-                                const toggleBtn = document.getElementById('toggle-labels');
-                                if (toggleBtn) toggleBtn.textContent = '街路名非表示';
-                            }
-                            
-                            setTimeout(() => {
-                                const debugInfo = document.getElementById('debug-info');
-                                if (debugInfo) {
-                                    debugInfo.style.display = 'none';
-                                }
-                            }, 2000);
                         }
+
+                        if (withLabels) {
+                            gameState.baseLayers.withLabels = tileLayer;
+                            gameState.baseLayers.withoutLabels = L.tileLayer(
+                                server.nolabelsUrl || server.url,
+                                {
+                                    attribution: server.attribution,
+                                    subdomains: server.subdomains || [],
+                                    maxZoom: 19
+                                }
+                            );
+                            const toggleBtn = document.getElementById('toggle-labels');
+                            if (toggleBtn) toggleBtn.textContent = '街路名非表示';
+                        } else {
+                            gameState.baseLayers.withoutLabels = tileLayer;
+                            const toggleBtn = document.getElementById('toggle-labels');
+                            if (toggleBtn) toggleBtn.textContent = '街路名表示';
+                        }
+
+                        setTimeout(() => {
+                            const debugInfo = document.getElementById('debug-info');
+                            if (debugInfo) {
+                                debugInfo.style.display = 'none';
+                            }
+                        }, 2000);
                     });
+
                     
                     tileLayer.on('tileerror', function(e) {
                         log(`Tile error from ${server.name}: ${e.error || 'Unknown error'}`);
@@ -2057,9 +2062,7 @@
                 };
                 
                 tryLoadTileLayer(true);
-                // 最初は showLabels の値に合わせてタイルをロード
-                tryLoadTileLayer(gameState.showLabels);
-                
+
                 gameState.streetLayer = L.layerGroup().addTo(gameState.map);
                 gameState.facilityLayer = L.layerGroup().addTo(gameState.map);
 
