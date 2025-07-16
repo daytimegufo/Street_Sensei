@@ -6,6 +6,18 @@
     <title>Back of Your Hand - Enhanced Map Challenge Game</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <script>
+        // ■問題エディタ用の保存関数（仮実装）
+    function saveProblem() {
+        log('saveProblem called');  // 実際の保存ロジックをここに実装
+        // 例：ゲームステートに customProblems を追加して一覧を再描画
+    }
+
+    // ■地域道路読み込み用の関数（仮実装）
+    async function loadRegionalRoadsOptimized(regionKey, strategyKey) {
+        log(`loadRegionalRoadsOptimized: region=${regionKey}, strategy=${strategyKey}`);
+        // 例：Overpass API を叩いて gameState.streetData に格納、
+        //      updateDataStatus() を呼ぶ、などの実装をここに
+    }
         // CDN fallback system
         window.leafletLoadAttempts = 0;
         window.checkLibrariesLoaded = function() {
