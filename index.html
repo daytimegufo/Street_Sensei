@@ -1496,6 +1496,208 @@
             }
         }
 
+        // Problem Editor Functions - 関数宣言で巻き上げを利用
+        function addPointFromMap(lat, lng) {
+            const advancedSettings = document.getElementById('advanced-settings');
+            if (!advancedSettings || advancedSettings.classList.contains('hidden')) {
+                return;
+            }
+            
+            gameState.currentEditPoints.push({ lat, lng });
+            updatePointsList();
+            
+            const marker = L.marker([lat, lng], {
+                icon: L.divIcon({
+                    className: 'edit-point-marker',
+                    html: '<div style="background: #2196F3; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white;"></div>',
+                    iconSize: [12, 12]
+                })
+            }).addTo(gameState.facilityLayer);
+            
+            showInfo(`Point added: ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+        }
+
+        function updatePointsList() {
+            const container = document.getElementById('current-points');
+            
+            if (gameState.currentEditPoints.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: #666;">No points added yet</div>';
+                return;
+            }
+            
+            container.innerHTML = '';
+            gameState.currentEditPoints.forEach((point, index) => {
+                const pointDiv = document.createElement('div');
+                pointDiv.className = 'point-item';
+                pointDiv.innerHTML = `
+                    <span class="point-coords">${point.lat.toFixed(6)}, ${point.lng.toFixed(6)}</span>
+                    <button class="point-remove" onclick="removePoint(${index})">Remove</button>
+                `;
+                container.appendChild(pointDiv);
+            });
+        }
+
+        function removePoint(index) {
+            gameState.currentEditPoints.splice(index, 1);
+            updatePointsList();
+            
+            gameState.facilityLayer.clearLayers();
+            gameState.currentEditPoints.forEach(point => {
+                L.marker([point.lat, point.lng], {
+                    icon: L.divIcon({
+                        className: 'edit-point-marker',
+                        html: '<div style="background: #2196F3; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white;"></div>',
+                        iconSize: [12, 12]
+                    })
+                }).addTo(gameState.facilityLayer);
+            });
+        }
+
+        function clearPoints() {
+            gameState.currentEditPoints = [];
+            updatePointsList();
+            gameState.facilityLayer.clearLayers();
+        }
+
+        function saveProblem() {
+            const name = document.getElementById('problem-name').value.trim();
+            const type = document.getElementById('problem-type').value;
+            const description = document.getElementById('problem-description').value.trim();
+            const importance = parseInt(document.getElementById('problem-importance').value);
+            
+            if (!name) {
+                showWarning('Please enter a problem name');
+                return;
+            }
+            
+            if (gameState.currentEditPoints.length === 0) {
+                showWarning('Please add at least one point for this problem');
+                return;
+            }
+            
+            const problem = {
+                name,
+                type,
+                description: description || `Custom ${type}`,
+                importance,
+                points: [gameState.currentEditPoints.slice()],
+                isEnclosedArea: gameState.currentEditPoints.length > 3 && type === 'facility',
+                source: 'custom',
+                id: Date.now()
+            };
+            
+            if (gameState.editingProblem) {
+                const index = gameState.customProblems.findIndex(p => p.id === gameState.editingProblem.id);
+                if (index !== -1) {
+                    gameState.customProblems[index] = problem;
+                    problem.id = gameState.editingProblem.id;
+                }
+                gameState.editingProblem = null;
+                showSuccess('Problem updated successfully!');
+            } else {
+                gameState.customProblems.push(problem);
+                showSuccess('Problem saved successfully!');
+            }
+            
+            saveCustomProblems();
+            updateCustomProblemsList();
+            clearProblemEditor();
+        }
+
+        function clearProblemEditor() {
+            document.getElementById('problem-name').value = '';
+            document.getElementById('problem-description').value = '';
+            document.getElementById('problem-importance').value = '70';
+            updateImportanceDisplay();
+            clearPoints();
+        }
+
+        function updateCustomProblemsList() {
+            const container = document.getElementById('custom-problems');
+            
+            if (gameState.customProblems.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: #666;">No custom problems yet</div>';
+                return;
+            }
+            
+            container.innerHTML = '';
+            gameState.customProblems.forEach(problem => {
+                const problemDiv = document.createElement('div');
+                problemDiv.className = 'problem-item';
+                problemDiv.innerHTML = `
+                    <div>
+                        <div class="problem-name">${problem.name}</div>
+                        <div class="problem-info">${problem.type} - Importance: ${problem.importance}</div>
+                    </div>
+                    <div class="problem-actions">
+                        <button class="btn-small btn-edit" onclick="editProblem(${problem.id})">Edit</button>
+                        <button class="btn-small btn-delete" onclick="deleteProblem(${problem.id})">Delete</button>
+                    </div>
+                `;
+                container.appendChild(problemDiv);
+            });
+        }
+
+        function editProblem(problemId) {
+            const problem = gameState.customProblems.find(p => p.id === problemId);
+            if (!problem) return;
+            
+            gameState.editingProblem = problem;
+            
+            document.getElementById('problem-name').value = problem.name;
+            document.getElementById('problem-type').value = problem.type;
+            document.getElementById('problem-description').value = problem.description;
+            document.getElementById('problem-importance').value = problem.importance;
+            updateImportanceDisplay();
+            
+            gameState.currentEditPoints = problem.points[0].slice();
+            updatePointsList();
+            
+            gameState.facilityLayer.clearLayers();
+            gameState.currentEditPoints.forEach(point => {
+                L.marker([point.lat, point.lng], {
+                    icon: L.divIcon({
+                        className: 'edit-point-marker',
+                        html: '<div style="background: #2196F3; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white;"></div>',
+                        iconSize: [12, 12]
+                    })
+                }).addTo(gameState.facilityLayer);
+            });
+            
+            showInfo('Editing problem: ' + problem.name);
+        }
+
+        function deleteProblem(problemId) {
+            if (confirm('Are you sure you want to delete this problem?')) {
+                gameState.customProblems = gameState.customProblems.filter(p => p.id !== problemId);
+                saveCustomProblems();
+                updateCustomProblemsList();
+                showInfo('Problem deleted');
+            }
+        }
+
+        function saveCustomProblems() {
+            try {
+                const data = JSON.stringify(gameState.customProblems);
+                window.localStorage?.setItem('customProblems', data);
+            } catch (error) {
+                console.warn('Could not save custom problems:', error);
+            }
+        }
+
+        function loadCustomProblems() {
+            try {
+                const data = window.localStorage?.getItem('customProblems');
+                if (data) {
+                    gameState.customProblems = JSON.parse(data);
+                    updateCustomProblemsList();
+                }
+            } catch (error) {
+                console.warn('Could not load custom problems:', error);
+                gameState.customProblems = [];
+            }
+        }
+
         // Check if Turf.js is loaded, if not load alternative or use fallback
         if (typeof turf === 'undefined') {
             console.warn('Turf.js not loaded, using fallback geometry functions');
