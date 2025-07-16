@@ -2055,6 +2055,8 @@
                 };
                 
                 tryLoadTileLayer(true);
+                // 最初は showLabels の値に合わせてタイルをロード
+                tryLoadTileLayer(gameState.showLabels);
                 
                 gameState.streetLayer = L.layerGroup().addTo(gameState.map);
                 gameState.facilityLayer = L.layerGroup().addTo(gameState.map);
@@ -3315,23 +3317,25 @@
 
         function toggleLabels() {
             try {
-                log('Toggle labels clicked. Current state: ' + gameState.showLabels);
-                gameState.showLabels = !gameState.showLabels;
-                
-                gameState.map.eachLayer(function(layer) {
-                    if (layer instanceof L.TileLayer) {
-                        gameState.map.removeLayer(layer);
-                    }
-                });
-                
+                const map = gameState.map;
+                const { withLabels, withoutLabels } = gameState.baseLayers;
+                if (!map || !withLabels || !withoutLabels) {
+                    console.warn('toggleLabels: ベースレイヤーが未初期化です');
+                    return;
+                }
+
                 if (gameState.showLabels) {
-                    gameState.baseLayers.withLabels.addTo(gameState.map);
-                    document.getElementById('toggle-labels').textContent = '街路名非表示';
-                    log('Switched to labels ON');
-                } else {
-                    gameState.baseLayers.withoutLabels.addTo(gameState.map);
+                    // ラベルを非表示に
+                    map.removeLayer(withLabels);
+                    withoutLabels.addTo(map);
+                    gameState.showLabels = false;
                     document.getElementById('toggle-labels').textContent = '街路名表示';
-                    log('Switched to labels OFF');
+                } else {
+                    // ラベルを表示に戻す
+                    map.removeLayer(withoutLabels);
+                    withLabels.addTo(map);
+                    gameState.showLabels = true;
+                    document.getElementById('toggle-labels').textContent = '街路名非表示';
                 }
                 
                 setTimeout(() => {
@@ -3629,9 +3633,11 @@
                     }, 100);
                 }
                 
-                if (gameState.showLabels) {
-                    toggleLabels();
-                }
+                setTimeout(() => {
+                    if (gameState.showLabels) {
+                        toggleLabels();
+                    }
+                }, 300);
                 
                 if (gameState.map) {
                     gameState.map.dragging.enable();
