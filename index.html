@@ -1953,9 +1953,11 @@
                 
                 const tileServers = [
                     {
-                        url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        nolabelsUrl: 'https://tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',  // 実際にラベルの少ないタイルを用意
                         attribution: '© OpenStreetMap contributors',
-                        name: 'OpenStreetMap'
+                        name: 'OpenStreetMap',
+                        subdomains: ['a', 'b', 'c', 'd']
                     },
                     {
                         url: 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
