@@ -989,17 +989,17 @@
         <div class="sidebar" id="sidebar">
             <!-- Game Section (always visible) -->
             <div class="setup-section">
-                <h3>Game Mode</h3>
+                <h3>ゲームモード</h3>
                 <div class="mode-tabs">
                     <div class="mode-tab active" data-mode="street">Street</div>
-                    <div class="mode-tab" data-mode="facility">Facility</div>
-                    <div class="mode-tab" data-mode="intersection">Intersection</div>
+                    <div class="mode-tab" data-mode="施設">Facility</div>
+                    <div class="mode-tab" data-mode="交差点">Intersection</div>
                     <div class="mode-tab" data-mode="reverse">Reverse</div>
                 </div>
             </div>
 
             <div class="setup-section">
-                <h3>Location & Range</h3>
+                <h3>出題範囲</h3>
                 <div class="form-group">
                     <label for="location">Center Location</label>
                     <input type="text" id="location" placeholder="Enter city or coordinates" value="Tokyo, Japan">
@@ -2019,6 +2019,8 @@
                                 } else {
                                     gameState.baseLayers.withoutLabels = tileLayer;
                                 }
+                                const toggleBtn = document.getElementById('toggle-labels');
+                                if (toggleBtn) toggleBtn.textContent = '街路名非表示';
                             }
                             
                             setTimeout(() => {
@@ -3627,11 +3629,9 @@
                     }, 100);
                 }
                 
-                setTimeout(() => {
-                    if (gameState.showLabels) {
-                        toggleLabels();
-                    }
-                }, 300);
+                if (gameState.showLabels) {
+                    toggleLabels();
+                }
                 
                 if (gameState.map) {
                     gameState.map.dragging.enable();
