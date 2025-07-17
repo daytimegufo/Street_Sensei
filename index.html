@@ -3542,6 +3542,15 @@
                     return;
                 }
                 
+                // Ensure advanced tools are closed so map clicks register answers
+                const adv = document.getElementById('advanced-settings');
+                const advToggle = document.getElementById('toggle-settings');
+                if (adv && !adv.classList.contains('hidden')) {
+                    adv.classList.add('hidden');
+                    if (advToggle) advToggle.textContent = '🔧 Show Advanced Tools';
+                    gameState.settingsVisible = true;
+                }
+
                 gameState.isPlaying = true;
                 gameState.score = 0;
                 gameState.streak = 0;
@@ -4396,6 +4405,15 @@
                 log('Ending game...');
 
                 setMapStyle('color');
+
+                // Close advanced tools if they are open
+                const adv = document.getElementById('advanced-settings');
+                const advToggle = document.getElementById('toggle-settings');
+                if (adv && !adv.classList.contains('hidden')) {
+                    adv.classList.add('hidden');
+                    if (advToggle) advToggle.textContent = '🔧 Show Advanced Tools';
+                    gameState.settingsVisible = true;
+                }
 
                 gameState.isPlaying = false;
                 stopTimer();
