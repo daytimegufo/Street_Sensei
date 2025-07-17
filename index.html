@@ -1563,6 +1563,7 @@
             correctMarker: null,
             streetLayer: null,
             facilityLayer: null,
+            maskGroup: null,
             center: { lat: 35.6762, lng: 139.6503 },
             range: 5,
             showLabels: true,
@@ -1939,6 +1940,7 @@
                         gameState.map.remove();
                         gameState.map = null;
                     }
+                    clearMask();
                 }
                 
                 if (window.innerWidth <= 768) {
@@ -2951,12 +2953,37 @@
             parseKmlData(yamateKmlData);
         }
 
-        function updateGameArea() {
+    function updateGameArea() {
             try {
                 if (gameState.gameArea) {
                     gameState.map.removeLayer(gameState.gameArea);
+    }                
+        function showMask() {
+            try {
+                clearMask();
+                const bounds = gameState.map.getBounds();
+                const outsideRects = [
+                    L.rectangle([[bounds.getNorth(), bounds.getWest()], [bounds.getNorth(), bounds.getEast()]], { color: '#000', fillOpacity: 0.7, interactive: false }),
+                    L.rectangle([[bounds.getSouth(), bounds.getWest()], [bounds.getSouth(), bounds.getEast()]], { color: '#000', fillOpacity: 0.7, interactive: false }),
+                    L.rectangle([[bounds.getNorth(), bounds.getWest()], [bounds.getSouth(), bounds.getWest()]], { color: '#000', fillOpacity: 0.7, interactive: false }),
+                    L.rectangle([[bounds.getNorth(), bounds.getEast()], [bounds.getSouth(), bounds.getEast()]], { color: '#000', fillOpacity: 0.7, interactive: false })
+                ];
+                gameState.maskGroup = L.layerGroup(outsideRects).addTo(gameState.map);
+            } catch (error) {
+                log('Error showing mask: ' + error.message);
+            }
+        }
+
+        function clearMask() {
+            try {
+                if (gameState.maskGroup && gameState.map) {
+                    gameState.map.removeLayer(gameState.maskGroup);
+                    gameState.maskGroup = null;
                 }
-                
+            } catch (error) {
+                log('Error clearing mask: ' + error.message);
+            }
+        }
                 gameState.gameArea = L.circle([gameState.center.lat, gameState.center.lng], {
                     radius: gameState.range * 1000,
                     fillColor: '#4CAF50',
@@ -3601,6 +3628,10 @@
                     gameState.showLabels = false;
                     document.getElementById('toggle-labels').textContent = '街路名表示';
                 }
+
+                if (gameState.map) {
+                    showMask();
+                }
                 
                 if (gameState.map) {
                     gameState.map.dragging.enable();
@@ -4131,6 +4162,7 @@
                 if (gameState.streetLayer) gameState.streetLayer.clearLayers();
                 if (gameState.facilityLayer) gameState.facilityLayer.clearLayers();
                 if (gameState.map) gameState.map.closePopup();
+                clearMask();
             } catch (error) {
                 log('Error clearing game elements: ' + error.message);
             }
@@ -4421,6 +4453,9 @@
             try {
                 log('Ending game...');
 
+                // マスクを除去
+                clearMask();
+
                 // オーバーレイを再表示できるようクラスを外す
                 document.body.classList.remove('game-playing');
 
@@ -4493,6 +4528,7 @@
 
                 // ゲーム状態を解除しオーバーレイを元に戻す
                 document.body.classList.remove('game-playing');
+                clearMask();
 
                 setMapStyle('color');
 
