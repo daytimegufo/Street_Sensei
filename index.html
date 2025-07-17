@@ -963,6 +963,10 @@
             pointer-events: auto;
             max-width: 200px;
         }
+
+        body.white-map #map {
+            filter: grayscale(100%) brightness(1.4);
+        }
     </style>
 </head>
 <body>
@@ -1553,7 +1557,8 @@
             facilityLayer: null,
             center: { lat: 35.6762, lng: 139.6503 },
             range: 5,
-            showLabels: false,
+            showLabels: true,
+            mapStyle: 'color',
             baseLayers: {},
             streetData: null,
             isLoadingData: false,
@@ -1976,7 +1981,9 @@
                 gameState.facilityLayer = L.layerGroup().addTo(gameState.map);
 
                 updateGameArea();
-                
+
+                setMapStyle('color');
+
                 gameState.isMapInitialized = true;
                 log('Map initialized successfully');
                 
@@ -3263,6 +3270,17 @@
             }
         }
 
+        function setMapStyle(style) {
+            const body = document.body;
+            if (style === 'white') {
+                body.classList.add('white-map');
+                gameState.mapStyle = 'white';
+            } else {
+                body.classList.remove('white-map');
+                gameState.mapStyle = 'color';
+            }
+        }
+
         function updateDataStatus() {
             const statusDiv = document.getElementById('data-status');
             if (statusDiv) {
@@ -3546,7 +3564,9 @@
                         gameState.map.invalidateSize();
                     }, 100);
                 }
-                
+
+                setMapStyle('white');
+
                 setTimeout(() => {
                     if (gameState.showLabels) {
                         toggleLabels();
@@ -3575,7 +3595,12 @@
         function nextQuestion() {
             try {
                 log('Loading next question...');
-                
+
+                setMapStyle('white');
+                if (gameState.showLabels) {
+                    toggleLabels();
+                }
+
                 clearGameElements();
                 gameState.totalQuestions++;
                 
@@ -3696,13 +3721,13 @@
             const totalLength = question.segmentLength ? question.segmentLength.toFixed(1) : 'N/A';
             const isComplete = question.isComplete ? '✓ Complete' : '○ Partial';
             
-            content += `<br><div style="margin-top: 8px; padding: 6px; background: #f0f0f0; border-radius: 3px; color: #333;">`;
-            content += `<strong>道路ネットワーク情報:</strong><br>`;
-            content += `• 状態: ${isComplete}<br>`;
-            content += `• セグメント数: ${segmentCount}<br>`;
-            content += `• 総延長: ${totalLength}km<br>`;
-            content += `• 重要度: ${question.importance}/100`;
-            content += `</div>`;
+//          content += `<br><div style="margin-top: 8px; padding: 6px; background: #f0f0f0; border-radius: 3px; color: #333;">`;
+//          content += `<strong>道路ネットワーク情報:</strong><br>`;
+//          content += `• 状態: ${isComplete}<br>`;
+//          content += `• セグメント数: ${segmentCount}<br>`;
+//          content += `• 総延長: ${totalLength}km<br>`;
+//          content += `• 重要度: ${question.importance}/100`;
+//          content += `</div>`;
             
             content += '<br><div style="margin-top: 10px; padding: 8px; background: #f8f9fa; border-radius: 4px; border-left: 3px solid #4CAF50;">';
             content += '<div style="font-size: 0.85em; font-weight: bold; color: #333; margin-bottom: 6px;">📖 詳細情報を調べる:</div>';
@@ -3716,8 +3741,8 @@
             content += `• <a href="${googleUrl}" target="_blank" style="color: #4CAF50; text-decoration: none;">Google検索</a>`;
             content += `</div>`;
             
-            content += '<div style="font-size: 0.75em; color: #666; margin-top: 4px;">※ 地域道路ネットワークからの完全なルート情報</div>';
-            content += '</div>';
+//          content += '<div style="font-size: 0.75em; color: #666; margin-top: 4px;">※ 地域道路ネットワークからの完全なルート情報</div>';
+//          content += '</div>';
             
             return content;
         }
@@ -4366,7 +4391,9 @@
         function endGame() {
             try {
                 log('Ending game...');
-                
+
+                setMapStyle('color');
+
                 gameState.isPlaying = false;
                 stopTimer();
                 
@@ -4413,7 +4440,9 @@
         function resetGame() {
             try {
                 log('Resetting game...');
-                
+
+                setMapStyle('color');
+
                 gameState.isPlaying = false;
                 gameState.score = 0;
                 gameState.streak = 0;
