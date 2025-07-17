@@ -992,6 +992,11 @@
         .leaflet-tile:not(.leaflet-tile-loaded) {
             visibility: hidden !important;
         }
+        /* Hide puzzle mask elements */
+        .puzzle-mask,
+        .mask-layer,
+        .mask-overlay,
+        .mask-rect { display: none !important; }
     </style>
 </head>
 <body>
@@ -1587,7 +1592,6 @@
             correctMarker: null,
             streetLayer: null,
             facilityLayer: null,
-            maskGroup: null,
             center: { lat: 35.6762, lng: 139.6503 },
             range: 5,
             showLabels: true,
@@ -3000,30 +3004,11 @@
                     gameState.map.removeLayer(gameState.gameArea);
     }                
         function showMask() {
-            try {
-                clearMask();
-                const bounds = gameState.map.getBounds();
-                const outsideRects = [
-                    L.rectangle([[bounds.getNorth(), bounds.getWest()], [bounds.getNorth(), bounds.getEast()]], { color: '#000', fillOpacity: 0.7, interactive: false }),
-                    L.rectangle([[bounds.getSouth(), bounds.getWest()], [bounds.getSouth(), bounds.getEast()]], { color: '#000', fillOpacity: 0.7, interactive: false }),
-                    L.rectangle([[bounds.getNorth(), bounds.getWest()], [bounds.getSouth(), bounds.getWest()]], { color: '#000', fillOpacity: 0.7, interactive: false }),
-                    L.rectangle([[bounds.getNorth(), bounds.getEast()], [bounds.getSouth(), bounds.getEast()]], { color: '#000', fillOpacity: 0.7, interactive: false })
-                ];
-                gameState.maskGroup = L.layerGroup(outsideRects).addTo(gameState.map);
-            } catch (error) {
-                log('Error showing mask: ' + error.message);
-            }
+            /* Mask disabled */
         }
 
         function clearMask() {
-            try {
-                if (gameState.maskGroup && gameState.map) {
-                    gameState.map.removeLayer(gameState.maskGroup);
-                    gameState.maskGroup = null;
-                }
-            } catch (error) {
-                log('Error clearing mask: ' + error.message);
-            }
+            /* Mask disabled */
         }
 
         function hideGameOverlays() {
