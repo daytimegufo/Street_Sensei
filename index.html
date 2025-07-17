@@ -1949,120 +1949,75 @@
                     wheelPxPerZoomLevel: 30
                 });
                 
-                log('Map object created, adding tiles...');
+                log('Map object created, setting up tile layers...');
                 
-                const tileServers = [
-                    {
-                        url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        attribution: '© OpenStreetMap contributors',
-                        name: 'OpenStreetMap'
-                    },
-                    {
-                        url: 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
-                        attribution: '© OpenStreetMap contributors, © CARTO',
-                        subdomains: ['a', 'b', 'c', 'd'],
-                        name: 'CartoDB Light'
-                    },
-                    {
-                        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
-                        attribution: '© Esri',
-                        name: 'ESRI'
-                    }
-                ];
+                // 透明タイル（エラー時用）
+                const transparentTile = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
                 
-                let tileLayerLoaded = false;
-                let currentTileIndex = 0;
+                // ラベルあり（OSM 標準）
+                const labelsUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
                 
-                const tryLoadTileLayer = (withLabels = true) => {
-                    if (currentTileIndex >= tileServers.length) {
-                        log('All tile servers failed, using basic fallback');
-                        document.getElementById('map').style.background = '#e0e0e0';
-                        gameState.isMapInitialized = true;
-                        return;
-                    }
-                    
-                    const server = tileServers[currentTileIndex];
-                    log(`Trying tile server: ${server.name} (${currentTileIndex + 1}/${tileServers.length})`);
-                    
-                    const tileLayer = L.tileLayer(server.url, {
-                        attribution: server.attribution,
-                        maxZoom: 19,
-                        subdomains: server.subdomains || [],
-                        errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
-                        timeout: 8000,
-                        detectRetina: true,
-                        updateWhenIdle: true,
-                        updateWhenZooming: false,
-                        keepBuffer: 2
-                    });
-                    
-                    tileLayer.on('loading', function() {
-                        log(`Loading tiles from ${server.name}...`);
-                    });
-                    
-                    tileLayer.on('load', function() {
-                        if (!tileLayerLoaded) {
-                            tileLayerLoaded = true;
-                            log(`Tiles loaded successfully from ${server.name}`);
-                            
-                            if (withLabels) {
-                                gameState.baseLayers.withLabels = tileLayer;
-                                if (server.name === 'CartoDB Light') {
-                                    gameState.baseLayers.withoutLabels = L.tileLayer(
-                                        'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_nolabels/{z}/{x}/{y}.png',
-                                        {
-                                            attribution: '© OpenStreetMap contributors, © CARTO',
-                                            subdomains: ['a', 'b', 'c', 'd'],
-                                            maxZoom: 19
-                                        }
-                                    );
-                                } else {
-                                    gameState.baseLayers.withoutLabels = tileLayer;
-                                }
-                                const toggleBtn = document.getElementById('toggle-labels');
-                                if (toggleBtn) toggleBtn.textContent = '街路名非表示';
-                            }
-                            
-                            setTimeout(() => {
-                                const debugInfo = document.getElementById('debug-info');
-                                if (debugInfo) {
-                                    debugInfo.style.display = 'none';
-                                }
-                            }, 2000);
-                        }
-                    });
-                    
-                    tileLayer.on('tileerror', function(e) {
-                        log(`Tile error from ${server.name}: ${e.error || 'Unknown error'}`);
-                        
-                        if (!tileLayerLoaded) {
-                            gameState.map.removeLayer(tileLayer);
-                            currentTileIndex++;
-                            setTimeout(() => tryLoadTileLayer(withLabels), 1000);
-                        }
-                    });
-                    
-                    setTimeout(() => {
-                        if (!tileLayerLoaded) {
-                            log(`Timeout for ${server.name}, trying next server...`);
-                            gameState.map.removeLayer(tileLayer);
-                            currentTileIndex++;
-                            tryLoadTileLayer(withLabels);
-                        }
-                    }, 10000);
-                    
-                    tileLayer.addTo(gameState.map);
+                // ラベルなし（CartoDB Light No Labels）
+                const noLabelsUrl = 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_nolabels/{z}/{x}/{y}.png';
+                
+                const tileOpts = {
+                    attribution: '© OpenStreetMap contributors, © CARTO',
+                    subdomains: ['a', 'b', 'c', 'd'],
+                    maxZoom: 19,
+                    errorTileUrl: transparentTile
                 };
                 
-                tryLoadTileLayer(true);
+                // 各レイヤーを作成
+                const layerWithLabels = L.tileLayer(labelsUrl, {
+                    attribution: '© OpenStreetMap contributors',
+                    maxZoom: 19,
+                    errorTileUrl: transparentTile
+                });
+                
+                const layerWithoutLabels = L.tileLayer(noLabelsUrl, tileOpts);
+                
+                // エラータイルを非表示にする
+                const hideErrorTile = e => {
+                    if (e.tile) e.tile.style.display = 'none';
+                };
+                
+                [layerWithLabels, layerWithoutLabels].forEach(layer => {
+                    layer.on('tileerror', hideErrorTile);
+                });
+                
+                // 初期表示はラベルあり
+                layerWithLabels.addTo(gameState.map);
+                gameState.showLabels = true;
+                
+                // baseLayers を gameState に保存
+                gameState.baseLayers = {
+                    withLabels: layerWithLabels,
+                    withoutLabels: layerWithoutLabels
+                };
+                
+                // レイヤーコントロールを追加
+                const baseMaps = {
+                    'Labels On': layerWithLabels,
+                    'Labels Off': layerWithoutLabels
+                };
+                
+                gameState.layerControl = L.control.layers(baseMaps).addTo(gameState.map);
+                
+                // レイヤー切り替えイベントを監視
+                gameState.map.on('baselayerchange', function(e) {
+                    gameState.showLabels = (e.name === 'Labels On');
+                    updateToggleButton();
+                    log(`Layer changed to: ${e.name} (showLabels: ${gameState.showLabels})`);
+                });
                 
                 gameState.streetLayer = L.layerGroup().addTo(gameState.map);
                 gameState.facilityLayer = L.layerGroup().addTo(gameState.map);
 
                 updateGameArea();
+                updateToggleButton();
                 
                 gameState.isMapInitialized = true;
-                log('Map initialized successfully');
+                log('Map initialized successfully with layer control');
                 
                 gameState.map.on('click', function(e) {
                     log('Map click detected at: ' + e.latlng.lat.toFixed(4) + ', ' + e.latlng.lng.toFixed(4));
