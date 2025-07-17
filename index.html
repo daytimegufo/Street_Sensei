@@ -1237,7 +1237,7 @@
                 <div class="map-control-btn" id="zoom-out" title="Zoom Out">−</div>
             </div>
             
-            <div class="layer-toggle" id="toggle-labels" title="Toggle Street Names">
+            <div class="layer-toggle" id="toggle-labels" title="街路名表示切替（ゲーム中は次の問題で自動的に非表示に戻ります）">
                 街路名表示/非表示
             </div>
 
@@ -2137,9 +2137,7 @@
                 // レイヤー切り替えイベントを監視
                 gameState.map.on('baselayerchange', function(e) {
                     gameState.showLabels = (e.name === 'Labels On');
-                    if (typeof updateToggleButton === 'function') {
-                        updateToggleButton();
-                    }
+                    updateToggleButton();
                     log(`Layer changed to: ${e.name} (showLabels: ${gameState.showLabels})`);
                 });
                 
@@ -2149,9 +2147,7 @@
                 updateGameArea();
                 
                 // 安全に updateToggleButton を呼び出す
-                if (typeof updateToggleButton === 'function') {
-                    updateToggleButton();
-                }
+                updateToggleButton();
                 
                 gameState.isMapInitialized = true;
                 log('Map initialized successfully with layer control');
@@ -2221,8 +2217,19 @@
             try {
                 const toggleBtn = document.getElementById('toggle-labels');
                 if (toggleBtn) {
-                    toggleBtn.textContent = gameState.showLabels ? '街路名非表示' : '街路名表示';
-                    log('Toggle button updated: ' + (gameState.showLabels ? 'Labels ON' : 'Labels OFF'));
+                    const baseText = gameState.showLabels ? '街路名非表示' : '街路名表示';
+                    toggleBtn.textContent = baseText;
+                    
+                    // ゲーム中は次の問題で自動的に非表示に戻ることを示す
+                    if (gameState.isPlaying && gameState.showLabels) {
+                        toggleBtn.title = '街路名表示中（次の問題で自動的に非表示に戻ります）';
+                    } else if (gameState.isPlaying && !gameState.showLabels) {
+                        toggleBtn.title = '街路名非表示中（手動で表示可能ですが、次の問題で自動的に非表示に戻ります）';
+                    } else {
+                        toggleBtn.title = '街路名表示切替';
+                    }
+                    
+                    log('Toggle button updated: ' + (gameState.showLabels ? 'Labels ON' : 'Labels OFF') + (gameState.isPlaying ? ' (Game Active)' : ''));
                 }
             } catch (error) {
                 log('Error updating toggle button: ' + error.message);
@@ -2537,13 +2544,13 @@
                 
                 if (gameState.showLabels) {
                     gameState.baseLayers.withLabels.addTo(gameState.map);
-                    document.getElementById('toggle-labels').textContent = '街路名非表示';
                     log('Switched to labels ON');
                 } else {
                     gameState.baseLayers.withoutLabels.addTo(gameState.map);
-                    document.getElementById('toggle-labels').textContent = '街路名表示';
                     log('Switched to labels OFF');
                 }
+                
+                updateToggleButton();
                 
                 setTimeout(() => {
                     gameState.map.invalidateSize();
@@ -2976,7 +2983,9 @@
                     }, 100);
                 }
                 
+                // ゲーム開始時に街路名非表示（白地図）に切り替え
                 if (gameState.showLabels) {
+                    log('Auto-switching to no-labels mode for game start');
                     toggleLabels();
                 }
                 
@@ -2987,6 +2996,11 @@
                     gameState.map.scrollWheelZoom.enable();
                     gameState.map.boxZoom.enable();
                     gameState.map.keyboard.enable();
+                }
+                
+                // モバイルゲームUIを表示
+                if (window.innerWidth <= 768) {
+                    showMobileGameUI();
                 }
                 
                 nextQuestion();
@@ -3005,6 +3019,12 @@
                 
                 clearGameElements();
                 gameState.totalQuestions++;
+                
+                // 次の問題出題時に自動的に街路名非表示（白地図）に切り替え
+                if (gameState.showLabels) {
+                    log('Auto-switching to no-labels mode for next question');
+                    toggleLabels();
+                }
                 
                 gameState.timer = 30;
                 startTimer();
@@ -3027,6 +3047,15 @@
                 
                 updateUI();
                 updateMobileControls();
+                
+                // モバイルでも問題文を更新
+                if (window.innerWidth <= 768) {
+                    const questionText = gameState.currentMode === 'reverse' ? 
+                        `強調表示された場所は何ですか？` : 
+                        `見つけてください: ${gameState.currentQuestion?.name || ''}`;
+                    const questionType = `${getModeName(gameState.currentMode)}チャレンジ`;
+                    updateMobileQuestion(questionText, questionType);
+                }
                 
                 log('Next question loaded');
             } catch (error) {
@@ -3726,7 +3755,9 @@
                 
                 hideMobileGameUI();
                 
+                // ゲーム終了時に街路名表示を復元
                 if (!gameState.showLabels) {
+                    log('Restoring labels display after game end');
                     toggleLabels();
                 }
                 
@@ -3789,7 +3820,9 @@
                 if (resultsOverlay) resultsOverlay.classList.add('hidden');
                 if (startBtn) startBtn.style.display = 'block';
                 
+                // ゲームリセット時に街路名表示を復元
                 if (!gameState.showLabels) {
+                    log('Restoring labels display after game reset');
                     toggleLabels();
                 }
                 
