@@ -182,6 +182,45 @@
             touch-action: manipulation;
         }
 
+        /* Leaflet tile layer optimization */
+        .leaflet-tile-container {
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+            image-rendering: pixelated;
+        }
+
+        .leaflet-tile {
+            max-width: none !important;
+            max-height: none !important;
+            border: none !important;
+            background: transparent !important;
+            transition: opacity 0.3s ease;
+        }
+
+        .leaflet-tile-loaded {
+            opacity: 1 !important;
+        }
+
+        .leaflet-tile-loading {
+            opacity: 0.5 !important;
+        }
+
+        /* Hide broken tiles */
+        .leaflet-tile[src=""], 
+        .leaflet-tile[src*="data:image/gif"] {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
+        /* Prevent tile flickering */
+        .leaflet-fade-anim .leaflet-tile {
+            transition: opacity 0.3s ease !important;
+        }
+
+        .leaflet-zoom-anim .leaflet-tile {
+            transition: none !important;
+        }
+
         .setup-section {
             margin-bottom: 1.5rem;
         }
@@ -1942,13 +1981,15 @@
                     tap: true,
                     tapTolerance: 15,
                     touchZoom: true,
-                    bounceAtZoomLimits: false,
+                    bounceAtZoomLimits: true,
                     preferCanvas: true,
                     maxZoom: 18,
-                    minZoom: 8,
-                    zoomSnap: 0.5,
-                    zoomDelta: 0.5,
-                    wheelPxPerZoomLevel: 30
+                    minZoom: 6,
+                    zoomSnap: 1,
+                    zoomDelta: 1,
+                    wheelPxPerZoomLevel: 60,
+                    maxBounds: [[20, 120], [50, 155]], // 日本周辺に制限
+                    maxBoundsViscosity: 0.7
                 });
                 
                 log('Map object created, setting up tile layers...');
@@ -1956,35 +1997,89 @@
                 // 透明タイル（エラー時用）
                 const transparentTile = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
                 
-                // ラベルあり（OSM 標準）
-                const labelsUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-                
-                // ラベルなし（CartoDB Light No Labels）
-                const noLabelsUrl = 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_nolabels/{z}/{x}/{y}.png';
-                
-                const tileOpts = {
-                    attribution: '© OpenStreetMap contributors, © CARTO',
-                    subdomains: ['a', 'b', 'c', 'd'],
-                    maxZoom: 19,
-                    errorTileUrl: transparentTile
+                // 共通のタイルオプション
+                const commonTileOpts = {
+                    subdomains: ['a', 'b', 'c'],
+                    maxZoom: 18,
+                    minZoom: 3,
+                    tileSize: 256,
+                    errorTileUrl: transparentTile,
+                    crossOrigin: true,
+                    detectRetina: false
                 };
                 
-                // 各レイヤーを作成
-                const layerWithLabels = L.tileLayer(labelsUrl, {
-                    attribution: '© OpenStreetMap contributors',
-                    maxZoom: 19,
-                    errorTileUrl: transparentTile
+                // 複数のタイルサーバーを設定（フォールバック用）
+                const tileServers = {
+                    osm: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    osmFallback: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    cartoLight: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png',
+                    cartoLightFallback: 'https://cartodb-basemaps-a.global.ssl.fastly.net/light_nolabels/{z}/{x}/{y}.png'
+                };
+                
+                // ラベルあり（OSM 標準）
+                const layerWithLabels = L.tileLayer(tileServers.osm, {
+                    ...commonTileOpts,
+                    attribution: '© OpenStreetMap contributors'
                 });
                 
-                const layerWithoutLabels = L.tileLayer(noLabelsUrl, tileOpts);
+                // ラベルなし（CartoDB Light No Labels）
+                const layerWithoutLabels = L.tileLayer(tileServers.cartoLight, {
+                    ...commonTileOpts,
+                    attribution: '© OpenStreetMap contributors, © CARTO'
+                });
                 
-                // エラータイルを非表示にする
-                const hideErrorTile = e => {
-                    if (e.tile) e.tile.style.display = 'none';
+                // フォールバック機能
+                let retryCount = 0;
+                const maxRetries = 2;
+                
+                const createFallbackLayer = function(isLabeled) {
+                    retryCount++;
+                    log(`Creating fallback layer ${retryCount}/${maxRetries} for ${isLabeled ? 'labeled' : 'unlabeled'} tiles`);
+                    
+                    if (retryCount >= maxRetries) {
+                        log('Max retries reached for tile server');
+                        return null;
+                    }
+                    
+                    const fallbackUrl = isLabeled ? tileServers.osmFallback : tileServers.cartoLightFallback;
+                    return L.tileLayer(fallbackUrl, {
+                        ...commonTileOpts,
+                        attribution: '© OpenStreetMap contributors' + (isLabeled ? '' : ', © CARTO')
+                    });
+                };
+                
+                // エラータイル処理を強化
+                const handleTileError = function(e) {
+                    if (e.tile) {
+                        e.tile.style.display = 'none';
+                        e.tile.style.visibility = 'hidden';
+                        e.tile.style.opacity = '0';
+                        
+                        // 透明画像に置き換え
+                        setTimeout(() => {
+                            if (e.tile.parentNode) {
+                                e.tile.src = transparentTile;
+                            }
+                        }, 100);
+                    }
+                };
+                
+                // タイル読み込み成功時の処理
+                const handleTileLoad = function(e) {
+                    if (e.tile) {
+                        e.tile.style.opacity = '1';
+                        e.tile.style.visibility = 'visible';
+                    }
                 };
                 
                 [layerWithLabels, layerWithoutLabels].forEach(layer => {
-                    layer.on('tileerror', hideErrorTile);
+                    layer.on('tileerror', handleTileError);
+                    layer.on('tileload', handleTileLoad);
+                    layer.on('tileloadstart', function(e) {
+                        if (e.tile) {
+                            e.tile.style.opacity = '0.5';
+                        }
+                    });
                 });
                 
                 // 初期表示はラベルあり
@@ -1996,6 +2091,40 @@
                     withLabels: layerWithLabels,
                     withoutLabels: layerWithoutLabels
                 };
+                
+                // タイルサーバーの健全性チェック
+                function checkTileServerHealth() {
+                    const testUrls = [
+                        'https://a.tile.openstreetmap.org/10/512/341.png',
+                        'https://a.basemaps.cartocdn.com/light_nolabels/10/512/341.png'
+                    ];
+                    
+                    let healthyServers = 0;
+                    let totalServers = testUrls.length;
+                    
+                    testUrls.forEach((url, index) => {
+                        const img = new Image();
+                        img.onload = function() {
+                            healthyServers++;
+                            log(`Tile server ${index + 1} is healthy`);
+                            
+                            if (healthyServers === totalServers) {
+                                log('All tile servers are healthy');
+                            }
+                        };
+                        img.onerror = function() {
+                            log(`Warning: Tile server ${index + 1} connectivity issues detected`);
+                            
+                            if (healthyServers === 0 && index === totalServers - 1) {
+                                showWarning('地図タイルの読み込みに問題があります。ネットワーク接続を確認してください。');
+                            }
+                        };
+                        img.src = url;
+                    });
+                }
+                
+                // 地図読み込み完了後にタイルサーバーをチェック
+                setTimeout(checkTileServerHealth, 2000);
                 
                 // レイヤーコントロールを追加
                 const baseMaps = {
