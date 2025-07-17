@@ -988,6 +988,10 @@
         .leaflet-tile {
             background-color: transparent !important;
         }
+        .leaflet-tile-loading,
+        .leaflet-tile:not(.leaflet-tile-loaded) {
+            visibility: hidden !important;
+        }
     </style>
 </head>
 <body>
@@ -1985,13 +1989,16 @@
                 });
                 
                 log('Map object created, adding tiles...');
-                
+
+                const transparentTile = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+
                 const labelsUrl   = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
                 const noLabelsUrl = 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_nolabels/{z}/{x}/{y}.png';
                 const opts = {
                     attribution: '© OpenStreetMap contributors, © CARTO',
                     subdomains: ['a', 'b', 'c', 'd'],
-                    maxZoom: 19
+                    maxZoom: 19,
+                    errorTileUrl: transparentTile
                 };
 
                 gameState.baseLayers = {
