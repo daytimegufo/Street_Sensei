@@ -2012,19 +2012,22 @@
 
                 const labelsUrl   = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
                 const noLabelsUrl = 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_nolabels/{z}/{x}/{y}.png';
-                const opts = {
+                const tileOpts = {
                     attribution: '© OpenStreetMap contributors, © CARTO',
                     subdomains: ['a', 'b', 'c', 'd'],
                     maxZoom: 19,
                     errorTileUrl: transparentTile
                 };
 
+                const layerWithLabels    = L.tileLayer(labelsUrl,   tileOpts);
+                const layerWithoutLabels = L.tileLayer(noLabelsUrl, tileOpts);
+
                 gameState.baseLayers = {
-                    withLabels: L.tileLayer(labelsUrl, opts),
-                    withoutLabels: L.tileLayer(noLabelsUrl, opts)
+                    withLabels: layerWithLabels,
+                    withoutLabels: layerWithoutLabels
                 };
 
-                gameState.baseLayers.withLabels.addTo(gameState.map);
+                layerWithLabels.addTo(gameState.map);
                 gameState.baseLayers.withLabels.on('tileerror', e => {
                     if (e.tile) e.tile.style.display = 'none';
                 });
@@ -2036,8 +2039,8 @@
                 if (toggleBtn) toggleBtn.textContent = '街路名非表示';
 
                 L.control.layers({
-                    'カラー表示':   gameState.baseLayers.withLabels,
-                    'ラベル非表示': gameState.baseLayers.withoutLabels
+                    'Labels On':  layerWithLabels,
+                    'Labels Off': layerWithoutLabels
                 }).addTo(gameState.map);
 
                 gameState.streetLayer = L.layerGroup().addTo(gameState.map);
