@@ -1860,48 +1860,6 @@
         let currentLoadingStrategy = LOADING_STRATEGIES['immediate'];
 
         // Initialize the game
-        function initGame() {
-            try {
-                log('Initializing enhanced game...');
-                
-                if (typeof L === 'undefined') {
-                    log('Leaflet not loaded, waiting...');
-                    setTimeout(initGame, 500);
-                    return;
-                }
-                
-                initMap();
-                bindEvents();
-                updateRangeDisplay();
-                updateImportanceDisplay();
-                loadCustomProblems();
-                
-                if (navigator.geolocation && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
-                    log('Geolocation available, attempting to get current location...');
-                    setTimeout(getCurrentLocation, 1000);
-                } else {
-                    if (gameState.map && currentRegionalConfig) {
-                        const bbox = currentRegionalConfig.bbox;
-                        const centerLat = (bbox.north + bbox.south) / 2;
-                        const centerLng = (bbox.east + bbox.west) / 2;
-                        gameState.center = { lat: centerLat, lng: centerLng };
-                        gameState.map.setView([centerLat, centerLng], 9);
-                        updateGameArea();
-                    }
-                }
-                
-                log('Enhanced game initialized successfully');
-            } catch (error) {
-                log('Error initializing game: ' + error.message);
-                console.error('Initialization error:', error);
-                
-                setTimeout(() => {
-                    log('Retrying game initialization...');
-                    initGame();
-                }, 2000);
-            }
-        }
-
         function initMap() {
             try {
                 log('Creating map...');
@@ -2006,7 +1964,9 @@
                 // レイヤー切り替えイベントを監視
                 gameState.map.on('baselayerchange', function(e) {
                     gameState.showLabels = (e.name === 'Labels On');
-                    updateToggleButton();
+                    if (typeof updateToggleButton === 'function') {
+                        updateToggleButton();
+                    }
                     log(`Layer changed to: ${e.name} (showLabels: ${gameState.showLabels})`);
                 });
                 
@@ -2014,7 +1974,11 @@
                 gameState.facilityLayer = L.layerGroup().addTo(gameState.map);
 
                 updateGameArea();
-                updateToggleButton();
+                
+                // 安全に updateToggleButton を呼び出す
+                if (typeof updateToggleButton === 'function') {
+                    updateToggleButton();
+                }
                 
                 gameState.isMapInitialized = true;
                 log('Map initialized successfully with layer control');
@@ -2050,11 +2014,22 @@
                 log('Error creating map: ' + error.message);
                 console.error('Map initialization error:', error);
                 
-                setTimeout(() => {
-                    log('Retrying map initialization...');
-                    gameState.isMapInitialized = false;
-                    initMap();
-                }, 3000);
+                // 無限ループを防ぐため、リトライ回数を制限
+                if (gameState.initRetryCount < 3) {
+                    gameState.initRetryCount++;
+                    setTimeout(() => {
+                        log(`Retrying map initialization... (attempt ${gameState.initRetryCount}/3)`);
+                        initMap();
+                    }, 3000);
+                } else {
+                    log('Max retry attempts reached. Please refresh the page.');
+                    const debugInfo = document.getElementById('debug-info');
+                    if (debugInfo) {
+                        debugInfo.innerHTML = 'Map initialization failed. <button onclick="location.reload()" style="background:#f44336;color:white;border:none;padding:0.5rem;border-radius:4px;margin-left:0.5rem;">Refresh Page</button>';
+                        debugInfo.style.display = 'block';
+                        debugInfo.style.background = '#f44336';
+                    }
+                }
             }
         }
 
