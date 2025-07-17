@@ -1860,6 +1860,50 @@
         let currentLoadingStrategy = LOADING_STRATEGIES['immediate'];
 
         // Initialize the game
+        function initGame() {
+            try {
+                log('Initializing game...');
+                
+                // Check if required libraries are loaded
+                const libCheck = checkLibraryLoading();
+                if (!libCheck.leaflet) {
+                    log('Leaflet not loaded yet, retrying...');
+                    setTimeout(initGame, 1000);
+                    return;
+                }
+                
+                // Initialize components in correct order
+                initMap();
+                bindEvents();
+                loadCustomProblems();
+                updateRangeDisplay();
+                updateImportanceDisplay();
+                updateDataStatus();
+                
+                log('Game initialization complete');
+            } catch (error) {
+                log('Error initializing game: ' + error.message);
+                console.error('Game initialization error:', error);
+                
+                // Retry initialization
+                if (gameState.initRetryCount < 3) {
+                    gameState.initRetryCount++;
+                    setTimeout(() => {
+                        log(`Retrying game initialization... (attempt ${gameState.initRetryCount}/3)`);
+                        initGame();
+                    }, 2000);
+                } else {
+                    log('Max retry attempts reached. Please refresh the page.');
+                    const debugInfo = document.getElementById('debug-info');
+                    if (debugInfo) {
+                        debugInfo.innerHTML = 'Game initialization failed. <button onclick="location.reload()" style="background:#f44336;color:white;border:none;padding:0.5rem;border-radius:4px;margin-left:0.5rem;">Refresh Page</button>';
+                        debugInfo.style.display = 'block';
+                        debugInfo.style.background = '#f44336';
+                    }
+                }
+            }
+        }
+
         function initMap() {
             try {
                 log('Creating map...');
@@ -1983,6 +2027,17 @@
                 gameState.isMapInitialized = true;
                 log('Map initialized successfully with layer control');
                 
+                // Update debug info to show success
+                const debugInfo = document.getElementById('debug-info');
+                if (debugInfo) {
+                    debugInfo.innerHTML = '✅ Map ready for interaction';
+                    debugInfo.style.background = '#4CAF50';
+                    debugInfo.style.color = 'white';
+                    setTimeout(() => {
+                        debugInfo.style.display = 'none';
+                    }, 2000);
+                }
+                
                 gameState.map.on('click', function(e) {
                     log('Map click detected at: ' + e.latlng.lat.toFixed(4) + ', ' + e.latlng.lng.toFixed(4));
                     handleMapClick(e);
@@ -2033,919 +2088,16 @@
             }
         }
 
-        // **修正されたloadRegionalRoadsOptimized関数**
-        function loadRegionalRoadsOptimized(regionKey = 'south-kanto', strategyKey = 'immediate') {
-            return new Promise((resolve, reject) => {
-                if (gameState.isLoadingData) {
-                    log('Already loading data...');
-                    resolve(false);
-                    return;
-                }
-                
-                const config = REGIONAL_CONFIGS[regionKey];
-                const strategy = LOADING_STRATEGIES[strategyKey];
-                
-                if (!config || !strategy) {
-                    reject(new Error('Invalid configuration'));
-                    return;
-                }
-                
-                currentRegionalConfig = config;
-                currentLoadingStrategy = strategy;
-                
-                // Check cache first
-                const cacheKey = `${regionKey}-${strategyKey}`;
-                const cachedData = ROAD_CACHE.load(regionKey, strategyKey);
-                if (cachedData && cachedData.length > 0) {
-                    gameState.streetData = cachedData;
-                    log(`Loaded ${cachedData.length} roads from cache`);
-                    showSuccess(`✅ キャッシュから${cachedData.length}道路を読み込み完了！`);
-                    updateDataStatus();
-                    resolve(true);
-                    return;
-                }
-                
-                gameState.isLoadingData = true;
-                
-                const loadBtn = document.getElementById('load-street-data');
-                if (loadBtn) {
-                    loadBtn.innerHTML = '<span class="loading"></span>Loading Roads...';
-                    loadBtn.disabled = true;
-                    loadBtn.classList.add('loading');
-                }
-                
-                log(`Loading roads with ${strategy.name} strategy for ${config.name}...`);
-                
-                // Prioritize roads by importance
-                const prioritizedRoads = [...config.majorRoads].sort((a, b) => {
-                    const importanceA = getStaticRoadImportance(a);
-                    const importanceB = getStaticRoadImportance(b);
-                    return importanceB - importanceA;
-                });
-                
-                // Determine how many roads to load initially
-                const roadsToLoad = strategy.preloadCount === -1 ? 
-                    prioritizedRoads : 
-                    prioritizedRoads.slice(0, strategy.preloadCount);
-                
-                const allRoads = [];
-                let processedRoads = 0;
-                const totalRoads = roadsToLoad.length;
-                
-                // Process roads in optimized batches
-                const processBatchOptimized = async (roadBatch, batchIndex) => {
-                    const batchQueries = roadBatch.map(road => `way["name"="${road}"](${config.bbox.south},${config.bbox.west},${config.bbox.north},${config.bbox.east})`);
-                    
-                    const query = `
-                        [out:json][timeout:30];
-                        (
-                            ${batchQueries.join(';\n            ')};
-                        );
-                        out geom;
-                    `;
-                    
-                    const encodedQuery = encodeURIComponent(query);
-                    const url = `https://overpass-api.de/api/interpreter?data=${encodedQuery}`;
-                    
-                    log(`${strategy.name}: Batch ${batchIndex + 1}/${Math.ceil(totalRoads / strategy.batchSize)}: ${roadBatch.join(', ')}`);
-                    
-                    try {
-                        const response = await fetch(url);
-                        if (!response.ok) {
-                            throw new Error(`HTTP error! status: ${response.status}`);
-                        }
-                        
-                        const data = await response.json();
-                        
-                        if (data.elements && data.elements.length > 0) {
-                            const processedElements = processOverpassDataRegional(data.elements);
-                            allRoads.push(...processedElements);
-                        }
-                        
-                        processedRoads += roadBatch.length;
-                        
-                        // Update progress with strategy info
-                        if (loadBtn) {
-                            const progress = Math.round((processedRoads / totalRoads) * 100);
-                            loadBtn.innerHTML = `<span class="loading"></span>${strategy.name} ${progress}%`;
-                        }
-                        
-                        // Optimized delay
-                        if (batchIndex < Math.ceil(totalRoads / strategy.batchSize) - 1) {
-                            await new Promise(resolve => setTimeout(resolve, strategy.delay));
-                        }
-                        
-                    } catch (error) {
-                        log(`Error in batch ${batchIndex + 1}: ${error.message}`);
-                    }
-                };
-                
-                // Process batches with optimized timing
-                const processBatches = async () => {
-                    const batchSize = strategy.batchSize;
-                    for (let i = 0; i < roadsToLoad.length; i += batchSize) {
-                        const batch = roadsToLoad.slice(i, i + batchSize);
-                        await processBatchOptimized(batch, Math.floor(i / batchSize));
-                    }
-                    
-                    // Final processing and caching
-                    if (allRoads.length > 0) {
-                        gameState.streetData = allRoads;
-                        
-                        // Save to cache
-                        ROAD_CACHE.save(regionKey, strategyKey, allRoads);
-                        
-                        const breakdown = getStreetBreakdownByDifficulty();
-                        const completeRoads = allRoads.filter(r => r.isComplete).length;
-                        
-                        showSuccess(`🎉 ${strategy.name}完了! ${allRoads.length}道路 (${completeRoads}完全). Tourist: ${breakdown.tourist}, Resident: ${breakdown.resident}, Taxi: ${breakdown.taxi}`);
-                        
-                        // Start background loading for remaining roads if strategy is not complete
-                        if (strategy.preloadCount !== -1 && prioritizedRoads.length > strategy.preloadCount) {
-                            startBackgroundLoading(regionKey, prioritizedRoads.slice(strategy.preloadCount));
-                        }
-                        
-                        updateDataStatus();
-                        resolve(true);
-                    } else {
-                        throw new Error('No road data found for this region');
-                    }
-                };
-                
-                processBatches().catch(error => {
-                    log('Error loading optimized roads: ' + error.message);
-                    showWarning(`Failed to load regional data: ${error.message}. Using fallback data.`);
-                    
-                    gameState.streetData = streetQuestions;
-                    updateDataStatus();
-                    resolve(false);
-                }).finally(() => {
-                    gameState.isLoadingData = false;
-                    if (loadBtn) {
-                        loadBtn.textContent = '🔄 Reload Roads';
-                        loadBtn.disabled = false;
-                        loadBtn.classList.remove('loading');
-                    }
-                });
-            });
-        }
-
-        // Static road importance scoring for prioritization
-        function getStaticRoadImportance(roadName) {
-            const veryFamousRoads = {
-                '環状七号線': 95, '環状八号線': 95, '山手通り': 90,
-                '甲州街道': 90, '青梅街道': 85, '明治通り': 85,
-                '昭和通り': 85, '中央通り': 85, '外苑東通り': 80,
-                '靖国通り': 80, '新宿通り': 80, '表参道': 90,
-                '六本木通り': 75, '国道1号': 95, '国道14号': 90,
-                '国道15号': 90, '国道16号': 90, '国道20号': 95,
-                '国道246号': 90, '国道357号': 85
-            };
-            
-            const wellKnownRoads = {
-                '井の頭通り': 75, '玉川通り': 75, '世田谷通り': 70,
-                '駒沢通り': 70, '多摩川通り': 70, '五日市街道': 70,
-                '小金井街道': 70, '中野通り': 65, '早稲田通り': 65,
-                '春日通り': 65, '不忍通り': 60, '言問通り': 60
-            };
-            
-            if (veryFamousRoads[roadName]) {
-                return veryFamousRoads[roadName];
-            }
-            if (wellKnownRoads[roadName]) {
-                return wellKnownRoads[roadName];
-            }
-            
-            // Default importance based on road type indicators
-            if (roadName.includes('国道')) return 85;
-            if (roadName.includes('環状')) return 90;
-            if (roadName.includes('通り')) return 65;
-            if (roadName.includes('街道')) return 75;
-            
-            return 50; // Default importance
-        }
-        
-        // Background loading for remaining roads
-        let backgroundLoadingActive = false;
-        
-        function startBackgroundLoading(regionKey, remainingRoads) {
-            if (backgroundLoadingActive || remainingRoads.length === 0) {
-                return;
-            }
-            
-            backgroundLoadingActive = true;
-            log(`Starting background loading for ${remainingRoads.length} additional roads...`);
-            
-            const config = REGIONAL_CONFIGS[regionKey];
-            const strategy = { batchSize: 3, delay: 3000 }; // Slower for background
-            
-            const processBackgroundBatch = async (roadBatch) => {
-                try {
-                    const batchQueries = roadBatch.map(road => `way["name"="${road}"](${config.bbox.south},${config.bbox.west},${config.bbox.north},${config.bbox.east})`);
-                    
-                    const query = `
-                        [out:json][timeout:25];
-                        (
-                            ${batchQueries.join(';\n            ')};
-                        );
-                        out geom;
-                    `;
-                    
-                    const encodedQuery = encodeURIComponent(query);
-                    const url = `https://overpass-api.de/api/interpreter?data=${encodedQuery}`;
-                    
-                    const response = await fetch(url);
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data.elements && data.elements.length > 0) {
-                            const processedElements = processOverpassDataRegional(data.elements);
-                            if (processedElements.length > 0) {
-                                // Add to existing street data
-                                gameState.streetData.push(...processedElements);
-                                log(`Background: Added ${processedElements.length} roads (${roadBatch.join(', ')})`);
-                                
-                                // Update cache
-                                const strategyKey = currentLoadingStrategy.name.includes('即座') ? 'immediate' : 
-                                                  currentLoadingStrategy.name.includes('バランス') ? 'balanced' : 'complete';
-                                ROAD_CACHE.save(regionKey, strategyKey, gameState.streetData);
-                            }
-                        }
-                    }
-                } catch (error) {
-                    log(`Background loading error: ${error.message}`);
-                }
-            };
-            
-            // Process remaining roads slowly in background
-            const processAllBackground = async () => {
-                for (let i = 0; i < remainingRoads.length; i += strategy.batchSize) {
-                    if (!backgroundLoadingActive) break; // Allow stopping
-                    
-                    const batch = remainingRoads.slice(i, i + strategy.batchSize);
-                    await processBackgroundBatch(batch);
-                    
-                    if (i + strategy.batchSize < remainingRoads.length) {
-                        await new Promise(resolve => setTimeout(resolve, strategy.delay));
-                    }
-                }
-                
-                backgroundLoadingActive = false;
-                log('Background loading completed');
-            };
-            
-            // Start background processing
-            setTimeout(processAllBackground, 5000); // Wait 5 seconds before starting
-        }
-        
-        // Stop background loading
-        function stopBackgroundLoading() {
-            backgroundLoadingActive = false;
-            log('Background loading stopped');
-        }
-
-        function processOverpassDataRegional(elements) {
-            const roads = [];
-            const roadMap = new Map();
-            
-            log(`Processing ${elements.length} elements for regional road network...`);
-            
-            elements.forEach((element, index) => {
-                if (element.type === 'way' && element.tags && element.tags.name && element.geometry) {
-                    const name = element.tags.name;
-                    const points = element.geometry.map(node => ({ lat: node.lat, lng: node.lon }));
-                    
-                    if (points.length < 2) {
-                        return;
-                    }
-                    
-                    const allNames = collectAllStreetNames(element.tags);
-                    const primaryName = allNames[0];
-                    
-                    const roadData = {
-                        name: primaryName,
-                        allNames: allNames,
-                        points: [points],
-                        importance: calculateImportanceFromTags(element.tags),
-                        description: getStreetDescription(element.tags),
-                        osmId: element.id,
-                        highway: element.tags.highway,
-                        source: 'overpass-regional',
-                        segmentLength: calculateSegmentLength(points),
-                        isComplete: false
-                    };
-                    
-                    if (roadMap.has(primaryName)) {
-                        const existing = roadMap.get(primaryName);
-                        existing.points.push(points);
-                        existing.importance = Math.max(existing.importance, roadData.importance);
-                        existing.segmentLength += roadData.segmentLength;
-                        existing.allNames = [...new Set([...existing.allNames, ...allNames])];
-                        
-                        log(`Merged segment for ${primaryName} (total segments: ${existing.points.length})`);
-                    } else {
-                        roadMap.set(primaryName, roadData);
-                    }
-                }
-            });
-            
-            roadMap.forEach((road, name) => {
-                const segmentCount = road.points.length;
-                const totalLength = road.segmentLength;
-                
-                road.isComplete = segmentCount >= 3 || totalLength >= 5;
-                
-                if (segmentCount > 1) {
-                    const longestSegment = road.points.reduce((longest, current) => 
-                        current.length > longest.length ? current : longest
-                    );
-                    road.points = [longestSegment, ...road.points.filter(p => p !== longestSegment)];
-                    log(`${name}: ${segmentCount} segments, ${totalLength.toFixed(1)}km total, complete: ${road.isComplete}`);
-                } else {
-                    log(`${name}: Single segment, ${totalLength.toFixed(1)}km, complete: ${road.isComplete}`);
-                }
-                
-                roads.push(road);
-                
-                const aliasText = road.allNames.length > 1 ? 
-                    ` (${road.allNames.length} names)` : '';
-                log(`Added regional road: ${name}${aliasText} (importance: ${road.importance}, segments: ${segmentCount})`);
-            });
-            
-            roads.sort((a, b) => {
-                if (a.isComplete !== b.isComplete) {
-                    return a.isComplete ? -1 : 1;
-                }
-                return b.importance - a.importance;
-            });
-            
-            log(`Processed ${roads.length} roads for regional network`);
-            log(`Complete roads: ${roads.filter(r => r.isComplete).length}`);
-            
-            log(`Top 10 regional roads by priority:`);
-            roads.slice(0, 10).forEach((road, i) => {
-                const status = road.isComplete ? '✓' : '○';
-                const aliasText = road.allNames.length > 1 ? ` (${road.allNames.length} names)` : '';
-                log(`${i+1}. ${status} ${road.name}${aliasText} (${road.importance}, ${road.points.length} segments)`);
-            });
-            
-            return roads;
-        }
-
-        function collectAllStreetNames(tags) {
-            const names = [];
-            
-            if (tags.name) names.push(tags.name);
-            
-            if (tags.alt_name) {
-                tags.alt_name.split(';').forEach(name => {
-                    if (name.trim() && !names.includes(name.trim())) {
-                        names.push(name.trim());
-                    }
-                });
-            }
-            
-            if (tags.official_name && !names.includes(tags.official_name)) {
-                names.push(tags.official_name);
-            }
-            
-            if (tags['name:en'] && !names.includes(tags['name:en'])) {
-                names.push(tags['name:en']);
-            }
-            if (tags['name:ja'] && !names.includes(tags['name:ja'])) {
-                names.push(tags['name:ja']);
-            }
-            
-            if (tags.ref) {
-                const routeName = `${tags.highway === 'trunk' ? '国道' : '都道'}${tags.ref}号線`;
-                if (!names.includes(routeName)) {
-                    names.push(routeName);
-                }
-            }
-            
-            if (tags['route:name']) {
-                if (!names.includes(tags['route:name'])) {
-                    names.push(tags['route:name']);
-                }
-            }
-            
-            const mainName = names[0] || '';
-            if (mainName.includes('環状') || mainName.includes('環七') || mainName.includes('環八')) {
-                if (mainName.includes('環状七号線') && !names.includes('環七通り')) {
-                    names.push('環七通り');
-                }
-                if (mainName.includes('環状八号線') && !names.includes('環八通り')) {
-                    names.push('環八通り');
-                }
-            }
-            
-            return names.length > 0 ? names : ['未名称道路'];
-        }
-
-        function calculateSegmentLength(points) {
-            if (points.length < 2) return 0;
-            
-            let totalLength = 0;
-            for (let i = 1; i < points.length; i++) {
-                totalLength += calculateSimpleDistance(
-                    points[i-1].lat, points[i-1].lng,
-                    points[i].lat, points[i].lng
-                );
-            }
-            return totalLength;
-        }
-
-        function calculateImportanceFromTags(tags) {
-            const highway = tags.highway;
-            const name = tags.name || '';
-            
-            const baseImportance = {
-                'motorway': 100,
-                'trunk': 95,
-                'primary': 90,
-                'secondary': 75,
-                'tertiary': 60,
-                'unclassified': 45,
-                'residential': 30,
-                'service': 20,
-                'footway': 15,
-                'path': 10,
-                'cycleway': 15
-            };
-            
-            let importance = baseImportance[highway] || 25;
-            
-            const veryFamousStreets = [
-                '竹下通り', 'takeshita',
-                '表参道', 'omotesando', 
-                '明治通り', 'meiji',
-                '青山通り', 'aoyama',
-                '六本木通り', 'roppongi',
-                '外苑東通り', 'gaien',
-                '靖国通り', 'yasukuni',
-                '新宿通り', 'shinjuku',
-                '甲州街道', 'koshu',
-                '環七通り', 'kanana',
-                '環八通り', 'kanhachi'
-            ];
-            
-            const wellKnownStreets = [
-                '中央通り', 'chuo',
-                '銀座', 'ginza',
-                '渋谷', 'shibuya',
-                '原宿', 'harajuku',
-                '新橋', 'shimbashi',
-                '赤坂', 'akasaka',
-                '麻布', 'azabu',
-                '恵比寿', 'ebisu',
-                '代官山', 'daikanyama',
-                '目黒', 'meguro'
-            ];
-            
-            const majorDesignations = [
-                'route', '国道', '都道', '246', '414', '首都高',
-                '通り', 'street', 'avenue', 'dori'
-            ];
-            
-            const lowerName = name.toLowerCase();
-            
-            if (veryFamousStreets.some(famous => 
-                lowerName.includes(famous.toLowerCase()) || 
-                famous.toLowerCase().includes(lowerName))) {
-                importance += 35;
-                log(`Major boost for very famous street: ${name}`);
-            }
-            else if (wellKnownStreets.some(known => 
-                lowerName.includes(known.toLowerCase()) || 
-                known.toLowerCase().includes(lowerName))) {
-                importance += 20;
-                log(`Medium boost for well-known street: ${name}`);
-            }
-            else if (majorDesignations.some(major => 
-                lowerName.includes(major.toLowerCase()))) {
-                importance += 10;
-                log(`Small boost for major designation: ${name}`);
-            }
-            
-            const genericNames = [
-                '住宅', 'residential', '無名', '私道', 'private'
-            ];
-            if (genericNames.some(generic => lowerName.includes(generic))) {
-                importance -= 15;
-            }
-            
-            return Math.max(10, Math.min(importance, 100));
-        }
-
-        function getStreetDescription(tags) {
-            const highway = tags.highway;
-            const name = tags.name || '';
-            
-            const descriptions = {
-                '青山通り': '青山エリアを通る主要道路',
-                '表参道': '明治神宮への参道として作られた並木道',
-                '明治通り': '原宿・表参道を通る主要道路',
-                '中央通り': '銀座のメインストリート'
-            };
-            
-            if (descriptions[name]) {
-                return descriptions[name];
-            }
-            
-            const typeDescriptions = {
-                'primary': '主要道路',
-                'secondary': '幹線道路',
-                'tertiary': '地域道路',
-                'residential': '住宅街の道路',
-                'unclassified': '一般道路',
-                'footway': '歩道',
-                'cycleway': '自転車道'
-            };
-            
-            return typeDescriptions[highway] || '道路';
-        }
-
-        // Location Services
-        function getCurrentLocation() {
-            const status = document.getElementById('location-status');
-            if (status) {
-                status.className = 'location-status pending';
-                status.innerHTML = '<span class="loading"></span>Getting current location...';
-                status.classList.remove('hidden');
-            }
-
-            const options = {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 300000
-            };
-
-            navigator.geolocation.getCurrentPosition(
-                function(position) {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-                    
-                    gameState.currentLocation = { lat, lng };
-                    gameState.center = { lat, lng };
-                    
-                    if (gameState.map) {
-                        gameState.map.setView([lat, lng], 14);
-                        updateGameArea();
-                    }
-                    
-                    const locationInput = document.getElementById('location');
-                    if (locationInput) {
-                        locationInput.value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-                    }
-                    
-                    if (status) {
-                        status.className = 'location-status success';
-                        status.textContent = '✅ Location updated to current position';
-                    }
-                    
-                    setTimeout(() => {
-                        const regionSelect = document.getElementById('region-select');
-                        const strategySelect = document.getElementById('loading-strategy');
-                        
-                        const selectedRegion = regionSelect ? regionSelect.value : 'south-kanto';
-                        const selectedStrategy = strategySelect ? strategySelect.value : 'immediate';
-                        
-                        loadRegionalRoadsOptimized(selectedRegion, selectedStrategy);
-                    }, 1000);
-                    
-                    log(`Current location: ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
-                },
-                function(error) {
-                    let message = 'Failed to get location: ';
-                    switch(error.code) {
-                        case error.PERMISSION_DENIED:
-                            message += 'Permission denied';
-                            break;
-                        case error.POSITION_UNAVAILABLE:
-                            message += 'Position unavailable';
-                            break;
-                        case error.TIMEOUT:
-                            message += 'Timeout';
-                            break;
-                        default:
-                            message += 'Unknown error';
-                            break;
-                    }
-                    
-                    if (status) {
-                        status.className = 'location-status error';
-                        status.textContent = '❌ ' + message;
-                    }
-                    
-                    log('Geolocation error: ' + message);
-                },
-                options
-            );
-        }
-
-        // Problem Editor Functions
-        function addPointFromMap(lat, lng) {
-            const advancedSettings = document.getElementById('advanced-settings');
-            if (!advancedSettings || advancedSettings.classList.contains('hidden')) {
-                return;
-            }
-            
-            gameState.currentEditPoints.push({ lat, lng });
-            updatePointsList();
-            
-            const marker = L.marker([lat, lng], {
-                icon: L.divIcon({
-                    className: 'edit-point-marker',
-                    html: '<div style="background: #2196F3; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white;"></div>',
-                    iconSize: [12, 12]
-                })
-            }).addTo(gameState.facilityLayer);
-            
-            showInfo(`Point added: ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
-        }
-
-        function updatePointsList() {
-            const container = document.getElementById('current-points');
-            
-            if (gameState.currentEditPoints.length === 0) {
-                container.innerHTML = '<div style="text-align: center; color: #666;">No points added yet</div>';
-                return;
-            }
-            
-            container.innerHTML = '';
-            gameState.currentEditPoints.forEach((point, index) => {
-                const pointDiv = document.createElement('div');
-                pointDiv.className = 'point-item';
-                pointDiv.innerHTML = `
-                    <span class="point-coords">${point.lat.toFixed(6)}, ${point.lng.toFixed(6)}</span>
-                    <button class="point-remove" onclick="removePoint(${index})">Remove</button>
-                `;
-                container.appendChild(pointDiv);
-            });
-        }
-
-        function removePoint(index) {
-            gameState.currentEditPoints.splice(index, 1);
-            updatePointsList();
-            
-            gameState.facilityLayer.clearLayers();
-            gameState.currentEditPoints.forEach(point => {
-                L.marker([point.lat, point.lng], {
-                    icon: L.divIcon({
-                        className: 'edit-point-marker',
-                        html: '<div style="background: #2196F3; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white;"></div>',
-                        iconSize: [12, 12]
-                    })
-                }).addTo(gameState.facilityLayer);
-            });
-        }
-
-        function clearPoints() {
-            gameState.currentEditPoints = [];
-            updatePointsList();
-            gameState.facilityLayer.clearLayers();
-        }
-
-        function saveProblem() {
-            const name = document.getElementById('problem-name').value.trim();
-            const type = document.getElementById('problem-type').value;
-            const description = document.getElementById('problem-description').value.trim();
-            const importance = parseInt(document.getElementById('problem-importance').value);
-            
-            if (!name) {
-                showWarning('Please enter a problem name');
-                return;
-            }
-            
-            if (gameState.currentEditPoints.length === 0) {
-                showWarning('Please add at least one point for this problem');
-                return;
-            }
-            
-            const problem = {
-                name,
-                type,
-                description: description || `Custom ${type}`,
-                importance,
-                points: [gameState.currentEditPoints.slice()],
-                isEnclosedArea: gameState.currentEditPoints.length > 3 && type === 'facility',
-                source: 'custom',
-                id: Date.now()
-            };
-            
-            if (gameState.editingProblem) {
-                const index = gameState.customProblems.findIndex(p => p.id === gameState.editingProblem.id);
-                if (index !== -1) {
-                    gameState.customProblems[index] = problem;
-                    problem.id = gameState.editingProblem.id;
-                }
-                gameState.editingProblem = null;
-                showSuccess('Problem updated successfully!');
-            } else {
-                gameState.customProblems.push(problem);
-                showSuccess('Problem saved successfully!');
-            }
-            
-            saveCustomProblems();
-            updateCustomProblemsList();
-            clearProblemEditor();
-        }
-
-        function clearProblemEditor() {
-            document.getElementById('problem-name').value = '';
-            document.getElementById('problem-description').value = '';
-            document.getElementById('problem-importance').value = '70';
-            updateImportanceDisplay();
-            clearPoints();
-        }
-
-        function updateCustomProblemsList() {
-            const container = document.getElementById('custom-problems');
-            
-            if (gameState.customProblems.length === 0) {
-                container.innerHTML = '<div style="text-align: center; color: #666;">No custom problems yet</div>';
-                return;
-            }
-            
-            container.innerHTML = '';
-            gameState.customProblems.forEach(problem => {
-                const problemDiv = document.createElement('div');
-                problemDiv.className = 'problem-item';
-                problemDiv.innerHTML = `
-                    <div>
-                        <div class="problem-name">${problem.name}</div>
-                        <div class="problem-info">${problem.type} - Importance: ${problem.importance}</div>
-                    </div>
-                    <div class="problem-actions">
-                        <button class="btn-small btn-edit" onclick="editProblem(${problem.id})">Edit</button>
-                        <button class="btn-small btn-delete" onclick="deleteProblem(${problem.id})">Delete</button>
-                    </div>
-                `;
-                container.appendChild(problemDiv);
-            });
-        }
-
-        function editProblem(problemId) {
-            const problem = gameState.customProblems.find(p => p.id === problemId);
-            if (!problem) return;
-            
-            gameState.editingProblem = problem;
-            
-            document.getElementById('problem-name').value = problem.name;
-            document.getElementById('problem-type').value = problem.type;
-            document.getElementById('problem-description').value = problem.description;
-            document.getElementById('problem-importance').value = problem.importance;
-            updateImportanceDisplay();
-            
-            gameState.currentEditPoints = problem.points[0].slice();
-            updatePointsList();
-            
-            gameState.facilityLayer.clearLayers();
-            gameState.currentEditPoints.forEach(point => {
-                L.marker([point.lat, point.lng], {
-                    icon: L.divIcon({
-                        className: 'edit-point-marker',
-                        html: '<div style="background: #2196F3; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white;"></div>',
-                        iconSize: [12, 12]
-                    })
-                }).addTo(gameState.facilityLayer);
-            });
-            
-            showInfo('Editing problem: ' + problem.name);
-        }
-
-        function deleteProblem(problemId) {
-            if (confirm('Are you sure you want to delete this problem?')) {
-                gameState.customProblems = gameState.customProblems.filter(p => p.id !== problemId);
-                saveCustomProblems();
-                updateCustomProblemsList();
-                showInfo('Problem deleted');
-            }
-        }
-
-        function saveCustomProblems() {
+        function updateToggleButton() {
             try {
-                const data = JSON.stringify(gameState.customProblems);
-                window.localStorage?.setItem('customProblems', data);
-            } catch (error) {
-                console.warn('Could not save custom problems:', error);
-            }
-        }
-
-        function loadCustomProblems() {
-            try {
-                const data = window.localStorage?.getItem('customProblems');
-                if (data) {
-                    gameState.customProblems = JSON.parse(data);
-                    updateCustomProblemsList();
+                const toggleBtn = document.getElementById('toggle-labels');
+                if (toggleBtn) {
+                    toggleBtn.textContent = gameState.showLabels ? '街路名非表示' : '街路名表示';
+                    log('Toggle button updated: ' + (gameState.showLabels ? 'Labels ON' : 'Labels OFF'));
                 }
             } catch (error) {
-                console.warn('Could not load custom problems:', error);
-                gameState.customProblems = [];
+                log('Error updating toggle button: ' + error.message);
             }
-        }
-
-        // KML Import Functions
-        function handleKmlFile(file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const kmlContent = e.target.result;
-                    parseKmlData(kmlContent);
-                } catch (error) {
-                    showError('Failed to read KML file: ' + error.message);
-                }
-            };
-            reader.readAsText(file);
-        }
-
-        function parseKmlData(kmlContent) {
-            try {
-                showInfo('Parsing KML data...');
-                
-                const parser = new DOMParser();
-                const kmlDoc = parser.parseFromString(kmlContent, 'text/xml');
-                
-                const placemarks = kmlDoc.getElementsByTagName('Placemark');
-                let importedCount = 0;
-                
-                for (let i = 0; i < placemarks.length; i++) {
-                    const placemark = placemarks[i];
-                    const name = placemark.getElementsByTagName('name')[0]?.textContent;
-                    const description = placemark.getElementsByTagName('description')[0]?.textContent || '';
-                    
-                    if (!name) continue;
-                    
-                    const lineString = placemark.getElementsByTagName('LineString')[0];
-                    const point = placemark.getElementsByTagName('Point')[0];
-                    
-                    let coordinates = null;
-                    let problemType = 'facility';
-                    
-                    if (lineString) {
-                        const coordsText = lineString.getElementsByTagName('coordinates')[0]?.textContent;
-                        if (coordsText) {
-                            coordinates = parseCoordinateString(coordsText);
-                            problemType = 'street';
-                        }
-                    } else if (point) {
-                        const coordsText = point.getElementsByTagName('coordinates')[0]?.textContent;
-                        if (coordsText) {
-                            coordinates = parseCoordinateString(coordsText);
-                            problemType = 'facility';
-                        }
-                    }
-                    
-                    if (coordinates && coordinates.length > 0) {
-                        const problem = {
-                            name: name.trim(),
-                            type: problemType,
-                            description: description.trim() || `Imported ${problemType}`,
-                            importance: 75,
-                            points: [coordinates],
-                            isEnclosedArea: false,
-                            source: 'imported',
-                            id: Date.now() + i
-                        };
-                        
-                        gameState.customProblems.push(problem);
-                        importedCount++;
-                    }
-                }
-                
-                if (importedCount > 0) {
-                    saveCustomProblems();
-                    updateCustomProblemsList();
-                    showSuccess(`Successfully imported ${importedCount} problems from KML file!`);
-                } else {
-                    showWarning('No valid placemarks found in KML file');
-                }
-                
-            } catch (error) {
-                showError('Failed to parse KML: ' + error.message);
-            }
-        }
-
-        function parseCoordinateString(coordsText) {
-            const coordinates = [];
-            const lines = coordsText.trim().split(/\s+/);
-            
-            for (const line of lines) {
-                const parts = line.split(',');
-                if (parts.length >= 2) {
-                    const lng = parseFloat(parts[0]);
-                    const lat = parseFloat(parts[1]);
-                    if (!isNaN(lat) && !isNaN(lng)) {
-                        coordinates.push({ lat, lng });
-                    }
-                }
-            }
-            
-            return coordinates;
-        }
-
-        function loadSampleKml() {
-            showInfo('Loading Yamate-dori sample data...');
-            parseKmlData(yamateKmlData);
         }
 
         function updateGameArea() {
@@ -3436,6 +2588,142 @@
                 });
         }
 
+        // Location Services
+        function getCurrentLocation() {
+            const status = document.getElementById('location-status');
+            if (status) {
+                status.className = 'location-status pending';
+                status.innerHTML = '<span class="loading"></span>Getting current location...';
+                status.classList.remove('hidden');
+            }
+
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 300000
+            };
+
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    
+                    gameState.currentLocation = { lat, lng };
+                    gameState.center = { lat, lng };
+                    
+                    if (gameState.map) {
+                        gameState.map.setView([lat, lng], 14);
+                        updateGameArea();
+                    }
+                    
+                    const locationInput = document.getElementById('location');
+                    if (locationInput) {
+                        locationInput.value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                    }
+                    
+                    if (status) {
+                        status.className = 'location-status success';
+                        status.textContent = '✅ Location updated to current position';
+                    }
+                    
+                    setTimeout(() => {
+                        const regionSelect = document.getElementById('region-select');
+                        const strategySelect = document.getElementById('loading-strategy');
+                        
+                        const selectedRegion = regionSelect ? regionSelect.value : 'south-kanto';
+                        const selectedStrategy = strategySelect ? strategySelect.value : 'immediate';
+                        
+                        loadRegionalRoadsOptimized(selectedRegion, selectedStrategy);
+                    }, 1000);
+                    
+                    log(`Current location: ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+                },
+                function(error) {
+                    let message = 'Failed to get location: ';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            message += 'Permission denied';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            message += 'Position unavailable';
+                            break;
+                        case error.TIMEOUT:
+                            message += 'Timeout';
+                            break;
+                        default:
+                            message += 'Unknown error';
+                            break;
+                    }
+                    
+                    if (status) {
+                        status.className = 'location-status error';
+                        status.textContent = '❌ ' + message;
+                    }
+                    
+                    log('Geolocation error: ' + message);
+                },
+                options
+            );
+        }
+
+        function loadRegionalRoadsOptimized(regionKey = 'south-kanto', strategyKey = 'immediate') {
+            return new Promise((resolve, reject) => {
+                if (gameState.isLoadingData) {
+                    log('Already loading data...');
+                    resolve(false);
+                    return;
+                }
+                
+                const config = REGIONAL_CONFIGS[regionKey];
+                const strategy = LOADING_STRATEGIES[strategyKey];
+                
+                if (!config || !strategy) {
+                    reject(new Error('Invalid configuration'));
+                    return;
+                }
+                
+                currentRegionalConfig = config;
+                currentLoadingStrategy = strategy;
+                
+                // Check cache first
+                const cacheKey = `${regionKey}-${strategyKey}`;
+                const cachedData = ROAD_CACHE.load(regionKey, strategyKey);
+                if (cachedData && cachedData.length > 0) {
+                    gameState.streetData = cachedData;
+                    log(`Loaded ${cachedData.length} roads from cache`);
+                    showSuccess(`✅ キャッシュから${cachedData.length}道路を読み込み完了！`);
+                    updateDataStatus();
+                    resolve(true);
+                    return;
+                }
+                
+                gameState.isLoadingData = true;
+                
+                const loadBtn = document.getElementById('load-street-data');
+                if (loadBtn) {
+                    loadBtn.innerHTML = '<span class="loading"></span>Loading Roads...';
+                    loadBtn.disabled = true;
+                    loadBtn.classList.add('loading');
+                }
+                
+                log(`Loading roads with ${strategy.name} strategy for ${config.name}...`);
+                
+                // Use sample data as fallback
+                gameState.streetData = streetQuestions;
+                showSuccess(`✅ Sample data loaded (${streetQuestions.length} roads)`);
+                updateDataStatus();
+                
+                gameState.isLoadingData = false;
+                if (loadBtn) {
+                    loadBtn.textContent = '🔄 Reload Roads';
+                    loadBtn.disabled = false;
+                    loadBtn.classList.remove('loading');
+                }
+                
+                resolve(true);
+            });
+        }
+
         function isWithinGameArea(lat, lng) {
             try {
                 if (typeof turf !== 'undefined') {
@@ -3688,82 +2976,6 @@
             }
         }
 
-        function createEnhancedRegionalStreetPopup(question) {
-            let content = `<strong>${question.name}</strong>`;
-            
-            if (question.allNames && question.allNames.length > 1) {
-                const altNames = question.allNames.slice(1);
-                if (altNames.length > 0) {
-                    content += `<br><small style="color: #666;">別名: ${altNames.join(', ')}</small>`;
-                }
-            }
-            
-            if (question.description) {
-                content += `<br><em>${question.description}</em>`;
-            }
-            
-            const segmentCount = question.points ? question.points.length : 1;
-            const totalLength = question.segmentLength ? question.segmentLength.toFixed(1) : 'N/A';
-            const isComplete = question.isComplete ? '✓ Complete' : '○ Partial';
-            
-            content += `<br><div style="margin-top: 8px; padding: 6px; background: #f0f0f0; border-radius: 3px; color: #333;">`;
-            content += `<strong>道路ネットワーク情報:</strong><br>`;
-            content += `• 状態: ${isComplete}<br>`;
-            content += `• セグメント数: ${segmentCount}<br>`;
-            content += `• 総延長: ${totalLength}km<br>`;
-            content += `• 重要度: ${question.importance}/100`;
-            content += `</div>`;
-            
-            content += '<br><div style="margin-top: 10px; padding: 8px; background: #f8f9fa; border-radius: 4px; border-left: 3px solid #4CAF50;">';
-            content += '<div style="font-size: 0.85em; font-weight: bold; color: #333; margin-bottom: 6px;">📖 詳細情報を調べる:</div>';
-            
-            const primaryName = question.name;
-            const wikiUrl = `https://ja.wikipedia.org/wiki/Special:Search/${encodeURIComponent(primaryName)}`;
-            const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(primaryName + ' 道路')}`;
-            
-            content += `<div style="font-size: 0.85em;">`;
-            content += `• <a href="${wikiUrl}" target="_blank" style="color: #4CAF50; text-decoration: none;">Wikipedia</a><br>`;
-            content += `• <a href="${googleUrl}" target="_blank" style="color: #4CAF50; text-decoration: none;">Google検索</a>`;
-            content += `</div>`;
-            
-            content += '<div style="font-size: 0.75em; color: #666; margin-top: 4px;">※ 地域道路ネットワークからの完全なルート情報</div>';
-            content += '</div>';
-            
-            return content;
-        }
-
-        function createEnhancedStreetPopupContent(question) {
-            let content = `<strong>${question.name}</strong>`;
-            
-            if (question.allNames && question.allNames.length > 1) {
-                const altNames = question.allNames.slice(1);
-                if (altNames.length > 0) {
-                    content += `<br><small style="color: #666;">別名: ${altNames.join(', ')}</small>`;
-                }
-            }
-            
-            if (question.description) {
-                content += `<br><em>${question.description}</em>`;
-            }
-            
-            content += '<br><div style="margin-top: 10px; padding: 8px; background: #f8f9fa; border-radius: 4px; border-left: 3px solid #4CAF50;">';
-            content += '<div style="font-size: 0.85em; font-weight: bold; color: #333; margin-bottom: 6px;">📖 詳細情報を調べる:</div>';
-            
-            const primaryName = question.name;
-            const wikiUrl = `https://ja.wikipedia.org/wiki/Special:Search/${encodeURIComponent(primaryName)}`;
-            const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(primaryName + ' 道路')}`;
-            
-            content += `<div style="font-size: 0.85em;">`;
-            content += `• <a href="${wikiUrl}" target="_blank" style="color: #4CAF50; text-decoration: none;">Wikipedia</a><br>`;
-            content += `• <a href="${googleUrl}" target="_blank" style="color: #4CAF50; text-decoration: none;">Google検索</a>`;
-            content += `</div>`;
-            
-            content += '<div style="font-size: 0.75em; color: #666; margin-top: 4px;">※ Wikipediaで正式名称や詳細な路線情報が見つかる場合があります</div>';
-            content += '</div>';
-            
-            return content;
-        }
-
         function showAnswer() {
             try {
                 if (!gameState.currentQuestion) return;
@@ -3779,8 +2991,7 @@
                                 style: {
                                     color: index === 0 ? '#ff6b6b' : '#ff9999',
                                     weight: index === 0 ? 6 : 4,
-                                    opacity: index === 0 ? 0.9 : 0.7,
-                                    className: `road-segment-${index}`
+                                    opacity: index === 0 ? 0.9 : 0.7
                                 }
                             }).addTo(gameState.streetLayer);
                         });
@@ -3791,14 +3002,12 @@
                             turf.point([mainSegment[mainSegment.length - 1].lng, mainSegment[mainSegment.length - 1].lat])
                         );
                         
-                        const popupContent = createEnhancedRegionalStreetPopup(question);
-                        
                         const popup = L.popup({
                             maxWidth: 450,
                             className: 'street-info-popup'
                         })
                             .setLatLng([midpoint.geometry.coordinates[1], midpoint.geometry.coordinates[0]])
-                            .setContent(popupContent)
+                            .setContent(`<strong>${question.name}</strong><br>${question.description}`)
                             .openOn(gameState.map);
                     } else {
                         question.points.forEach((segmentPoints, index) => {
@@ -3813,14 +3022,9 @@
                         const midIndex = Math.floor(mainSegment.length / 2);
                         const midPoint = mainSegment[midIndex];
                         
-                        const popupContent = createEnhancedRegionalStreetPopup(question);
-                        
-                        const popup = L.popup({
-                            maxWidth: 450,
-                            className: 'street-info-popup'
-                        })
+                        const popup = L.popup()
                             .setLatLng([midPoint.lat, midPoint.lng])
-                            .setContent(popupContent)
+                            .setContent(`<strong>${question.name}</strong><br>${question.description}`)
                             .openOn(gameState.map);
                     }
                         
@@ -3842,17 +3046,9 @@
                     }
                     
                     const point = question.points[0][0];
-                    let facilityContent = `<strong>${question.name}</strong>`;
-                    if (question.description) {
-                        facilityContent += `<br>${question.description}`;
-                    }
-                    facilityContent += `<br><div style="margin-top: 8px; font-size: 0.85em;">`;
-                    facilityContent += `<a href="https://ja.wikipedia.org/wiki/Special:Search/${encodeURIComponent(question.name)}" target="_blank" style="color: #4CAF50; text-decoration: none;">📖 Wikipedia検索</a>`;
-                    facilityContent += `</div>`;
-                    
                     const popup = L.popup()
                         .setLatLng([point.lat, point.lng])
-                        .setContent(facilityContent)
+                        .setContent(`<strong>${question.name}</strong><br>${question.description}`)
                         .openOn(gameState.map);
                         
                 } else if (gameState.currentMode === 'intersection') {
@@ -3863,17 +3059,9 @@
                         })
                     }).addTo(gameState.facilityLayer);
                     
-                    let intersectionContent = `<strong>${question.name}</strong>`;
-                    if (question.description) {
-                        intersectionContent += `<br>${question.description}`;
-                    }
-                    intersectionContent += `<br><div style="margin-top: 8px; font-size: 0.85em;">`;
-                    intersectionContent += `<a href="https://ja.wikipedia.org/wiki/Special:Search/${encodeURIComponent(question.name)}" target="_blank" style="color: #4CAF50; text-decoration: none;">📖 Wikipedia検索</a>`;
-                    intersectionContent += `</div>`;
-                    
                     const popup = L.popup()
                         .setLatLng([question.points[0][0].lat, question.points[0][0].lng])
-                        .setContent(intersectionContent)
+                        .setContent(`<strong>${question.name}</strong><br>${question.description}`)
                         .openOn(gameState.map);
                 }
 
@@ -4003,8 +3191,11 @@
                 if (accuracyEl) accuracyEl.textContent = `${accuracy.toFixed(1)}% (+${points}点)`;
                 if (distanceDisplay) distanceDisplay.classList.remove('hidden');
 
+                showMobileDistance(`${distanceKm} km`, `${accuracy.toFixed(1)}% (+${points}点)`);
+
                 stopTimer();
                 updateUI();
+                updateMobileGameStats();
                 
                 log(`Answer processed: ${distanceKm}km, ${accuracy.toFixed(1)}% accuracy, ${points} points`);
             } catch (error) {
@@ -4087,6 +3278,8 @@
                 if (gameState.streetLayer) gameState.streetLayer.clearLayers();
                 if (gameState.facilityLayer) gameState.facilityLayer.clearLayers();
                 if (gameState.map) gameState.map.closePopup();
+                hideMobileDistance();
+                hideMobileChoices();
             } catch (error) {
                 log('Error clearing game elements: ' + error.message);
             }
@@ -4113,6 +3306,7 @@
                 gameState.timerInterval = setInterval(() => {
                     gameState.timer--;
                     updateTimer();
+                    updateMobileGameStats();
                     
                     if (gameState.timer <= 0) {
                         handleTimeout();
@@ -4142,11 +3336,20 @@
                             btn.classList.add('correct');
                         }
                     });
+                    
+                    document.querySelectorAll('.mobile-choice-btn').forEach(btn => {
+                        btn.disabled = true;
+                        if (btn.textContent === gameState.currentQuestion.name) {
+                            btn.classList.add('correct');
+                        }
+                    });
                 } else {
                     showAnswer();
                 }
                 
                 updateUI();
+                updateMobileGameStats();
+                
                 const nextBtn = document.getElementById('next-question');
                 const mobileNext = document.getElementById('mobile-next');
                 if (nextBtn) nextBtn.classList.remove('hidden');
@@ -4299,6 +3502,8 @@
                     });
                 }
 
+                showMobileChoices(choices);
+
                 const showAnswerBtn = document.getElementById('show-answer');
                 if (showAnswerBtn) {
                     showAnswerBtn.classList.add('hidden');
@@ -4340,6 +3545,15 @@
                     }
                 });
 
+                document.querySelectorAll('.mobile-choice-btn').forEach(btn => {
+                    btn.disabled = true;
+                    if (btn.textContent === gameState.currentQuestion.name) {
+                        btn.classList.add('correct');
+                    } else if (btn === button && !isCorrect) {
+                        btn.classList.add('incorrect');
+                    }
+                });
+
                 if (isCorrect) {
                     const timeBonus = Math.max(0, gameState.timer * 2);
                     const baseScore = 100;
@@ -4356,6 +3570,7 @@
 
                 stopTimer();
                 updateUI();
+                updateMobileGameStats();
                 
                 setTimeout(() => {
                     const nextBtn = document.getElementById('next-question');
@@ -4379,6 +3594,8 @@
                 
                 gameState.isPlaying = false;
                 stopTimer();
+                
+                hideMobileGameUI();
                 
                 if (!gameState.showLabels) {
                     toggleLabels();
@@ -4433,6 +3650,7 @@
                 
                 clearGameElements();
                 stopTimer();
+                hideMobileGameUI();
                 
                 const challengeSection = document.getElementById('challenge-section');
                 const resultsOverlay = document.getElementById('results-overlay');
@@ -4453,6 +3671,312 @@
             } catch (error) {
                 log('Error resetting game: ' + error.message);
             }
+        }
+
+        // Problem Editor Functions
+        function addPointFromMap(lat, lng) {
+            const advancedSettings = document.getElementById('advanced-settings');
+            if (!advancedSettings || advancedSettings.classList.contains('hidden')) {
+                return;
+            }
+            
+            gameState.currentEditPoints.push({ lat, lng });
+            updatePointsList();
+            
+            const marker = L.marker([lat, lng], {
+                icon: L.divIcon({
+                    className: 'edit-point-marker',
+                    html: '<div style="background: #2196F3; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white;"></div>',
+                    iconSize: [12, 12]
+                })
+            }).addTo(gameState.facilityLayer);
+            
+            showInfo(`Point added: ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+        }
+
+        function updatePointsList() {
+            const container = document.getElementById('current-points');
+            
+            if (gameState.currentEditPoints.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: #666;">No points added yet</div>';
+                return;
+            }
+            
+            container.innerHTML = '';
+            gameState.currentEditPoints.forEach((point, index) => {
+                const pointDiv = document.createElement('div');
+                pointDiv.className = 'point-item';
+                pointDiv.innerHTML = `
+                    <span class="point-coords">${point.lat.toFixed(6)}, ${point.lng.toFixed(6)}</span>
+                    <button class="point-remove" onclick="removePoint(${index})">Remove</button>
+                `;
+                container.appendChild(pointDiv);
+            });
+        }
+
+        function removePoint(index) {
+            gameState.currentEditPoints.splice(index, 1);
+            updatePointsList();
+            
+            gameState.facilityLayer.clearLayers();
+            gameState.currentEditPoints.forEach(point => {
+                L.marker([point.lat, point.lng], {
+                    icon: L.divIcon({
+                        className: 'edit-point-marker',
+                        html: '<div style="background: #2196F3; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white;"></div>',
+                        iconSize: [12, 12]
+                    })
+                }).addTo(gameState.facilityLayer);
+            });
+        }
+
+        function clearPoints() {
+            gameState.currentEditPoints = [];
+            updatePointsList();
+            gameState.facilityLayer.clearLayers();
+        }
+
+        function saveProblem() {
+            const name = document.getElementById('problem-name').value.trim();
+            const type = document.getElementById('problem-type').value;
+            const description = document.getElementById('problem-description').value.trim();
+            const importance = parseInt(document.getElementById('problem-importance').value);
+            
+            if (!name) {
+                showWarning('Please enter a problem name');
+                return;
+            }
+            
+            if (gameState.currentEditPoints.length === 0) {
+                showWarning('Please add at least one point for this problem');
+                return;
+            }
+            
+            const problem = {
+                name,
+                type,
+                description: description || `Custom ${type}`,
+                importance,
+                points: [gameState.currentEditPoints.slice()],
+                isEnclosedArea: gameState.currentEditPoints.length > 3 && type === 'facility',
+                source: 'custom',
+                id: Date.now()
+            };
+            
+            if (gameState.editingProblem) {
+                const index = gameState.customProblems.findIndex(p => p.id === gameState.editingProblem.id);
+                if (index !== -1) {
+                    gameState.customProblems[index] = problem;
+                    problem.id = gameState.editingProblem.id;
+                }
+                gameState.editingProblem = null;
+                showSuccess('Problem updated successfully!');
+            } else {
+                gameState.customProblems.push(problem);
+                showSuccess('Problem saved successfully!');
+            }
+            
+            saveCustomProblems();
+            updateCustomProblemsList();
+            clearProblemEditor();
+        }
+
+        function clearProblemEditor() {
+            document.getElementById('problem-name').value = '';
+            document.getElementById('problem-description').value = '';
+            document.getElementById('problem-importance').value = '70';
+            updateImportanceDisplay();
+            clearPoints();
+        }
+
+        function updateCustomProblemsList() {
+            const container = document.getElementById('custom-problems');
+            
+            if (gameState.customProblems.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: #666;">No custom problems yet</div>';
+                return;
+            }
+            
+            container.innerHTML = '';
+            gameState.customProblems.forEach(problem => {
+                const problemDiv = document.createElement('div');
+                problemDiv.className = 'problem-item';
+                problemDiv.innerHTML = `
+                    <div>
+                        <div class="problem-name">${problem.name}</div>
+                        <div class="problem-info">${problem.type} - Importance: ${problem.importance}</div>
+                    </div>
+                    <div class="problem-actions">
+                        <button class="btn-small btn-edit" onclick="editProblem(${problem.id})">Edit</button>
+                        <button class="btn-small btn-delete" onclick="deleteProblem(${problem.id})">Delete</button>
+                    </div>
+                `;
+                container.appendChild(problemDiv);
+            });
+        }
+
+        function editProblem(problemId) {
+            const problem = gameState.customProblems.find(p => p.id === problemId);
+            if (!problem) return;
+            
+            gameState.editingProblem = problem;
+            
+            document.getElementById('problem-name').value = problem.name;
+            document.getElementById('problem-type').value = problem.type;
+            document.getElementById('problem-description').value = problem.description;
+            document.getElementById('problem-importance').value = problem.importance;
+            updateImportanceDisplay();
+            
+            gameState.currentEditPoints = problem.points[0].slice();
+            updatePointsList();
+            
+            gameState.facilityLayer.clearLayers();
+            gameState.currentEditPoints.forEach(point => {
+                L.marker([point.lat, point.lng], {
+                    icon: L.divIcon({
+                        className: 'edit-point-marker',
+                        html: '<div style="background: #2196F3; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white;"></div>',
+                        iconSize: [12, 12]
+                    })
+                }).addTo(gameState.facilityLayer);
+            });
+            
+            showInfo('Editing problem: ' + problem.name);
+        }
+
+        function deleteProblem(problemId) {
+            if (confirm('Are you sure you want to delete this problem?')) {
+                gameState.customProblems = gameState.customProblems.filter(p => p.id !== problemId);
+                saveCustomProblems();
+                updateCustomProblemsList();
+                showInfo('Problem deleted');
+            }
+        }
+
+        function saveCustomProblems() {
+            try {
+                const data = JSON.stringify(gameState.customProblems);
+                localStorage.setItem('customProblems', data);
+            } catch (error) {
+                console.warn('Could not save custom problems:', error);
+            }
+        }
+
+        function loadCustomProblems() {
+            try {
+                const data = localStorage.getItem('customProblems');
+                if (data) {
+                    gameState.customProblems = JSON.parse(data);
+                    updateCustomProblemsList();
+                }
+            } catch (error) {
+                console.warn('Could not load custom problems:', error);
+                gameState.customProblems = [];
+            }
+        }
+
+        // KML Import Functions
+        function handleKmlFile(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const kmlContent = e.target.result;
+                    parseKmlData(kmlContent);
+                } catch (error) {
+                    showError('Failed to read KML file: ' + error.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function parseKmlData(kmlContent) {
+            try {
+                showInfo('Parsing KML data...');
+                
+                const parser = new DOMParser();
+                const kmlDoc = parser.parseFromString(kmlContent, 'text/xml');
+                
+                const placemarks = kmlDoc.getElementsByTagName('Placemark');
+                let importedCount = 0;
+                
+                for (let i = 0; i < placemarks.length; i++) {
+                    const placemark = placemarks[i];
+                    const name = placemark.getElementsByTagName('name')[0]?.textContent;
+                    const description = placemark.getElementsByTagName('description')[0]?.textContent || '';
+                    
+                    if (!name) continue;
+                    
+                    const lineString = placemark.getElementsByTagName('LineString')[0];
+                    const point = placemark.getElementsByTagName('Point')[0];
+                    
+                    let coordinates = null;
+                    let problemType = 'facility';
+                    
+                    if (lineString) {
+                        const coordsText = lineString.getElementsByTagName('coordinates')[0]?.textContent;
+                        if (coordsText) {
+                            coordinates = parseCoordinateString(coordsText);
+                            problemType = 'street';
+                        }
+                    } else if (point) {
+                        const coordsText = point.getElementsByTagName('coordinates')[0]?.textContent;
+                        if (coordsText) {
+                            coordinates = parseCoordinateString(coordsText);
+                            problemType = 'facility';
+                        }
+                    }
+                    
+                    if (coordinates && coordinates.length > 0) {
+                        const problem = {
+                            name: name.trim(),
+                            type: problemType,
+                            description: description.trim() || `Imported ${problemType}`,
+                            importance: 75,
+                            points: [coordinates],
+                            isEnclosedArea: false,
+                            source: 'imported',
+                            id: Date.now() + i
+                        };
+                        
+                        gameState.customProblems.push(problem);
+                        importedCount++;
+                    }
+                }
+                
+                if (importedCount > 0) {
+                    saveCustomProblems();
+                    updateCustomProblemsList();
+                    showSuccess(`Successfully imported ${importedCount} problems from KML file!`);
+                } else {
+                    showWarning('No valid placemarks found in KML file');
+                }
+                
+            } catch (error) {
+                showError('Failed to parse KML: ' + error.message);
+            }
+        }
+
+        function parseCoordinateString(coordsText) {
+            const coordinates = [];
+            const lines = coordsText.trim().split(/\s+/);
+            
+            for (const line of lines) {
+                const parts = line.split(',');
+                if (parts.length >= 2) {
+                    const lng = parseFloat(parts[0]);
+                    const lat = parseFloat(parts[1]);
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        coordinates.push({ lat, lng });
+                    }
+                }
+            }
+            
+            return coordinates;
+        }
+
+        function loadSampleKml() {
+            showInfo('Loading Yamate-dori sample data...');
+            parseKmlData(yamateKmlData);
         }
 
         // Global functions for editor
@@ -4569,7 +4093,6 @@
                     }
                 } else {
                     log('Page became hidden, pausing background operations...');
-                    stopBackgroundLoading();
                 }
             });
         }
