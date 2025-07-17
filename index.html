@@ -1956,35 +1956,27 @@
                 
                 log('Map object created, adding tiles...');
                 
-                const labelsUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-                const noLabelsUrl = 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png';
+                const labelsUrl   = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+                const noLabelsUrl = 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_nolabels/{z}/{x}/{y}.png';
                 const opts = {
                     attribution: '© OpenStreetMap contributors, © CARTO',
-                    maxZoom: 19,
-                    subdomains: ['a', 'b', 'c', 'd']
+                    subdomains: ['a', 'b', 'c', 'd'],
+                    maxZoom: 19
                 };
 
-                const baseMaps = {
-                    'Labels On': L.tileLayer(labelsUrl, opts),
-                    'Labels Off': L.tileLayer(noLabelsUrl, opts)
+                gameState.baseLayers = {
+                    withLabels: L.tileLayer(labelsUrl, opts),
+                    withoutLabels: L.tileLayer(noLabelsUrl, opts)
                 };
 
-                gameState.baseLayers.withLabels = baseMaps['Labels On'];
-                gameState.baseLayers.withoutLabels = baseMaps['Labels Off'];
-
+                gameState.baseLayers.withLabels.addTo(gameState.map);
+                gameState.showLabels = true;
                 const toggleBtn = document.getElementById('toggle-labels');
-
-                if (gameState.showLabels) {
-                    gameState.map.addLayer(baseMaps['Labels On']);
-                    if (toggleBtn) toggleBtn.textContent = '街路名非表示';
-                } else {
-                    gameState.map.addLayer(baseMaps['Labels Off']);
-                    if (toggleBtn) toggleBtn.textContent = '街路名表示';
-                }
+                if (toggleBtn) toggleBtn.textContent = '街路名非表示';
 
                 L.control.layers({
-                    'Labels On': baseMaps['Labels On'],
-                    'Labels Off': baseMaps['Labels Off']
+                    'カラー表示':   gameState.baseLayers.withLabels,
+                    'ラベル非表示': gameState.baseLayers.withoutLabels
                 }).addTo(gameState.map);
 
                 gameState.streetLayer = L.layerGroup().addTo(gameState.map);
@@ -3577,11 +3569,12 @@
 
                 setMapStyle('color');
 
-                setTimeout(() => {
-                    if (gameState.showLabels) {
-                        toggleLabels();
-                    }
-                }, 300);
+                if (gameState.map && gameState.baseLayers.withLabels && gameState.baseLayers.withoutLabels) {
+                    gameState.map.removeLayer(gameState.baseLayers.withLabels);
+                    gameState.baseLayers.withoutLabels.addTo(gameState.map);
+                    gameState.showLabels = false;
+                    document.getElementById('toggle-labels').textContent = '街路名表示';
+                }
                 
                 if (gameState.map) {
                     gameState.map.dragging.enable();
@@ -4407,8 +4400,11 @@
                 gameState.isPlaying = false;
                 stopTimer();
                 
-                if (!gameState.showLabels) {
-                    toggleLabels();
+                if (gameState.map && gameState.baseLayers.withLabels && gameState.baseLayers.withoutLabels) {
+                    gameState.map.removeLayer(gameState.baseLayers.withoutLabels);
+                    gameState.baseLayers.withLabels.addTo(gameState.map);
+                    gameState.showLabels = true;
+                    document.getElementById('toggle-labels').textContent = '街路名非表示';
                 }
                 
                 const finalScoreEl = document.getElementById('final-score');
