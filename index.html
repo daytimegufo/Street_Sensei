@@ -1230,18 +1230,16 @@
     <script>
         function log(message) {
             console.log(message);
-            const debugInfo = document.getElementById('debug-info');
             if (debugInfo) {
                 const timestamp = new Date().toLocaleTimeString();
                 debugInfo.innerHTML = `[${timestamp}] ${message}`;
                 debugInfo.style.display = 'block';
-                
-                if (message.includes('successfully') || message.includes('ready')) {
-                    setTimeout(() => {
-                        debugInfo.style.display = 'none';
-                    }, 3000);
-                }
-                
+
+                const hideDelay = (message.includes('Error') || message.includes('Failed')) ? 5000 : 3000;
+                setTimeout(() => {
+                    debugInfo.style.display = 'none';
+                }, hideDelay);
+
                 if (message.includes('Error') || message.includes('Failed')) {
                     debugInfo.style.background = '#f44336';
                     debugInfo.style.color = 'white';
@@ -3551,6 +3549,12 @@
                     gameState.settingsVisible = true;
                 }
 
+                const resultsOverlay = document.getElementById('results-overlay');
+                if (resultsOverlay) resultsOverlay.classList.add('hidden');
+
+                const debugInfo = document.getElementById('debug-info');
+                if (debugInfo) debugInfo.style.display = 'none';
+
                 gameState.isPlaying = true;
                 gameState.score = 0;
                 gameState.streak = 0;
@@ -4415,6 +4419,12 @@
                     gameState.settingsVisible = true;
                 }
 
+                const challengeSection = document.getElementById('challenge-section');
+                if (challengeSection) challengeSection.classList.add('hidden');
+
+                const debugInfo = document.getElementById('debug-info');
+                if (debugInfo) debugInfo.style.display = 'none';
+                
                 gameState.isPlaying = false;
                 stopTimer();
                 
