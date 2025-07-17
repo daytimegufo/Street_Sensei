@@ -977,6 +977,11 @@
         body.white-map #map {
             filter: grayscale(100%) brightness(1.4);
         }
+
+        /* Remove black background from tiles */
+        .leaflet-tile {
+            background-color: transparent !important;
+        }
     </style>
 </head>
 <body>
@@ -1989,6 +1994,12 @@
                 };
 
                 gameState.baseLayers.withLabels.addTo(gameState.map);
+                gameState.baseLayers.withLabels.on('tileerror', e => {
+                    if (e.tile) e.tile.style.display = 'none';
+                });
+                gameState.baseLayers.withoutLabels.on('tileerror', e => {
+                    if (e.tile) e.tile.style.display = 'none';
+                });
                 gameState.showLabels = true;
                 const toggleBtn = document.getElementById('toggle-labels');
                 if (toggleBtn) toggleBtn.textContent = '街路名非表示';
@@ -2023,6 +2034,14 @@
                 
                 gameState.map.on('moveend', function() {
                     log('Map moved to: ' + gameState.map.getCenter().lat.toFixed(4) + ', ' + gameState.map.getCenter().lng.toFixed(4));
+                });
+
+                gameState.map.on('load moveend zoomend', () => {
+                    document.querySelectorAll('.leaflet-tile').forEach(tile => {
+                        if (tile.complete && !tile.naturalWidth) {
+                            tile.style.display = 'none';
+                        }
+                    });
                 });
                 
                 if (window.innerWidth <= 768) {
