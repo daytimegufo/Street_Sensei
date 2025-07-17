@@ -999,7 +999,9 @@
         .mask-rect { display: none !important; }
         /* Hide overlay shapes that may leave black boxes */
         .leaflet-overlay-pane path,
-        .leaflet-overlay-pane rect {
+        .leaflet-overlay-pane rect,
+        .leaflet-overlay-pane svg,
+        .leaflet-overlay-pane g {
             display: none !important;
         }
     </style>
@@ -1277,7 +1279,7 @@
                 return L.layerGroup([]);
             };
         }
-        
+
         function log(message) {
             console.log(message);
             const debugInfo = getDebugInfoEl();
@@ -2071,8 +2073,17 @@
                             tile.style.display = 'none';
                         }
                     });
+                    gameState.map.eachLayer(layer => {
+                        if (layer instanceof L.LayerGroup && layer.getLayers().length === 0) {
+                            gameState.map.removeLayer(layer);
+                        }
+                    });
                 });
-                
+                // Trigger cleanup once after initialization
+                gameState.map.fire('load');
+                gameState.map.fire('moveend');
+                gameState.map.fire('zoomend');
+
                 if (window.innerWidth <= 768) {
                     gameState.map.on('zoomstart', function() {
                         log('Mobile zoom started');
@@ -4654,6 +4665,14 @@
             }
             
             checkLeafletAndInit();
+
+            setTimeout(() => {
+                if (gameState.map) {
+                    gameState.map.fire('load');
+                    gameState.map.fire('moveend');
+                    gameState.map.fire('zoomend');
+                }
+            }, 1000);
         });
 
         window.addEventListener('load', function() {
