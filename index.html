@@ -1972,10 +1972,20 @@
                 gameState.baseLayers.withLabels = baseMaps['Labels On'];
                 gameState.baseLayers.withoutLabels = baseMaps['Labels Off'];
 
-                baseMaps['Labels Off'].addTo(gameState.map);
-                L.control.layers(baseMaps).addTo(gameState.map);
                 const toggleBtn = document.getElementById('toggle-labels');
-                if (toggleBtn) toggleBtn.textContent = '街路名表示';
+
+                if (gameState.showLabels) {
+                    gameState.map.addLayer(baseMaps['Labels On']);
+                    if (toggleBtn) toggleBtn.textContent = '街路名非表示';
+                } else {
+                    gameState.map.addLayer(baseMaps['Labels Off']);
+                    if (toggleBtn) toggleBtn.textContent = '街路名表示';
+                }
+
+                L.control.layers({
+                    'Labels On': baseMaps['Labels On'],
+                    'Labels Off': baseMaps['Labels Off']
+                }).addTo(gameState.map);
 
                 gameState.streetLayer = L.layerGroup().addTo(gameState.map);
                 gameState.facilityLayer = L.layerGroup().addTo(gameState.map);
