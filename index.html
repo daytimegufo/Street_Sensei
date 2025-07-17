@@ -1271,6 +1271,13 @@
             return debugInfoEl;
         }
         
+        // Disable rectangle overlays used for masking
+        if (typeof L !== 'undefined' && L.rectangle) {
+            L.rectangle = function(bounds, options) {
+                return L.layerGroup([]);
+            };
+        }
+        
         function log(message) {
             console.log(message);
             const debugInfo = getDebugInfoEl();
