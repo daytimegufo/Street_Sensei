@@ -930,7 +930,7 @@
 
         /* ゲーム中はサイドバーを完全に隠す */
         .game-playing .sidebar {
-            transform: translateX(-100%) !important;
+            display: none !important;
         }
 
         /* ゲーム中のヘッダー簡素化 */
@@ -2993,6 +2993,35 @@
                 log('Error clearing mask: ' + error.message);
             }
         }
+
+        function hideGameOverlays() {
+            try {
+                ['debug-info', 'results-overlay', 'mobile-game-overlay'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.style.display = 'none';
+                });
+                document.querySelectorAll('.mobile-controls, .map-controls, .layer-toggle').forEach(el => {
+                    el.style.display = 'none';
+                });
+            } catch (error) {
+                console.warn('hideGameOverlays error:', error);
+            }
+        }
+
+        function showGameOverlays() {
+            try {
+                ['debug-info', 'results-overlay', 'mobile-game-overlay'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.style.display = '';
+                });
+                document.querySelectorAll('.mobile-controls, .map-controls, .layer-toggle').forEach(el => {
+                    el.style.display = '';
+                });
+            } catch (error) {
+                console.warn('showGameOverlays error:', error);
+            }
+        }
+
                 gameState.gameArea = L.circle([gameState.center.lat, gameState.center.lng], {
                     radius: gameState.range * 1000,
                     fillColor: '#4CAF50',
@@ -3583,6 +3612,7 @@
 
                 // ゲーム中は不要なオーバーレイを非表示にする
                 document.body.classList.add('game-playing');
+                hideGameOverlays();
 
                 if (gameState.currentMode === 'street' && (!gameState.streetData || gameState.streetData.length === 0)) {
                     showWarning('Street mode requires data to be loaded first. Please click "Load Regional Roads" before starting the game.');
@@ -4467,6 +4497,7 @@
 
                 // オーバーレイを再表示できるようクラスを外す
                 document.body.classList.remove('game-playing');
+                showGameOverlays();
 
                 setMapStyle('color');
 
@@ -4538,6 +4569,7 @@
                 // ゲーム状態を解除しオーバーレイを元に戻す
                 document.body.classList.remove('game-playing');
                 clearMask();
+                showGameOverlays();
 
                 setMapStyle('color');
 
