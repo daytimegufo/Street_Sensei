@@ -950,6 +950,16 @@
             }
         }
 
+        /* ゲーム中は地図を覆うオーバーレイ要素を全て非表示にする */
+        body.game-playing #debug-info,
+        body.game-playing .mobile-game-overlay,
+        body.game-playing .mobile-controls,
+        body.game-playing .map-controls,
+        body.game-playing .layer-toggle,
+        body.game-playing #results-overlay {
+            display: none !important;
+        }
+
         /* 距離表示 - 地図左下 */
         .mobile-distance-overlay {
             position: absolute;
@@ -3534,7 +3544,10 @@
         function startGame() {
             try {
                 log('Starting game...');
-                
+
+                // ゲーム中は不要なオーバーレイを非表示にする
+                document.body.classList.add('game-playing');
+
                 if (gameState.currentMode === 'street' && (!gameState.streetData || gameState.streetData.length === 0)) {
                     showWarning('Street mode requires data to be loaded first. Please click "Load Regional Roads" before starting the game.');
                     return;
@@ -4408,6 +4421,9 @@
             try {
                 log('Ending game...');
 
+                // オーバーレイを再表示できるようクラスを外す
+                document.body.classList.remove('game-playing');
+
                 setMapStyle('color');
 
                 // Close advanced tools if they are open
@@ -4424,7 +4440,7 @@
 
                 const debugInfo = document.getElementById('debug-info');
                 if (debugInfo) debugInfo.style.display = 'none';
-                
+
                 gameState.isPlaying = false;
                 stopTimer();
                 
@@ -4474,6 +4490,9 @@
         function resetGame() {
             try {
                 log('Resetting game...');
+
+                // ゲーム状態を解除しオーバーレイを元に戻す
+                document.body.classList.remove('game-playing');
 
                 setMapStyle('color');
 
