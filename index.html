@@ -997,6 +997,11 @@
         .mask-layer,
         .mask-overlay,
         .mask-rect { display: none !important; }
+        /* Hide overlay shapes that may leave black boxes */
+        .leaflet-overlay-pane path,
+        .leaflet-overlay-pane rect {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
