@@ -1064,6 +1064,23 @@
             </div>
 
             <div class="setup-section">
+                <h3>問題ソース</h3>
+                <div class="form-group">
+                    <select id="problem-source">
+                        <option value="mixed">ミックス (OSM + カスタム)</option>
+                        <option value="osm-only">OSMデータのみ</option>
+                        <option value="custom-only">カスタム問題のみ</option>
+                    </select>
+                    <div id="source-ratio-control" style="margin-top: 0.5rem;">
+                        <label for="osm-custom-ratio" style="font-size: 0.8rem;">
+                            OSM : カスタム比率: <span id="ratio-display">70:30</span>
+                        </label>
+                        <input type="range" id="osm-custom-ratio" min="0" max="100" value="70" style="margin-top: 0.25rem;">
+                    </div>
+                </div>
+            </div>
+
+            <div class="setup-section">
                 <h3>Data Source</h3>
                 <div class="form-group">
                     <label for="region-select">Regional Network</label>
@@ -1122,6 +1139,21 @@
                             <label for="problem-importance">Importance (1-100)</label>
                             <input type="range" id="problem-importance" min="1" max="100" value="70">
                             <span id="importance-display">70</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="problem-difficulty">難易度設定</label>
+                            <select id="problem-difficulty-mode">
+                                <option value="auto">自動判定 (Importanceから)</option>
+                                <option value="manual">手動設定</option>
+                            </select>
+                            <select id="problem-difficulty" style="margin-top: 0.5rem; display: none;">
+                                <option value="tourist">Tourist (Easy)</option>
+                                <option value="resident">Resident (Medium)</option>
+                                <option value="taxi-driver">Taxi Driver (Hard)</option>
+                            </select>
+                            <div id="auto-difficulty-display" style="margin-top: 0.5rem; font-size: 0.8rem; color: #4CAF50;">
+                                自動判定: Resident (Medium)
+                            </div>
                         </div>
                         
                         <h4>Location Points</h4>
@@ -1610,7 +1642,11 @@
             dataQuality: 'partial',
             initRetryCount: 0,
             isMobileDevice: false,
-            networkStatus: 'unknown'
+            networkStatus: 'unknown',
+            // New fields for problem source management
+            problemSource: 'mixed', // 'osm-only', 'custom-only', 'mixed'
+            osmCustomRatio: 0.7, // Default 70% OSM, 30% custom
+            customDifficultyMode: 'auto' // 'auto' or 'manual'
         };
 
         // Enhanced sample data with actual coordinates
@@ -1917,6 +1953,7 @@
                 loadCustomProblems();
                 updateRangeDisplay();
                 updateImportanceDisplay();
+                updateAutoDifficultyDisplay();
                 updateDataStatus();
                 
                 log('Game initialization complete');
@@ -2288,7 +2325,10 @@
 
                 const importanceSlider = document.getElementById('problem-importance');
                 if (importanceSlider) {
-                    importanceSlider.addEventListener('input', updateImportanceDisplay);
+                    importanceSlider.addEventListener('input', (e) => {
+                        updateImportanceDisplay();
+                        updateAutoDifficultyDisplay();
+                    });
                 }
 
                 const difficultySelect = document.getElementById('difficulty');
@@ -2296,6 +2336,47 @@
                     difficultySelect.addEventListener('change', (e) => {
                         gameState.difficulty = e.target.value;
                         log('Difficulty changed to: ' + gameState.difficulty);
+                    });
+                }
+
+                const problemSourceSelect = document.getElementById('problem-source');
+                if (problemSourceSelect) {
+                    problemSourceSelect.addEventListener('change', (e) => {
+                        gameState.problemSource = e.target.value;
+                        const ratioControl = document.getElementById('source-ratio-control');
+                        if (ratioControl) {
+                            ratioControl.style.display = e.target.value === 'mixed' ? 'block' : 'none';
+                        }
+                        log('Problem source changed to: ' + gameState.problemSource);
+                    });
+                }
+
+                const osmCustomRatioSlider = document.getElementById('osm-custom-ratio');
+                if (osmCustomRatioSlider) {
+                    osmCustomRatioSlider.addEventListener('input', (e) => {
+                        gameState.osmCustomRatio = parseInt(e.target.value) / 100;
+                        const display = document.getElementById('ratio-display');
+                        if (display) {
+                            const customRatio = 100 - parseInt(e.target.value);
+                            display.textContent = `${e.target.value}:${customRatio}`;
+                        }
+                    });
+                }
+
+                const difficultyModeSelect = document.getElementById('problem-difficulty-mode');
+                if (difficultyModeSelect) {
+                    difficultyModeSelect.addEventListener('change', (e) => {
+                        const manualSelect = document.getElementById('problem-difficulty');
+                        const autoDisplay = document.getElementById('auto-difficulty-display');
+                        
+                        if (e.target.value === 'manual') {
+                            if (manualSelect) manualSelect.style.display = 'block';
+                            if (autoDisplay) autoDisplay.style.display = 'none';
+                        } else {
+                            if (manualSelect) manualSelect.style.display = 'none';
+                            if (autoDisplay) autoDisplay.style.display = 'block';
+                            updateAutoDifficultyDisplay();
+                        }
                     });
                 }
 
@@ -2566,6 +2647,9 @@
         function updateDataStatus() {
             const statusDiv = document.getElementById('data-status');
             if (statusDiv) {
+                const customStreetCount = gameState.customProblems.filter(p => p.type === 'street').length;
+                const customBreakdown = getCustomStreetBreakdownByDifficulty();
+                
                 if (gameState.streetData && gameState.streetData.length > 0) {
                     const source = gameState.streetData[0]?.source || 'fallback';
                     const isRegional = source === 'overpass-regional';
@@ -2584,11 +2668,16 @@
                         statusDiv.innerHTML = `
                             <div>${cacheIcon} ${regionName}道路ネットワーク (${strategyName})</div>
                             <div style="font-size: 0.7rem; margin-top: 0.3rem; color: #ccc;">
-                                ${gameState.streetData.length} roads (${completeRoads} complete) ${bgStatus}
+                                OSM: ${gameState.streetData.length} roads (${completeRoads} complete) ${bgStatus}
+                                ${customStreetCount > 0 ? `| カスタム: ${customStreetCount} roads` : ''}
                             </div>
                             <div style="font-size: 0.65rem; margin-top: 0.2rem;">
-                                Tourist: ${breakdown.tourist} | Resident: ${breakdown.resident} | Taxi: ${breakdown.taxi}
+                                OSM - Tourist: ${breakdown.tourist} | Resident: ${breakdown.resident} | Taxi: ${breakdown.taxi}
                             </div>
+                            ${customStreetCount > 0 ? `
+                            <div style="font-size: 0.65rem;">
+                                カスタム - Tourist: ${customBreakdown.tourist} | Resident: ${customBreakdown.resident} | Taxi: ${customBreakdown.taxi}
+                            </div>` : ''}
                         `;
                         statusDiv.style.background = '#2d5a2d';
                     } else {
@@ -2596,9 +2685,14 @@
                         
                         statusDiv.innerHTML = `
                             <div>✅ ${gameState.streetData.length} streets loaded (${source === 'overpass' ? 'OSM data' : 'sample data'})</div>
+                            ${customStreetCount > 0 ? `<div style="font-size: 0.7rem;">+ ${customStreetCount} custom streets</div>` : ''}
                             <div style="font-size: 0.7rem; margin-top: 0.3rem;">
-                                Tourist: ${breakdown.tourist} | Resident: ${breakdown.resident} | Taxi: ${breakdown.taxi}
+                                OSM - Tourist: ${breakdown.tourist} | Resident: ${breakdown.resident} | Taxi: ${breakdown.taxi}
                             </div>
+                            ${customStreetCount > 0 ? `
+                            <div style="font-size: 0.7rem;">
+                                カスタム - Tourist: ${customBreakdown.tourist} | Resident: ${customBreakdown.resident} | Taxi: ${customBreakdown.taxi}
+                            </div>` : ''}
                         `;
                         statusDiv.style.background = source === 'overpass' ? '#2d5a2d' : '#5a4d2d';
                     }
@@ -2607,6 +2701,7 @@
                     
                     statusDiv.innerHTML = `
                         <div>⚠️ 道路データが読み込まれていません</div>
+                        ${customStreetCount > 0 ? `<div style="font-size: 0.7rem;">カスタム道路: ${customStreetCount} available</div>` : ''}
                         <div style="font-size: 0.7rem; margin-top: 0.3rem; color: #ccc;">
                             選択中: ${currentLoadingStrategy?.name || '即座開始'}
                         </div>
@@ -2625,6 +2720,27 @@
             const tourist = gameState.streetData.filter(q => q.importance >= 80).length;
             const resident = gameState.streetData.filter(q => q.importance >= 60).length;
             const taxi = gameState.streetData.filter(q => q.importance >= 40).length;
+            
+            return { tourist, resident, taxi };
+        }
+
+        function getCustomStreetBreakdownByDifficulty() {
+            const customStreets = gameState.customProblems.filter(p => p.type === 'street');
+            
+            const tourist = customStreets.filter(q => {
+                if (q.difficulty) return q.difficulty === 'tourist';
+                return q.importance >= 80;
+            }).length;
+            
+            const resident = customStreets.filter(q => {
+                if (q.difficulty) return q.difficulty === 'resident';
+                return q.importance >= 60 && q.importance < 80;
+            }).length;
+            
+            const taxi = customStreets.filter(q => {
+                if (q.difficulty) return q.difficulty === 'taxi-driver';
+                return q.importance < 60;
+            }).length;
             
             return { tourist, resident, taxi };
         }
@@ -2949,6 +3065,46 @@
             return finalFiltered;
         }
 
+        function filterQuestionsByDifficultyCustom(questions) {
+            if (!questions || questions.length === 0) return [];
+            
+            // Filter by location first
+            let filtered = questions.filter(q => {
+                const point = q.points[0][0];
+                return isWithinGameArea(point.lat, point.lng);
+            });
+            
+            // Filter by difficulty setting
+            if (gameState.difficulty === 'tourist') {
+                filtered = filtered.filter(q => {
+                    // If question has explicit difficulty, use it
+                    if (q.difficulty) {
+                        return q.difficulty === 'tourist';
+                    }
+                    // Otherwise fall back to importance
+                    return q.importance >= 80;
+                });
+            } else if (gameState.difficulty === 'resident') {
+                filtered = filtered.filter(q => {
+                    if (q.difficulty) {
+                        return q.difficulty === 'resident' || q.difficulty === 'tourist';
+                    }
+                    return q.importance >= 60;
+                });
+            } else { // taxi-driver
+                // All questions are eligible for taxi driver
+                filtered = filtered.filter(q => {
+                    if (q.difficulty) {
+                        return true; // All difficulties allowed
+                    }
+                    return q.importance >= 40;
+                });
+            }
+            
+            log(`Custom questions filtered for ${gameState.difficulty}: ${filtered.length} questions`);
+            return filtered;
+        }
+
         function startGame() {
             try {
                 log('Starting game...');
@@ -3068,46 +3224,74 @@
             try {
                 let questions;
                 
+                // First collect all potential questions based on mode
+                let osmQuestions = [];
+                let customQuestions = [];
+                
                 switch (gameState.currentMode) {
                     case 'facility':
-                        questions = [...facilityQuestions, ...gameState.customProblems.filter(p => p.type === 'facility')];
+                        osmQuestions = facilityQuestions;
+                        customQuestions = gameState.customProblems.filter(p => p.type === 'facility');
                         break;
                     case 'intersection':
-                        questions = [...intersectionQuestions, ...gameState.customProblems.filter(p => p.type === 'intersection')];
+                        osmQuestions = intersectionQuestions;
+                        customQuestions = gameState.customProblems.filter(p => p.type === 'intersection');
                         break;
                     case 'reverse':
-                        questions = [...facilityQuestions, ...intersectionQuestions, ...gameState.customProblems.filter(p => p.type !== 'street')];
+                        osmQuestions = [...facilityQuestions, ...intersectionQuestions];
+                        customQuestions = gameState.customProblems.filter(p => p.type !== 'street');
                         break;
-                    default:
-                        const streetQuestions = gameState.streetData || [];
-                        const customStreets = gameState.customProblems.filter(p => p.type === 'street');
-                        questions = [...streetQuestions, ...customStreets];
+                    default: // street
+                        osmQuestions = gameState.streetData || [];
+                        customQuestions = gameState.customProblems.filter(p => p.type === 'street');
                         
-                        if (questions.length === 0) {
+                        if (osmQuestions.length === 0 && customQuestions.length === 0) {
                             showWarning('No street data loaded yet. Please click "Load Regional Roads" to get actual OpenStreetMap data.');
                             return;
                         }
                 }
 
-                const filteredQuestions = filterQuestionsByDifficulty(questions);
+                // Apply difficulty filtering separately to each source
+                const filteredOsmQuestions = filterQuestionsByDifficulty(osmQuestions);
+                const filteredCustomQuestions = filterQuestionsByDifficultyCustom(customQuestions);
                 
-                const availableQuestions = filteredQuestions.filter(q => 
+                // Determine which source to use based on problemSource setting
+                let sourcePool;
+                if (gameState.problemSource === 'osm-only') {
+                    sourcePool = filteredOsmQuestions;
+                } else if (gameState.problemSource === 'custom-only') {
+                    sourcePool = filteredCustomQuestions;
+                } else { // mixed
+                    // Use ratio to determine source
+                    const useOsm = Math.random() < gameState.osmCustomRatio;
+                    
+                    if (useOsm && filteredOsmQuestions.length > 0) {
+                        sourcePool = filteredOsmQuestions;
+                    } else if (!useOsm && filteredCustomQuestions.length > 0) {
+                        sourcePool = filteredCustomQuestions;
+                    } else {
+                        // Fallback to whichever has questions
+                        sourcePool = filteredOsmQuestions.length > 0 ? filteredOsmQuestions : filteredCustomQuestions;
+                    }
+                }
+                
+                if (!sourcePool || sourcePool.length === 0) {
+                    showWarning('No questions available for the selected difficulty and source. Please adjust your settings.');
+                    return;
+                }
+                
+                // Filter out already asked questions
+                const availableQuestions = sourcePool.filter(q => 
                     !gameState.askedQuestions.some(asked => asked.name === q.name)
                 );
                 
                 let selectedQuestion;
                 if (availableQuestions.length > 0) {
                     selectedQuestion = availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
-                } else if (filteredQuestions.length > 0) {
-                    gameState.askedQuestions = [];
-                    selectedQuestion = filteredQuestions[Math.floor(Math.random() * filteredQuestions.length)];
                 } else {
-                    selectedQuestion = questions[Math.floor(Math.random() * questions.length)];
-                }
-                
-                if (!selectedQuestion) {
-                    showWarning('No questions available. Please load street data first.');
-                    return;
+                    // Reset asked questions if we've gone through all
+                    gameState.askedQuestions = [];
+                    selectedQuestion = sourcePool[Math.floor(Math.random() * sourcePool.length)];
                 }
                 
                 gameState.currentQuestion = selectedQuestion;
@@ -3123,10 +3307,11 @@
                 }
                 
                 if (questionType) {
-                    questionType.textContent = `${getModeName(gameState.currentMode)}チャレンジ`;
+                    const sourceLabel = gameState.currentQuestion.source === 'custom' ? ' (カスタム)' : ' (OSM)';
+                    questionType.textContent = `${getModeName(gameState.currentMode)}チャレンジ${sourceLabel}`;
                 }
                 
-                log('Question generated: ' + gameState.currentQuestion.name);
+                log(`Question generated: ${gameState.currentQuestion.name} (source: ${gameState.currentQuestion.source || 'osm'})`);
                 
             } catch (error) {
                 log('Error generating question: ' + error.message);
@@ -3582,6 +3767,28 @@
             }
         }
 
+        function updateAutoDifficultyDisplay() {
+            const importance = parseInt(document.getElementById('problem-importance').value);
+            const display = document.getElementById('auto-difficulty-display');
+            if (!display) return;
+
+            let difficulty, difficultyText;
+            if (importance >= 80) {
+                difficulty = 'tourist';
+                difficultyText = 'Tourist (Easy)';
+            } else if (importance >= 60) {
+                difficulty = 'resident';
+                difficultyText = 'Resident (Medium)';
+            } else {
+                difficulty = 'taxi-driver';
+                difficultyText = 'Taxi Driver (Hard)';
+            }
+
+            display.textContent = `自動判定: ${difficultyText}`;
+            display.style.color = difficulty === 'tourist' ? '#4CAF50' : 
+                                 difficulty === 'resident' ? '#ff9800' : '#f44336';
+        }
+
         function showWarning(message) {
             showMessage(message, 'warning-message');
         }
@@ -3914,11 +4121,28 @@
                 return;
             }
             
+            // Determine difficulty
+            let difficulty;
+            const difficultyMode = document.getElementById('problem-difficulty-mode').value;
+            if (difficultyMode === 'manual') {
+                difficulty = document.getElementById('problem-difficulty').value;
+            } else {
+                // Auto determine from importance
+                if (importance >= 80) {
+                    difficulty = 'tourist';
+                } else if (importance >= 60) {
+                    difficulty = 'resident';
+                } else {
+                    difficulty = 'taxi-driver';
+                }
+            }
+            
             const problem = {
                 name,
                 type,
                 description: description || `Custom ${type}`,
                 importance,
+                difficulty,  // New field
                 points: [gameState.currentEditPoints.slice()],
                 isEnclosedArea: gameState.currentEditPoints.length > 3 && type === 'facility',
                 source: 'custom',
@@ -3947,7 +4171,12 @@
             document.getElementById('problem-name').value = '';
             document.getElementById('problem-description').value = '';
             document.getElementById('problem-importance').value = '70';
+            document.getElementById('problem-difficulty-mode').value = 'auto';
+            document.getElementById('problem-difficulty').value = 'resident';
+            document.getElementById('problem-difficulty').style.display = 'none';
+            document.getElementById('auto-difficulty-display').style.display = 'block';
             updateImportanceDisplay();
+            updateAutoDifficultyDisplay();
             clearPoints();
         }
 
@@ -3988,6 +4217,19 @@
             document.getElementById('problem-description').value = problem.description;
             document.getElementById('problem-importance').value = problem.importance;
             updateImportanceDisplay();
+            
+            // Handle difficulty editing
+            if (problem.difficulty) {
+                document.getElementById('problem-difficulty-mode').value = 'manual';
+                document.getElementById('problem-difficulty').value = problem.difficulty;
+                document.getElementById('problem-difficulty').style.display = 'block';
+                document.getElementById('auto-difficulty-display').style.display = 'none';
+            } else {
+                document.getElementById('problem-difficulty-mode').value = 'auto';
+                document.getElementById('problem-difficulty').style.display = 'none';
+                document.getElementById('auto-difficulty-display').style.display = 'block';
+                updateAutoDifficultyDisplay();
+            }
             
             gameState.currentEditPoints = problem.points[0].slice();
             updatePointsList();
@@ -4089,11 +4331,22 @@
                     }
                     
                     if (coordinates && coordinates.length > 0) {
+                        // Auto-determine difficulty based on importance
+                        let difficulty;
+                        if (75 >= 80) {
+                            difficulty = 'tourist';
+                        } else if (75 >= 60) {
+                            difficulty = 'resident';
+                        } else {
+                            difficulty = 'taxi-driver';
+                        }
+                        
                         const problem = {
                             name: name.trim(),
                             type: problemType,
                             description: description.trim() || `Imported ${problemType}`,
                             importance: 75,
+                            difficulty: difficulty,  // Add difficulty field
                             points: [coordinates],
                             isEnclosedArea: false,
                             source: 'imported',
@@ -4140,6 +4393,9 @@
             showInfo('Loading Yamate-dori sample data...');
             parseKmlData(yamateKmlData);
         }
+
+        // Background loading for remaining roads
+        let backgroundLoadingActive = false;
 
         // Global functions for editor
         window.removePoint = removePoint;
