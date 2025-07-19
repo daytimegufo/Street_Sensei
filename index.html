@@ -528,6 +528,38 @@
             color: white;
         }
 
+        .start-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(45, 45, 45, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            z-index: 950;
+        }
+
+        .start-controls select,
+        .start-controls button {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .start-controls {
+                height: 60px;
+                padding: 0.5rem;
+            }
+
+            .start-controls select,
+            .start-controls button {
+                font-size: 1rem;
+            }
+        }
+
         .debug-info {
             position: absolute;
             top: 10px;
@@ -1052,15 +1084,6 @@
     <div class="game-container">
         <div class="sidebar" id="sidebar">
             <!-- Game Section (always visible) -->
-            <div class="setup-section">
-                <h3>ゲームモード</h3>
-                <div class="mode-tabs">
-                    <div class="mode-tab active" data-mode="street">Street</div>
-                    <div class="mode-tab" data-mode="facility">Facility</div>
-                    <div class="mode-tab" data-mode="intersection">Intersection</div>
-                    <div class="mode-tab" data-mode="reverse">Reverse</div>
-                </div>
-            </div>
 
             <div class="setup-section">
                 <h3>出題範囲</h3>
@@ -1128,7 +1151,6 @@
             </div>
 
             <div class="setup-section">
-                <button id="start-game">Start Game</button>
                 <button id="load-street-data" style="background: #ff9800; font-size: 0.85rem; margin-top: 0.5rem;">🗺️ Load Regional Roads</button>
                 <button id="toggle-settings" style="background: #666; font-size: 0.85rem; margin-top: 0.5rem;">🔧 Show Advanced Tools</button>
                 <div id="data-status" style="margin-top: 0.5rem; padding: 0.5rem; background: #5a2d2d; border-radius: 4px; font-size: 0.8rem; color: white;">
@@ -1322,6 +1344,16 @@
             </div>
 
             <div class="debug-info" id="debug-info">Loading map...</div>
+
+            <div class="start-controls" id="start-controls">
+                <select id="game-mode-select">
+                    <option value="street">Street</option>
+                    <option value="facility">Facility</option>
+                    <option value="intersection">Intersection</option>
+                    <option value="reverse">Reverse</option>
+                </select>
+                <button id="start-game">Start Game</button>
+            </div>
         </div>
     </div>
 
@@ -2448,6 +2480,14 @@
                     });
                 }
 
+                const modeSelect = document.getElementById('game-mode-select');
+                if (modeSelect) {
+                    modeSelect.addEventListener('change', (e) => {
+                        gameState.currentMode = e.target.value;
+                        log('Mode changed to: ' + gameState.currentMode);
+                    });
+                }
+
                 const updateLocationBtn = document.getElementById('update-location');
                 if (updateLocationBtn) {
                     updateLocationBtn.addEventListener('click', () => {
@@ -3190,12 +3230,16 @@
                 
                 const challengeSection = document.getElementById('challenge-section');
                 const startBtn = document.getElementById('start-game');
+                const startControls = document.getElementById('start-controls');
                 
                 if (challengeSection) {
                     challengeSection.classList.remove('hidden');
                 }
                 if (startBtn) {
                     startBtn.style.display = 'none';
+                }
+                if (startControls) {
+                    startControls.style.display = 'none';
                 }
                 
                 updateMobileControls();
@@ -3897,7 +3941,7 @@
 
         function getModeName(mode) {
             const names = {
-                'street': '道路',
+                'street': 'street',
                 'facility': '施設',
                 'intersection': '交差点',
                 'reverse': '逆'
@@ -4101,10 +4145,12 @@
                 const challengeSection = document.getElementById('challenge-section');
                 const resultsOverlay = document.getElementById('results-overlay');
                 const startBtn = document.getElementById('start-game');
+                const startControls = document.getElementById('start-controls');
                 
                 if (challengeSection) challengeSection.classList.add('hidden');
                 if (resultsOverlay) resultsOverlay.classList.add('hidden');
                 if (startBtn) startBtn.style.display = 'block';
+                if (startControls) startControls.style.display = 'flex';
                 
                 // ゲームリセット時に街路名表示を復元
                 if (!gameState.showLabels) {
