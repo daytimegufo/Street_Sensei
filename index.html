@@ -1236,12 +1236,6 @@
                         </div>
                         <div id="import-status" class="hidden"></div>
                         
-                        <h4>Sample KML Data</h4>
-                        <p style="font-size: 0.8rem; color: #aaa; margin-bottom: 0.5rem;">
-                            Load the provided Yamate-dori sample data:
-                        </p>
-                        <button id="load-sample-kml" style="background: #2196F3;">Load Yamate-dori Sample</button>
-                        
                         <h4>Import Instructions</h4>
                         <div style="font-size: 0.8rem; color: #ccc; line-height: 1.4;">
                             <p><strong>Supported formats:</strong> KML files with LineString or Point geometries</p>
@@ -1737,7 +1731,7 @@
             initialLocationPrompted: false
        };
 
-        // Enhanced sample data with actual coordinates
+        // Example facility data with coordinates
         const facilityQuestions = [
             {
                 name: "東京タワー",
@@ -1962,61 +1956,6 @@
                 return this.load(regionKey, strategyKey) !== null;
             }
         };
-
-        const streetQuestions = [
-            {
-                name: "表参道",
-                points: [[
-                    { lat: 35.6654, lng: 139.7134 },
-                    { lat: 35.6670, lng: 139.7110 },
-                    { lat: 35.6690, lng: 139.7085 },
-                    { lat: 35.6699, lng: 139.7079 }
-                ]],
-                importance: 85,
-                description: "明治神宮への参道として作られた並木道",
-                source: "default"
-            },
-            {
-                name: "中央通り",
-                points: [[
-                    { lat: 35.6717, lng: 139.7635 },
-                    { lat: 35.6720, lng: 139.7640 },
-                    { lat: 35.6725, lng: 139.7645 },
-                    { lat: 35.6730, lng: 139.7650 }
-                ]],
-                importance: 80,
-                description: "銀座のメインストリート",
-                source: "default"
-            },
-            {
-                name: "青山通り",
-                points: [[
-                    { lat: 35.6650, lng: 139.7200 },
-                    { lat: 35.6670, lng: 139.7180 },
-                    { lat: 35.6690, lng: 139.7160 },
-                    { lat: 35.6710, lng: 139.7140 }
-                ]],
-                importance: 70,
-                description: "青山エリアを通る主要道路",
-                source: "default"
-            }
-        ];
-
-        // Sample Yamate-dori KML data
-        const yamateKmlData = `<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2">
-    <Document>
-        <Placemark>
-            <name>山手通り</name>
-            <description>読み仮名: やまてどおり
-起点: 品川区東品川一丁目（新東海橋） →
-終点: 板橋区氷川町（仲宿）</description>
-            <LineString>
-                <coordinates>139.686036,35.713522,0.0 139.686069,35.713592,0.0 139.686283,35.714042,0.0 139.686876,35.715233,0.0 139.687218,35.716003,0.0 139.687307,35.716187,0.0</coordinates>
-            </LineString>
-        </Placemark>
-    </Document>
-</kml>`;
 
         // Current regional configuration and loading strategy
         let currentRegionalConfig = REGIONAL_CONFIGS['south-kanto'];
@@ -2621,11 +2560,6 @@
                     });
                 }
 
-                const loadSampleBtn = document.getElementById('load-sample-kml');
-                if (loadSampleBtn) {
-                    loadSampleBtn.addEventListener('click', loadSampleKml);
-                }
-
                 const zoomInBtn = document.getElementById('zoom-in');
                 if (zoomInBtn) {
                     zoomInBtn.addEventListener('click', () => {
@@ -2777,7 +2711,7 @@
                         const breakdown = getStreetBreakdownByDifficulty();
                         
                         statusDiv.innerHTML = `
-                            <div>✅ ${gameState.streetData.length} streets loaded (${source === 'overpass' ? 'OSM data' : 'sample data'})</div>
+                            <div>✅ ${gameState.streetData.length} streets loaded (${source === 'overpass' ? 'OSM data' : 'custom data'})</div>
                             ${customStreetCount > 0 ? `<div style="font-size: 0.7rem;">+ ${customStreetCount} custom streets</div>` : ''}
                             <div style="font-size: 0.7rem; margin-top: 0.3rem;">
                                 OSM - Tourist: ${breakdown.tourist} | Resident: ${breakdown.resident} | Taxi: ${breakdown.taxi}
@@ -3029,7 +2963,7 @@
         }
 
         function loadRegionalRoadsOptimized(regionKey = 'south-kanto', strategyKey = 'immediate') {
-            return new Promise((resolve, reject) => {
+            return new Promise(async (resolve, reject) => {
                 if (gameState.isLoadingData) {
                     log('Already loading data...');
                     resolve(false);
@@ -3070,18 +3004,40 @@
                 
                 log(`Loading roads with ${strategy.name} strategy for ${config.name}...`);
                 
-                // Use sample data as fallback
-                gameState.streetData = streetQuestions;
-                showSuccess(`✅ Sample data loaded (${streetQuestions.length} roads)`);
-                updateDataStatus();
-                
-                gameState.isLoadingData = false;
-                if (loadBtn) {
-                    loadBtn.textContent = '🔄 Reload Roads';
-                    loadBtn.disabled = false;
-                    loadBtn.classList.remove('loading');
+                try {
+                    const { south, west, north, east } = config.bbox;
+                    const query = `[out:json][timeout:60];way["highway"]["name"](${south},${west},${north},${east});out geom;`;
+                    const response = await fetch('https://overpass-api.de/api/interpreter', {
+                        method: 'POST',
+                        body: query
+                    });
+                    const data = await response.json();
+                    const roads = data.elements
+                        .filter(el => el.type === 'way' && el.geometry && el.tags && el.tags.name)
+                        .map(el => ({
+                            name: el.tags.name,
+                            points: [el.geometry.map(p => ({ lat: p.lat, lng: p.lon }))],
+                            importance: config.majorRoads.includes(el.tags.name) ? 80 : 60,
+                            isComplete: true,
+                            source: 'overpass'
+                        }));
+                    gameState.streetData = roads;
+                    showSuccess(`✅ ${roads.length} roads loaded from OSM`);
+                    updateDataStatus();
+                } catch (err) {
+                    console.error('OSM load error:', err);
+                    showError('Failed to load roads from OSM');
+                    resolve(false);
+                    return;
+                } finally {
+                    gameState.isLoadingData = false;
+                    if (loadBtn) {
+                        loadBtn.textContent = '🔄 Reload Roads';
+                        loadBtn.disabled = false;
+                        loadBtn.classList.remove('loading');
+                    }
                 }
-                
+
                 resolve(true);
             });
         }
@@ -4514,11 +4470,6 @@
             }
             
             return coordinates;
-        }
-
-        function loadSampleKml() {
-            showInfo('Loading Yamate-dori sample data...');
-            parseKmlData(yamateKmlData);
         }
 
         // Background loading for remaining roads
