@@ -771,6 +771,33 @@
             }
         }
 
+        /* タイマー表示を統一（サイドバー内から移動） */
+        .timer-display {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #4CAF50;
+            margin: 0 1rem;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .timer-display.warning {
+            color: #ff9800;
+        }
+
+        .timer-display.danger {
+            color: #ff6b6b;
+            animation: blink 1s infinite;
+        }
+
+        /* モバイルでの調整 */
+        @media (max-width: 768px) {
+            .timer-display {
+                font-size: 1.2rem;
+                margin: 0 0.5rem;
+            }
+        }
+
         /* Mobile Game Overlay - ゲーム中の地図上表示 */
         .mobile-game-overlay {
             display: none;
@@ -787,34 +814,6 @@
             .mobile-game-overlay.active {
                 display: block;
             }
-        }
-
-        /* ゲーム中の出題表示 - 地図上部固定 */
-        .mobile-question-overlay {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            right: 10px;
-            background: rgba(45, 45, 45, 0.95);
-            border-radius: 12px;
-            padding: 1rem;
-            backdrop-filter: blur(10px);
-            pointer-events: auto;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        }
-
-        .mobile-question-text {
-            color: #fff;
-            font-size: 1.1rem;
-            font-weight: bold;
-            text-align: center;
-            margin-bottom: 0.5rem;
-        }
-
-        .mobile-question-type {
-            color: #aaa;
-            font-size: 0.8rem;
-            text-align: center;
         }
 
         /* タイマーとスコア - 地図右上 */
@@ -855,118 +854,7 @@
             font-size: 0.8rem;
             color: #ccc;
         }
-
-        /* 5択選択肢 - 地図下部 */
-        .mobile-choices-overlay {
-            position: absolute;
-            bottom: 70px;
-            left: 10px;
-            right: 10px;
-            pointer-events: auto;
-        }
-
-        .mobile-choices-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.5rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .mobile-choice-btn {
-            background: rgba(45, 45, 45, 0.95);
-            color: #fff;
-            border: 2px solid #555;
-            border-radius: 8px;
-            padding: 1rem 0.5rem;
-            font-size: 0.9rem;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            backdrop-filter: blur(10px);
-            min-height: 60px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            word-wrap: break-word;
-            hyphens: auto;
-        }
-
-        .mobile-choice-btn:active {
-            transform: scale(0.95);
-        }
-
-        .mobile-choice-btn.correct {
-            background: rgba(76, 175, 80, 0.9);
-            border-color: #4CAF50;
-        }
-
-        .mobile-choice-btn.incorrect {
-            background: rgba(244, 67, 54, 0.9);
-            border-color: #f44336;
-        }
-
-        /* ゲーム結果表示 - 地図中央 */
-        .mobile-result-overlay {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(45, 45, 45, 0.95);
-            border-radius: 12px;
-            padding: 1.5rem;
-            text-align: center;
-            pointer-events: auto;
-            backdrop-filter: blur(10px);
-            min-width: 250px;
-            max-width: 90%;
-        }
-
-        /* Bottom controls - スッキリしたデザイン */
-        .mobile-controls {
-            display: none;
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(45, 45, 45, 0.95);
-            backdrop-filter: blur(10px);
-            border-top: 2px solid #444;
-            padding: 0.75rem;
-            z-index: 1000;
-        }
-
-        @media (max-width: 768px) {
-            .mobile-controls {
-                display: flex;
-                justify-content: space-around;
-                align-items: center;
-            }
-        }
-
-        .mobile-control-btn {
-            background: #4CAF50;
-            color: white;
-            border: none;
-            padding: 0.75rem 1rem;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            cursor: pointer;
-            min-width: 80px;
-            transition: all 0.2s;
-        }
-
-        .mobile-control-btn:active {
-            transform: scale(0.95);
-        }
-
-        .mobile-control-btn.secondary {
-            background: #ff9800;
-        }
-
-        .mobile-control-btn.danger {
-            background: #f44336;
-        }
-
+    
         /* ゲーム中はサイドバーを完全に隠す */
         .game-playing .sidebar {
             transform: translateX(-100%) !important;
@@ -975,17 +863,31 @@
         /* ゲーム中のヘッダー簡素化 */
         @media (max-width: 768px) {
             .game-playing .header {
-                height: 0;
-                overflow: hidden;
-                padding: 0;
+                height: 60px;
+                padding: 0.5rem;
+            }
+
+            .game-playing .header .title {
+                display: none;
             }
 
             .game-playing .game-container {
-                height: 100vh;
+                height: calc(100vh - 60px);
             }
 
             .game-playing .mobile-controls {
-                bottom: 0;
+                display: none;
+            }
+        }
+
+        /* PC用ゲーム中のUI */
+        @media (min-width: 769px) {
+            .game-playing .sidebar {
+                display: none;
+            }
+
+            .game-playing .game-container {
+                height: calc(100vh - 70px);
             }
         }
 
@@ -1002,12 +904,121 @@
             pointer-events: auto;
             max-width: 200px;
         }
+
+        /* 統一された問題表示 - 地図左下 */
+        .game-question-overlay {
+            position: absolute;
+            bottom: 20px;
+            left: 10px;
+            background: rgba(45, 45, 45, 0.95);
+            color: #fff;
+            padding: 1rem;
+            border-radius: 12px;
+            max-width: 350px;
+            pointer-events: auto;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            z-index: 950;
+        }
+
+        .game-question-type {
+            font-size: 0.8rem;
+            color: #aaa;
+            margin-bottom: 0.5rem;
+        }
+
+        .game-question-text {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            line-height: 1.4;
+        }
+
+        .game-question-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .game-question-actions button {
+            flex: 1;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-answer {
+            background: #ff9800;
+            color: white;
+        }
+
+        .btn-next {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-end {
+            background: #f44336;
+            color: white;
+        }
+
+        /* 5択選択肢 - 地図左下（Reverseモード用） */
+        .game-choices-overlay {
+            position: absolute;
+            bottom: 20px;
+            left: 10px;
+            background: rgba(45, 45, 45, 0.95);
+            color: #fff;
+            padding: 1rem;
+            border-radius: 12px;
+            max-width: 350px;
+            pointer-events: auto;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            z-index: 950;
+        }
+
+        .game-choices-grid {
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .game-choice-btn {
+            background: rgba(61, 61, 61, 0.9);
+            color: #fff;
+            border: 1px solid #555;
+            border-radius: 6px;
+            padding: 0.75rem;
+            font-size: 0.9rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .game-choice-btn:hover {
+            background: rgba(77, 77, 77, 0.9);
+            border-color: #4CAF50;
+        }
+
+        .game-choice-btn.correct {
+            background: rgba(76, 175, 80, 0.9);
+            border-color: #4CAF50;
+        }
+
+        .game-choice-btn.incorrect {
+            background: rgba(244, 67, 54, 0.9);
+            border-color: #f44336;
+        }
     </style>
 </head>
 <body>
     <div class="header">
         <button class="menu-toggle" id="menu-toggle">☰</button>
         <div class="title">Back of Your Hand - Enhanced</div>
+        <div class="timer-display hidden" id="header-timer">30</div>
         <div class="stats">
             <div class="stat-item">
                 <div class="stat-value" id="score">0</div>
@@ -1031,8 +1042,8 @@
                 <h3>ゲームモード</h3>
                 <div class="mode-tabs">
                     <div class="mode-tab active" data-mode="street">Street</div>
-                    <div class="mode-tab" data-mode="施設">Facility</div>
-                    <div class="mode-tab" data-mode="交差点">Intersection</div>
+                    <div class="mode-tab" data-mode="facility">Facility</div>
+                    <div class="mode-tab" data-mode="intersection">Intersection</div>
                     <div class="mode-tab" data-mode="reverse">Reverse</div>
                 </div>
             </div>
@@ -1284,14 +1295,6 @@
         </div>
     </div>
 
-    <!-- Mobile Controls - 改善されたモバイルコントロール -->
-    <div class="mobile-controls">
-        <button class="mobile-control-btn" id="mobile-menu">📱 設定</button>
-        <button class="mobile-control-btn secondary" id="mobile-answer" class="hidden">💡 答え</button>
-        <button class="mobile-control-btn" id="mobile-next" class="hidden">▶️ 次へ</button>
-        <button class="mobile-control-btn danger" id="mobile-end" class="hidden">🏁 終了</button>
-    </div>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
     <script>
@@ -1396,29 +1399,29 @@
             log('Mobile initialization complete');
         }
 
-        // Mobile Game UI Functions
+        // Mobile Game UI Functions - 統一されたUIのため簡略化
         function initMobileGameUI() {
-            if (window.innerWidth > 768) return; // PC only
-            
-            log('Initializing mobile game UI...');
-            
-            // Hide desktop challenge section on mobile during game
-            const challengeSection = document.getElementById('challenge-section');
-            if (challengeSection) {
-                challengeSection.style.display = 'none';
-            }
+            log('Mobile game UI initialized with unified interface');
         }
 
         function showMobileGameUI() {
-            if (window.innerWidth > 768) return;
-            
             log('Showing mobile game UI...');
             
             const overlay = document.getElementById('mobile-game-overlay');
             const body = document.body;
+            const questionOverlay = document.getElementById('game-question-overlay');
+            const headerTimer = document.getElementById('header-timer');
             
             if (overlay) {
                 overlay.classList.add('active');
+            }
+            
+            if (questionOverlay) {
+                questionOverlay.classList.remove('hidden');
+            }
+            
+            if (headerTimer) {
+                headerTimer.classList.remove('hidden');
             }
             
             // Add game-playing class to body for CSS targeting
@@ -1428,13 +1431,26 @@
         }
 
         function hideMobileGameUI() {
-            if (window.innerWidth > 768) return;
-            
             const overlay = document.getElementById('mobile-game-overlay');
             const body = document.body;
+            const questionOverlay = document.getElementById('game-question-overlay');
+            const choicesOverlay = document.getElementById('game-choices-overlay');
+            const headerTimer = document.getElementById('header-timer');
             
             if (overlay) {
                 overlay.classList.remove('active');
+            }
+            
+            if (questionOverlay) {
+                questionOverlay.classList.add('hidden');
+            }
+            
+            if (choicesOverlay) {
+                choicesOverlay.classList.add('hidden');
+            }
+            
+            if (headerTimer) {
+                headerTimer.classList.add('hidden');
             }
             
             body.classList.remove('game-playing');
@@ -1464,26 +1480,28 @@
         }
 
         function updateMobileQuestion(questionText, questionType) {
-            if (window.innerWidth > 768) return;
+            const gameQuestionText = document.getElementById('game-question-text');
+            const gameQuestionType = document.getElementById('game-question-type');
             
-            const mobileQuestionText = document.getElementById('mobile-question-text');
-            const mobileQuestionType = document.getElementById('mobile-question-type');
-            
-            if (mobileQuestionText) {
-                mobileQuestionText.textContent = questionText;
+            if (gameQuestionText) {
+                gameQuestionText.textContent = questionText;
             }
-            if (mobileQuestionType) {
-                mobileQuestionType.textContent = questionType;
+            if (gameQuestionType) {
+                gameQuestionType.textContent = questionType;
             }
         }
 
         function showMobileChoices(choices) {
-            if (window.innerWidth > 768) return;
+            const questionOverlay = document.getElementById('game-question-overlay');
+            const choicesOverlay = document.getElementById('game-choices-overlay');
+            const grid = document.getElementById('game-choices-grid');
             
-            const overlay = document.getElementById('mobile-choices-overlay');
-            const grid = document.getElementById('mobile-choices-grid');
+            if (!choicesOverlay || !grid) return;
             
-            if (!overlay || !grid) return;
+            // Hide normal question overlay
+            if (questionOverlay) {
+                questionOverlay.classList.add('hidden');
+            }
             
             // Clear existing choices
             grid.innerHTML = '';
@@ -1491,27 +1509,32 @@
             // Create choice buttons
             choices.forEach((choice, index) => {
                 const button = document.createElement('button');
-                button.className = 'mobile-choice-btn';
+                button.className = 'game-choice-btn';
                 button.textContent = choice.name;
                 button.onclick = () => handleMobileChoiceClick(choice, button);
                 grid.appendChild(button);
             });
             
-            overlay.classList.remove('hidden');
+            choicesOverlay.classList.remove('hidden');
         }
 
         function hideMobileChoices() {
-            if (window.innerWidth > 768) return;
+            const choicesOverlay = document.getElementById('game-choices-overlay');
+            const questionOverlay = document.getElementById('game-question-overlay');
             
-            const overlay = document.getElementById('mobile-choices-overlay');
-            if (overlay) {
-                overlay.classList.add('hidden');
+            if (choicesOverlay) {
+                choicesOverlay.classList.add('hidden');
+            }
+            
+            // Show normal question overlay again
+            if (questionOverlay && gameState.isPlaying) {
+                questionOverlay.classList.remove('hidden');
             }
         }
 
         function handleMobileChoiceClick(selectedChoice, button) {
             // Disable all buttons
-            document.querySelectorAll('.mobile-choice-btn').forEach(btn => {
+            document.querySelectorAll('.game-choice-btn').forEach(btn => {
                 btn.disabled = true;
                 btn.style.pointerEvents = 'none';
             });
@@ -2549,30 +2572,23 @@
                     });
                 }
 
-                const mobileMenuBtn = document.getElementById('mobile-menu');
-                if (mobileMenuBtn) {
-                    mobileMenuBtn.addEventListener('click', () => {
-                        sidebar.classList.toggle('open');
-                    });
-                }
-
-                const mobileNextBtn = document.getElementById('mobile-next');
-                if (mobileNextBtn) {
-                    mobileNextBtn.addEventListener('click', () => {
-                        nextQuestion();
-                    });
-                }
-
-                const mobileAnswerBtn = document.getElementById('mobile-answer');
-                if (mobileAnswerBtn) {
-                    mobileAnswerBtn.addEventListener('click', () => {
+                const gameBtnAnswer = document.getElementById('game-btn-answer');
+                if (gameBtnAnswer) {
+                    gameBtnAnswer.addEventListener('click', () => {
                         showAnswer();
                     });
                 }
 
-                const mobileEndBtn = document.getElementById('mobile-end');
-                if (mobileEndBtn) {
-                    mobileEndBtn.addEventListener('click', () => {
+                const gameBtnNext = document.getElementById('game-btn-next');
+                if (gameBtnNext) {
+                    gameBtnNext.addEventListener('click', () => {
+                        nextQuestion();
+                    });
+                }
+
+                const gameBtnEnd = document.getElementById('game-btn-end');
+                if (gameBtnEnd) {
+                    gameBtnEnd.addEventListener('click', () => {
                         endGame();
                     });
                 }
@@ -2581,11 +2597,9 @@
                     if (window.innerWidth <= 768) {
                         const sidebar = document.getElementById('sidebar');
                         const menuToggle = document.getElementById('menu-toggle');
-                        const mobileMenu = document.getElementById('mobile-menu');
                         
                         if (!sidebar.contains(e.target) && 
-                            e.target !== menuToggle && 
-                            e.target !== mobileMenu) {
+                            e.target !== menuToggle) {
                             sidebar.classList.remove('open');
                         }
                     }
@@ -3155,9 +3169,7 @@
                 }
                 
                 // モバイルゲームUIを表示
-                if (window.innerWidth <= 768) {
-                    showMobileGameUI();
-                }
+                showMobileGameUI();
                 
                 nextQuestion();
                 updateUI();
@@ -3204,14 +3216,12 @@
                 updateUI();
                 updateMobileControls();
                 
-                // モバイルでも問題文を更新
-                if (window.innerWidth <= 768) {
-                    const questionText = gameState.currentMode === 'reverse' ? 
-                        `強調表示された場所は何ですか？` : 
-                        `見つけてください: ${gameState.currentQuestion?.name || ''}`;
-                    const questionType = `${getModeName(gameState.currentMode)}チャレンジ`;
-                    updateMobileQuestion(questionText, questionType);
-                }
+                // 問題文を更新
+                const questionText = gameState.currentMode === 'reverse' ? 
+                    `強調表示された場所は何ですか？` : 
+                    `見つけてください: ${gameState.currentQuestion?.name || ''}`;
+                const questionType = `${getModeName(gameState.currentMode)}チャレンジ`;
+                updateMobileQuestion(questionText, questionType);
                 
                 log('Next question loaded');
             } catch (error) {
@@ -3410,13 +3420,13 @@
 
                 const showAnswerBtn = document.getElementById('show-answer');
                 const nextBtn = document.getElementById('next-question');
-                const mobileAnswer = document.getElementById('mobile-answer');
-                const mobileNext = document.getElementById('mobile-next');
+                const gameBtnAnswer = document.getElementById('game-btn-answer');
+                const gameBtnNext = document.getElementById('game-btn-next');
                 
                 if (showAnswerBtn) showAnswerBtn.classList.add('hidden');
                 if (nextBtn) nextBtn.classList.remove('hidden');
-                if (mobileAnswer) mobileAnswer.classList.add('hidden');
-                if (mobileNext) mobileNext.classList.remove('hidden');
+                if (gameBtnAnswer) gameBtnAnswer.classList.add('hidden');
+                if (gameBtnNext) gameBtnNext.classList.remove('hidden');
                 
                 stopTimer();
                 log('Answer shown');
@@ -3680,7 +3690,7 @@
                         }
                     });
                     
-                    document.querySelectorAll('.mobile-choice-btn').forEach(btn => {
+                    document.querySelectorAll('.game-choice-btn').forEach(btn => {
                         btn.disabled = true;
                         if (btn.textContent === gameState.currentQuestion.name) {
                             btn.classList.add('correct');
@@ -3694,9 +3704,9 @@
                 updateMobileGameStats();
                 
                 const nextBtn = document.getElementById('next-question');
-                const mobileNext = document.getElementById('mobile-next');
+                const gameBtnNext = document.getElementById('game-btn-next');
                 if (nextBtn) nextBtn.classList.remove('hidden');
-                if (mobileNext) mobileNext.classList.remove('hidden');
+                if (gameBtnNext) gameBtnNext.classList.remove('hidden');
                 
                 log('Timer expired');
             } catch (error) {
@@ -3706,13 +3716,23 @@
 
         function updateTimer() {
             const timerEl = document.getElementById('timer');
+            const headerTimer = document.getElementById('header-timer');
+            const mobileTimer = document.getElementById('mobile-timer');
+            
             if (timerEl) {
                 timerEl.textContent = gameState.timer;
+            }
+            
+            if (headerTimer) {
+                headerTimer.textContent = gameState.timer;
+                headerTimer.classList.remove('warning', 'danger');
                 
                 if (gameState.timer <= 5) {
+                    headerTimer.classList.add('danger');
                     timerEl.style.color = '#ff6b6b';
                     timerEl.classList.add('blinking');
                 } else if (gameState.timer <= 10) {
+                    headerTimer.classList.add('warning');
                     timerEl.style.color = '#ff9800';
                     timerEl.classList.remove('blinking');
                 } else {
@@ -3720,6 +3740,8 @@
                     timerEl.classList.remove('blinking');
                 }
             }
+            
+            updateMobileGameStats();
         }
 
         function updateUI() {
@@ -3737,18 +3759,18 @@
         }
 
         function updateMobileControls() {
-            const mobileNext = document.getElementById('mobile-next');
-            const mobileAnswer = document.getElementById('mobile-answer');
-            const mobileEnd = document.getElementById('mobile-end');
+            const btnNext = document.getElementById('game-btn-next');
+            const btnAnswer = document.getElementById('game-btn-answer');
+            const btnEnd = document.getElementById('game-btn-end');
             
             if (gameState.isPlaying) {
-                if (mobileNext) mobileNext.classList.add('hidden');
-                if (mobileAnswer) mobileAnswer.classList.remove('hidden');
-                if (mobileEnd) mobileEnd.classList.remove('hidden');
+                if (btnNext) btnNext.classList.add('hidden');
+                if (btnAnswer) btnAnswer.classList.remove('hidden');
+                if (btnEnd) btnEnd.classList.remove('hidden');
             } else {
-                if (mobileNext) mobileNext.classList.add('hidden');
-                if (mobileAnswer) mobileAnswer.classList.add('hidden');
-                if (mobileEnd) mobileEnd.classList.add('hidden');
+                if (btnNext) btnNext.classList.add('hidden');
+                if (btnAnswer) btnAnswer.classList.add('hidden');
+                if (btnEnd) btnEnd.classList.add('hidden');
             }
         }
 
@@ -3910,7 +3932,7 @@
                     }
                 });
 
-                document.querySelectorAll('.mobile-choice-btn').forEach(btn => {
+                document.querySelectorAll('.game-choice-btn').forEach(btn => {
                     btn.disabled = true;
                     if (btn.textContent === gameState.currentQuestion.name) {
                         btn.classList.add('correct');
@@ -3939,14 +3961,17 @@
                 
                 setTimeout(() => {
                     const nextBtn = document.getElementById('next-question');
-                    const mobileNext = document.getElementById('mobile-next');
+                    const gameBtnNext = document.getElementById('game-btn-next');
                     if (nextBtn) nextBtn.classList.remove('hidden');
-                    if (mobileNext) mobileNext.classList.remove('hidden');
+                    if (gameBtnNext) gameBtnNext.classList.remove('hidden');
                     
                     const showAnswerBtn = document.getElementById('show-answer');
-                    const mobileAnswer = document.getElementById('mobile-answer');
+                    const gameBtnAnswer = document.getElementById('game-btn-answer');
                     if (showAnswerBtn) showAnswerBtn.classList.add('hidden');
-                    if (mobileAnswer) mobileAnswer.classList.add('hidden');
+                    if (gameBtnAnswer) gameBtnAnswer.classList.add('hidden');
+                    
+                    // Hide choices and show question overlay
+                    hideMobileChoices();
                 }, 1500);
             } catch (error) {
                 log('Error handling reverse answer: ' + error.message);
