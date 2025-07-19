@@ -1699,8 +1699,9 @@
             // New fields for problem source management
             problemSource: 'mixed', // 'osm-only', 'custom-only', 'mixed'
             osmCustomRatio: 0.7, // Default 70% OSM, 30% custom
-            customDifficultyMode: 'auto' // 'auto' or 'manual'
-        };
+            customDifficultyMode: 'auto', // 'auto' or 'manual'
+            initialLocationPrompted: false
+       };
 
         // Enhanced sample data with actual coordinates
         const facilityQuestions = [
@@ -2008,7 +2009,9 @@
                 updateImportanceDisplay();
                 updateAutoDifficultyDisplay();
                 updateDataStatus();
-                
+
+                promptInitialLocation();
+
                 log('Game initialization complete');
             } catch (error) {
                 log('Error initializing game: ' + error.message);
@@ -2964,6 +2967,23 @@
                 },
                 options
             );
+       }
+
+        function promptInitialLocation() {
+            if (gameState.initialLocationPrompted) return;
+            gameState.initialLocationPrompted = true;
+
+            if (!navigator.geolocation) {
+                showWarning('Geolocation not supported');
+                return;
+            }
+
+            const useCurrent = confirm('Center Locationを現在地に設定しますか?');
+            if (useCurrent) {
+                getCurrentLocation();
+            } else {
+                showInfo('Center Locationを設定し、Update Locationを押してください');
+            }
         }
 
         function loadRegionalRoadsOptimized(regionKey = 'south-kanto', strategyKey = 'immediate') {
