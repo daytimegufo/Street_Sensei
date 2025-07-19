@@ -135,7 +135,7 @@
         }
 
         @media (min-width: 769px) {
-            .game-playing .menu-toggle {
+            .menu-toggle {
                 display: block;
             }
         }
@@ -175,6 +175,12 @@
 
             .sidebar.open {
                 transform: translateX(0);
+            }
+        }
+
+        @media (min-width: 769px) {
+            .sidebar.closed {
+                display: none;
             }
         }
 
@@ -2348,7 +2354,11 @@
                 const sidebar = document.getElementById('sidebar');
                 if (menuToggle && sidebar) {
                     menuToggle.addEventListener('click', () => {
-                        sidebar.classList.toggle('open');
+                        if (window.innerWidth <= 768) {
+                            sidebar.classList.toggle('open');
+                        } else {
+                            sidebar.classList.toggle('closed');
+                        }
                     });
                 }
 
