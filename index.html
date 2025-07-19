@@ -2753,7 +2753,7 @@
 
         function getCustomStreetBreakdownByDifficulty() {
             const customStreets = gameState.customProblems.filter(p => p.type === 'street');
-            
+                        
             const tourist = customStreets.filter(q => {
                 if (q.difficulty) return q.difficulty === 'tourist';
                 return q.importance >= 80;
@@ -2770,6 +2770,14 @@
             }).length;
             
             return { tourist, resident, taxi };
+        }
+
+        // Collect all segments of a road by name
+        function gatherCompleteStreetSegments(roadName) {
+            if (!gameState.streetData) return [];
+            return gameState.streetData
+                .filter(r => r.name === roadName)
+                .flatMap(r => r.points);
         }
 
         function geocodeLocation(locationName) {
@@ -3362,6 +3370,14 @@
                 
                 gameState.currentQuestion = selectedQuestion;
                 gameState.askedQuestions.push(selectedQuestion);
+
+                // Gather full road segments for OSM questions
+                if (gameState.currentMode === 'street' && selectedQuestion.source !== 'custom') {
+                    const fullSegments = gatherCompleteStreetSegments(selectedQuestion.name);
+                    if (fullSegments && fullSegments.length > 0) {
+                        selectedQuestion.fullPoints = fullSegments;
+                    }
+                }
                 
                 const questionText = document.getElementById('question-text');
                 const questionType = document.getElementById('question-type');
@@ -3392,10 +3408,11 @@
                 const question = gameState.currentQuestion;
                 
                 if (gameState.currentMode === 'street') {
+                    const displaySegments = question.fullPoints || question.points;
                     if (typeof turf !== 'undefined' && turf.lineString) {
-                        question.points.forEach((segmentPoints, index) => {
+                        displaySegments.forEach((segmentPoints, index) => {
                             const lineString = turf.lineString(segmentPoints.map(p => [p.lng, p.lat]));
-                            
+
                             const streetPath = L.geoJSON(lineString, {
                                 style: {
                                     color: index === 0 ? '#ff6b6b' : '#ff9999',
@@ -3405,7 +3422,7 @@
                             }).addTo(gameState.streetLayer);
                         });
                         
-                        const mainSegment = question.points[0];
+                        const mainSegment = displaySegments[0];
                         const midpoint = turf.midpoint(
                             turf.point([mainSegment[0].lng, mainSegment[0].lat]),
                             turf.point([mainSegment[mainSegment.length - 1].lng, mainSegment[mainSegment.length - 1].lat])
@@ -3419,15 +3436,15 @@
                             .setContent(`<strong>${question.name}</strong><br>${question.description}`)
                             .openOn(gameState.map);
                     } else {
-                        question.points.forEach((segmentPoints, index) => {
+                        displaySegments.forEach((segmentPoints, index) => {
                             const streetPath = L.polyline(segmentPoints.map(p => [p.lat, p.lng]), {
                                 color: index === 0 ? '#ff6b6b' : '#ff9999',
                                 weight: index === 0 ? 6 : 4,
                                 opacity: index === 0 ? 0.9 : 0.7
                             }).addTo(gameState.streetLayer);
                         });
-                        
-                        const mainSegment = question.points[0];
+
+                        const mainSegment = displaySegments[0];
                         const midIndex = Math.floor(mainSegment.length / 2);
                         const midPoint = mainSegment[midIndex];
                         
@@ -3517,7 +3534,8 @@
                 let distance, accuracy, points;
 
                 if (gameState.currentMode === 'street') {
-                    distance = calculateDistanceToStreetTurf(userLatLng, gameState.currentQuestion.points[0]);
+                    const segs = gameState.currentQuestion.fullPoints || gameState.currentQuestion.points;
+                    distance = calculateDistanceToStreetTurf(userLatLng, segs.flat());
                 } else {
                     if (typeof turf !== 'undefined') {
                         const userPoint = turf.point([userLatLng.lng, userLatLng.lat]);
@@ -3565,7 +3583,8 @@
                 showAnswer();
 
                 if (gameState.currentMode === 'street') {
-                    const nearestPoint = findNearestPointOnStreetTurf(userLatLng, gameState.currentQuestion.points[0]);
+                    const segs = gameState.currentQuestion.fullPoints || gameState.currentQuestion.points;
+                    const nearestPoint = findNearestPointOnStreetTurf(userLatLng, segs.flat());
                     if (nearestPoint) {
                         L.polyline([userLatLng, [nearestPoint[1], nearestPoint[0]]], {
                             color: '#2196F3',
