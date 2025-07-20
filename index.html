@@ -3453,7 +3453,11 @@
                             .setContent(`<strong>${question.name}</strong><br>${question.description}`)
                             .openOn(gameState.map);
                     }
-                        
+
+                    // Adjust view based on the length of the road
+                    const allPoints = displaySegments.flat();
+                    adjustMapViewByRoadLength(gameState.map, allPoints, gameState.center, gameState.range);
+
                 } else if (gameState.currentMode === 'facility') {
                     if (question.isEnclosedArea) {
                         const facilityArea = L.polygon(question.points[0], {
@@ -3766,7 +3770,7 @@
             }
         }
 
-        function calculateSimpleDistance(lat1, lng1, lat2, lng2) {
+    function calculateSimpleDistance(lat1, lng1, lat2, lng2) {
             const R = 6371;
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLng = (lng2 - lng1) * Math.PI / 180;
@@ -3775,6 +3779,54 @@
                      Math.sin(dLng/2) * Math.sin(dLng/2);
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
             return R * c;
+    }
+
+        // Adjust map view based on road length
+        function adjustMapViewByRoadLength(map, streetPoints, center, radiusKm) {
+            let roadLengthKm = 0;
+            let bounds;
+
+            if (typeof turf !== 'undefined') {
+                const line = turf.lineString(streetPoints.map(p => [p.lng, p.lat]));
+                const circle = turf.circle([center.lng, center.lat], radiusKm, { units: 'kilometers', steps: 64 });
+
+                roadLengthKm = turf.length(line, { units: 'kilometers' });
+
+                const roadBbox = turf.bbox(line);
+                const circleBbox = turf.bbox(circle);
+
+                const unionBbox = [
+                    Math.min(roadBbox[0], circleBbox[0]),
+                    Math.min(roadBbox[1], circleBbox[1]),
+                    Math.max(roadBbox[2], circleBbox[2]),
+                    Math.max(roadBbox[3], circleBbox[3])
+                ];
+                bounds = L.latLngBounds(
+                    [unionBbox[1], unionBbox[0]],
+                    [unionBbox[3], unionBbox[2]]
+                );
+            } else {
+                for (let i = 1; i < streetPoints.length; i++) {
+                    roadLengthKm += calculateSimpleDistance(
+                        streetPoints[i - 1].lat, streetPoints[i - 1].lng,
+                        streetPoints[i].lat, streetPoints[i].lng
+                    );
+                }
+
+                const lats = streetPoints.map(p => p.lat).concat(center.lat);
+                const lngs = streetPoints.map(p => p.lng).concat(center.lng);
+                const minLat = Math.min(...lats);
+                const maxLat = Math.max(...lats);
+                const minLng = Math.min(...lngs);
+                const maxLng = Math.max(...lngs);
+                bounds = L.latLngBounds([minLat, minLng], [maxLat, maxLng]);
+            }
+
+            if (roadLengthKm > 5) {
+                map.fitBounds(bounds, { padding: [20, 20], maxZoom: 12 });
+            } else {
+                map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+            }
         }
 
         function clearGameElements() {
