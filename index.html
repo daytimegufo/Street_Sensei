@@ -3539,7 +3539,7 @@
                     if (typeof turf !== 'undefined') {
                         calcResult = calcErrorWithinCircle(
                             userLatLng,
-                            segs.flat(),
+                            segs,
                             gameState.center,
                             gameState.range
                         );
@@ -3600,7 +3600,7 @@
                         if (!calcResult) {
                             calcResult = calcErrorWithinCircle(
                                 userLatLng,
-                                segs.flat(),
+                                segs,
                                 gameState.center,
                                 gameState.range
                             );
@@ -3713,10 +3713,11 @@
             }
         }
 
-        function calcErrorWithinCircle(userLatLng, streetPoints, center, radiusKm) {
+        function calcErrorWithinCircle(userLatLng, allSegments, center, radiusKm) {
             try {
                 if (typeof turf === 'undefined') {
-                    const nearest = findNearestPointOnStreetTurf(userLatLng, streetPoints);
+                    const flat = Array.isArray(allSegments[0]) ? allSegments.flat() : allSegments;
+                    const nearest = findNearestPointOnStreetTurf(userLatLng, flat);
                     const userPoint = turf.point([userLatLng.lng, userLatLng.lat]);
                     const targetPoint = turf.point(nearest);
                     const dist = turf.distance(userPoint, targetPoint, { units: 'meters' });
@@ -3724,51 +3725,46 @@
                 }
 
                 const userPt = turf.point([userLatLng.lng, userLatLng.lat]);
-                const line = turf.lineString(streetPoints.map(p => [p.lng, p.lat]));
                 const circle = turf.circle([center.lng, center.lat], radiusKm, { units: 'kilometers', steps: 64 });
 
-                let segments;
-                try {
-                    segments = turf.lineSplit(line, circle).features;
-                } catch (e) {
-                    segments = [line];
-                }
+                const segArrays = Array.isArray(allSegments[0]) ? allSegments : [allSegments];
+                let candidates = [];
 
-                const insideSegs = segments.filter(seg => {
-                    const coords = seg.geometry.coordinates;
-                    if (coords.length < 2) return false;
-                    const mid = turf.midpoint(
-                        turf.point(coords[0]),
-                        turf.point(coords[coords.length - 1])
-                    );
-                    return turf.booleanPointInPolygon(mid, circle);
+                segArrays.forEach(segPts => {
+                    const line = turf.lineString(segPts.map(p => [p.lng, p.lat]));
+                    let split;
+                    try {
+                        split = turf.lineSplit(line, circle).features;
+                    } catch (e) {
+                        split = [line];
+                    }
+
+                split.forEach(s => {
+                        const coords = s.geometry.coordinates;
+                        if (coords.length < 2) return;
+                        const mid = turf.midpoint(turf.point(coords[0]), turf.point(coords[coords.length - 1]));
+                        if (turf.booleanPointInPolygon(mid, circle)) {
+                            candidates.push(s);
+                        }
+                    });
                 });
 
                 let minDist = Infinity;
                 let nearestPt = null;
-                insideSegs.forEach(seg => {
-                    const coords = seg.geometry.coordinates;
-                    for (let i = 0; i < coords.length - 1; i++) {
-                        const segLine = turf.lineString([coords[i], coords[i + 1]]);
-                        const d = turf.pointToLineDistance(userPt, segLine, { units: 'meters' });
-                        if (d < minDist) {
-                            minDist = d;
-                            const np = turf.nearestPointOnLine(segLine, userPt);
-                            nearestPt = np.geometry.coordinates;
-                        }
+                candidates.forEach(seg => {
+                    const np = turf.nearestPointOnLine(seg, userPt);
+                    const d = turf.distance(userPt, np, { units: 'meters' });
+                    if (d < minDist) {
+                        minDist = d;
+                        nearestPt = np.geometry.coordinates;
                     }
                 });
-
-                if (insideSegs.length === 0) {
-                    const npAll = turf.nearestPointOnLine(line, userPt);
-                    minDist = turf.distance(userPt, npAll, { units: 'meters' });
-                    nearestPt = npAll.geometry.coordinates;
-                }
 
                 return { errorMeters: minDist, nearestPoint: nearestPt };
             } catch (error) {
                 log('Error calculating error within circle: ' + error.message);
-                const npAll = findNearestPointOnStreetTurf(userLatLng, streetPoints);
+                const flat = Array.isArray(allSegments[0]) ? allSegments.flat() : allSegments;
+                const npAll = findNearestPointOnStreetTurf(userLatLng, flat);
                 const userPoint = turf.point([userLatLng.lng, userLatLng.lat]);
                 const targetPoint = turf.point(npAll);
                 const dist = turf.distance(userPoint, targetPoint, { units: 'meters' });
