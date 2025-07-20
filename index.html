@@ -1357,20 +1357,6 @@
 
             <!-- Mobile Game Overlay - モバイルゲーム用オーバーレイ -->
             <div class="mobile-game-overlay" id="mobile-game-overlay">
-                <!-- 出題内容表示 -->
-                <div class="mobile-question-overlay" id="mobile-question-overlay">
-                    <div class="mobile-question-text" id="mobile-question-text">地図をタップして場所を特定してください</div>
-                    <div class="mobile-question-type" id="mobile-question-type">道路チャレンジ</div>
-                </div>
-
-                <!-- タイマーとスコア -->
-                <div class="mobile-game-stats" id="mobile-game-stats">
-                    <div class="mobile-timer" id="mobile-timer">30</div>
-                    <div class="mobile-score">
-                        <div>Score: <span id="mobile-score">0</span></div>
-                        <div>Streak: <span id="mobile-streak">0</span></div>
-                    </div>
-                </div>
 
                 <!-- 5択選択肢 -->
                 <div class="mobile-choices-overlay hidden" id="mobile-choices-overlay">
@@ -1388,7 +1374,7 @@
 
             <!-- 統一された問題表示エリア（PC向け） -->
             <div class="game-question-overlay hidden" id="game-question-overlay">
-                <div class="game-question-type" id="game-question-type">道路チャレンジ</div>
+                <div class="game-question-type" id="game-question-type">Streetチャレンジ</div>
                 <div class="game-question-text" id="game-question-text">地図をタップして場所を特定してください</div>
                 <div class="game-question-actions">
                     <button class="btn-answer" id="game-btn-answer">Show Answer</button>
@@ -3405,7 +3391,7 @@
                 // 問題文を更新
                 const questionText = gameState.currentMode === 'reverse' ? 
                     `強調表示された場所は何ですか？` : 
-                    `見つけてください: ${gameState.currentQuestion?.name || ''}`;
+                    `🔎🔍: ${gameState.currentQuestion?.name || ''}`;
                 const questionType = `${getModeName(gameState.currentMode)}チャレンジ`;
                 updateMobileQuestion(questionText, questionType);
                 
