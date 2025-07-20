@@ -3535,7 +3535,19 @@
 
                 if (gameState.currentMode === 'street') {
                     const segs = gameState.currentQuestion.fullPoints || gameState.currentQuestion.points;
-                    distance = calculateDistanceToStreetTurf(userLatLng, segs.flat());
+                    if (typeof turf !== 'undefined') {
+                        const nearest = findNearestPointWithinArea(
+                            userLatLng,
+                            segs.flat(),
+                            gameState.center,
+                            gameState.range
+                        );
+                        const userPoint = turf.point([userLatLng.lng, userLatLng.lat]);
+                        const targetPoint = turf.point(nearest);
+                        distance = turf.distance(userPoint, targetPoint, { units: 'meters' });
+                    } else {
+                        distance = calculateDistanceToStreetTurf(userLatLng, segs.flat());
+                    }
                 } else {
                     if (typeof turf !== 'undefined') {
                         const userPoint = turf.point([userLatLng.lng, userLatLng.lat]);
@@ -3584,7 +3596,9 @@
 
                 if (gameState.currentMode === 'street') {
                     const segs = gameState.currentQuestion.fullPoints || gameState.currentQuestion.points;
-                    const nearestPoint = findNearestPointOnStreetTurf(userLatLng, segs.flat());
+                    const nearestPoint = (typeof turf !== 'undefined')
+                        ? findNearestPointWithinArea(userLatLng, segs.flat(), gameState.center, gameState.range)
+                        : findNearestPointOnStreetTurf(userLatLng, segs.flat());
                     if (nearestPoint) {
                         L.polyline([userLatLng, [nearestPoint[1], nearestPoint[0]]], {
                             color: '#2196F3',
@@ -3686,6 +3700,52 @@
             } catch (error) {
                 log('Error finding nearest point with Turf: ' + error.message);
                 return [streetPoints[0].lng, streetPoints[0].lat];
+            }
+        }
+
+        function findNearestPointWithinArea(userLatLng, streetPoints, center, radiusKm) {
+            try {
+                if (typeof turf === 'undefined') {
+                    return findNearestPointOnStreetTurf(userLatLng, streetPoints);
+                }
+
+                const userPt = turf.point([userLatLng.lng, userLatLng.lat]);
+                const line = turf.lineString(streetPoints.map(p => [p.lng, p.lat]));
+                const circlePoly = turf.circle([center.lng, center.lat], radiusKm, { units: 'kilometers', steps: 64 });
+
+                let segments;
+                try {
+                    segments = turf.lineSplit(line, circlePoly).features;
+                } catch (e) {
+                    segments = [line];
+                }
+
+                const insideSegs = segments.filter(seg => {
+                    const coords = seg.geometry.coordinates;
+                    if (!coords || coords.length < 2) return false;
+                    const start = turf.point(coords[0]);
+                    const end = turf.point(coords[coords.length - 1]);
+                    const mid = turf.midpoint(start, end);
+                    return turf.booleanPointInPolygon(mid, circlePoly);
+                });
+
+                const candidates = insideSegs.length > 0 ? insideSegs : [line];
+
+                let minDist = Infinity;
+                let nearestCoord = null;
+                candidates.forEach(seg => {
+                    const np = turf.nearestPointOnLine(seg, userPt);
+                    const d = turf.distance(userPt, np, { units: 'meters' });
+                    if (d < minDist) {
+                        minDist = d;
+                        nearestCoord = np.geometry.coordinates;
+                    }
+                });
+
+                return nearestCoord;
+            } catch (error) {
+                log('Error finding nearest point within area: ' + error.message);
+                return findNearestPointOnStreetTurf(userLatLng, streetPoints);
             }
         }
 
