@@ -3728,26 +3728,20 @@
                 const circle = turf.circle([center.lng, center.lat], radiusKm, { units: 'kilometers', steps: 64 });
 
                 const segArrays = Array.isArray(allSegments[0]) ? allSegments : [allSegments];
-                let candidates = [];
 
-                segArrays.forEach(segPts => {
-                    const line = turf.lineString(segPts.map(p => [p.lng, p.lat]));
-                    let split;
-                    try {
-                        split = turf.lineSplit(line, circle).features;
-                    } catch (e) {
-                        split = [line];
-                    }
+                const multi = turf.multiLineString(
+                    segArrays.map(seg => seg.map(p => [p.lng, p.lat]))
+                );
 
-                split.forEach(s => {
-                        const coords = s.geometry.coordinates;
-                        if (coords.length < 2) return;
-                        const mid = turf.midpoint(turf.point(coords[0]), turf.point(coords[coords.length - 1]));
-                        if (turf.booleanPointInPolygon(mid, circle)) {
-                            candidates.push(s);
-                        }
-                    });
-                });
+                let splits;
+                try {
+                    splits = turf.lineSplit(multi, circle).features;
+                } catch (e) {
+                    splits = [multi];
+                }
+
+                const inside = splits.filter(s => turf.booleanIntersects(s, circle));
+                const candidates = inside.length > 0 ? inside : splits;
 
                 let minDist = Infinity;
                 let nearestPt = null;
