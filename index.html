@@ -3455,8 +3455,7 @@
                     }
 
                     // Adjust view based on circle size
-                    const allPoints = displaySegments.flat();
-                    adjustMapViewByCircleSize(gameState.map, gameState.center, gameState.range, allPoints);
+                    adjustMapViewByCircleSize(gameState.map, gameState.center, gameState.range);
 
                 } else if (gameState.currentMode === 'facility') {
                     if (question.isEnclosedArea) {
@@ -3782,32 +3781,21 @@
     }
 
         // Adjust map view based on circle size
-        function adjustMapViewByCircleSize(map, center, radiusKm, streetPoints) {
+        function adjustMapViewByCircleSize(map, center, radiusKm) {
             let bounds;
             if (typeof turf !== 'undefined') {
-                const line = turf.lineString(streetPoints.map(p => [p.lng, p.lat]));
-                const circle = turf.circle([center.lng, center.lat], radiusKm, { units: 'kilometers', steps: 64 });
-
-                const roadBbox = turf.bbox(line);
+                const circle = turf.circle([center.lng, center.lat], radiusKm, {
+                    units: 'kilometers',
+                    steps: 64
+                });
                 const circleBbox = turf.bbox(circle);
-                const merged = [
-                    Math.min(roadBbox[0], circleBbox[0]),
-                    Math.min(roadBbox[1], circleBbox[1]),
-                    Math.max(roadBbox[2], circleBbox[2]),
-                    Math.max(roadBbox[3], circleBbox[3])
-                ];
                 bounds = L.latLngBounds(
-                    [merged[1], merged[0]],
-                    [merged[3], merged[2]]
+                    [circleBbox[1], circleBbox[0]],
+                    [circleBbox[3], circleBbox[2]]
                 );
             } else {
-                const lats = streetPoints.map(p => p.lat).concat(center.lat);
-                const lngs = streetPoints.map(p => p.lng).concat(center.lng);
-                const minLat = Math.min(...lats);
-                const maxLat = Math.max(...lats);
-                const minLng = Math.min(...lngs);
-                const maxLng = Math.max(...lngs);
-                bounds = L.latLngBounds([minLat, minLng], [maxLat, maxLng]);
+                const circleObj = L.circle([center.lat, center.lng], { radius: radiusKm * 1000 });
+                bounds = circleObj.getBounds();
             }
             if (radiusKm > 5) {
                 map.fitBounds(bounds, { padding: [20, 20], maxZoom: 12 });
