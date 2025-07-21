@@ -2367,7 +2367,9 @@
                     'Labels Off': layerWithoutLabels
                 };
                 
-                gameState.layerControl = L.control.layers(baseMaps).addTo(gameState.map);
+                if (window.innerWidth > 768) {
+                    gameState.layerControl = L.control.layers(baseMaps).addTo(gameState.map);
+                }
                 
                 // レイヤー切り替えイベントを監視
                 gameState.map.on('baselayerchange', function(e) {
