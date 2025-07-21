@@ -1363,7 +1363,11 @@
 
             <!-- Mobile Game Overlay - モバイルゲーム用オーバーレイ -->
             <div class="mobile-game-overlay" id="mobile-game-overlay">
-
+                <!-- 出題内容表示 -->
+                <div class="mobile-question-overlay" id="mobile-question-overlay">
+                    <div class="mobile-question-text" id="mobile-question-text">地図をタップして場所を特定してください</div>
+                    <div class="mobile-question-type" id="mobile-question-type">道路チャレンジ</div>
+                </div>
                 <!-- 5択選択肢 -->
                 <div class="mobile-choices-overlay hidden" id="mobile-choices-overlay">
                     <div class="mobile-choices-grid" id="mobile-choices-grid">
@@ -3397,7 +3401,7 @@
                 // 問題文を更新
                 const questionText = gameState.currentMode === 'reverse' ? 
                     `強調表示された場所は何ですか？` : 
-                    `🔎🔍: ${gameState.currentQuestion?.name || ''}`;
+                    `🔎: ${gameState.currentQuestion?.name || ''}`;
                 const questionType = `${getModeName(gameState.currentMode)}チャレンジ`;
                 updateMobileQuestion(questionText, questionType);
                 
