@@ -1113,10 +1113,6 @@
             backdrop-filter: blur(10px);
             min-width: 130px;
         }
-        #result-modal button {
-            margin-top: 1rem;
-            padding: 0.5rem 1.5rem;
-        }
         .score-circle {
             width: 60px;
             height: 60px;
@@ -1397,7 +1393,6 @@
                 </div>
                 <p id="score-text">スコア: <span>0</span>%</p>
                 <p id="dist-text">距離: <span>0</span>m</p>
-                <button onclick="closeModal()">次へ</button>
             </div>
 
             <!-- Mobile Game Overlay - モバイルゲーム用オーバーレイ -->
@@ -1427,7 +1422,7 @@
                 <div class="game-question-text" id="game-question-text">地図をタップして場所を特定してください</div>
                 <div class="game-question-actions">
                     <button class="btn-answer" id="game-btn-answer">Show Answer</button>
-                    <button class="btn-next hidden" id="game-btn-next">Next</button>
+                    <button class="btn-next" id="game-btn-next">Next</button>
                     <button class="btn-end" id="game-btn-end">End</button>
                 </div>
             </div>
@@ -1765,9 +1760,7 @@
             }, 50);
             modal.classList.remove("hidden");
             const nextBtn = document.getElementById("next-question");
-            const gameBtnNext = document.getElementById("game-btn-next");
             if (nextBtn) nextBtn.classList.add("hidden");
-            if (gameBtnNext) gameBtnNext.classList.add("hidden");
         }
 
         function closeModal() {
@@ -2765,13 +2758,15 @@
                 const gameBtnNext = document.getElementById('game-btn-next');
                 if (gameBtnNext) {
                     gameBtnNext.addEventListener('click', () => {
-                        nextQuestion();
+                        closeModal();
                     });
                 }
 
                 const gameBtnEnd = document.getElementById('game-btn-end');
                 if (gameBtnEnd) {
                     gameBtnEnd.addEventListener('click', () => {
+                        const modal = document.getElementById('result-modal');
+                        if (modal) modal.classList.add('hidden');
                         endGame();
                     });
                 }
@@ -3645,12 +3640,10 @@
                 const showAnswerBtn = document.getElementById('show-answer');
                 const nextBtn = document.getElementById('next-question');
                 const gameBtnAnswer = document.getElementById('game-btn-answer');
-                const gameBtnNext = document.getElementById('game-btn-next');
                 
                 if (showAnswerBtn) showAnswerBtn.classList.add('hidden');
                 if (nextBtn) nextBtn.classList.remove('hidden');
                 if (gameBtnAnswer) gameBtnAnswer.classList.add('hidden');
-                if (gameBtnNext) gameBtnNext.classList.remove('hidden');
                 
                 stopTimer();
                 log('Answer shown');
@@ -4029,9 +4022,7 @@
                 updateMobileGameStats();
                 
                 const nextBtn = document.getElementById('next-question');
-                const gameBtnNext = document.getElementById('game-btn-next');
                 if (nextBtn) nextBtn.classList.remove('hidden');
-                if (gameBtnNext) gameBtnNext.classList.remove('hidden');
                 
                 log('Timer expired');
             } catch (error) {
@@ -4084,16 +4075,13 @@
         }
 
         function updateMobileControls() {
-            const btnNext = document.getElementById('game-btn-next');
             const btnAnswer = document.getElementById('game-btn-answer');
             const btnEnd = document.getElementById('game-btn-end');
-            
+
             if (gameState.isPlaying) {
-                if (btnNext) btnNext.classList.add('hidden');
                 if (btnAnswer) btnAnswer.classList.remove('hidden');
                 if (btnEnd) btnEnd.classList.remove('hidden');
             } else {
-                if (btnNext) btnNext.classList.add('hidden');
                 if (btnAnswer) btnAnswer.classList.add('hidden');
                 if (btnEnd) btnEnd.classList.add('hidden');
             }
@@ -4300,9 +4288,7 @@
                 
                 setTimeout(() => {
                     const nextBtn = document.getElementById('next-question');
-                    const gameBtnNext = document.getElementById('game-btn-next');
                     if (nextBtn) nextBtn.classList.remove('hidden');
-                    if (gameBtnNext) gameBtnNext.classList.remove('hidden');
                     
                     const showAnswerBtn = document.getElementById('show-answer');
                     const gameBtnAnswer = document.getElementById('game-btn-answer');
