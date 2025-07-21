@@ -3595,26 +3595,15 @@
                                 opacity: 0,
                                 className: 'glow-line'
                             }).addTo(gameState.streetLayer);
+                            line.on("click", function(e) {
+                L.popup({ maxWidth: 450, className: "street-info-popup" })
+                    .setLatLng(e.latlng)
+                    .setContent(`<strong>${question.name}</strong> <a href="https://www.google.com/search?q=${encodeURIComponent(question.name)}" target="_blank">Google検索</a><br>${question.description}`)
+                    .openOn(gameState.map);
+            });
                             setTimeout(() => line.setStyle({ opacity: 1 }), 50);
                         });
 
-                        const mainSegment = displaySegments[0];
-                        let popupLatLng;
-                        if (typeof turf !== 'undefined' && turf.midpoint) {
-                            const midpoint = turf.midpoint(
-                                turf.point([mainSegment[0].lng, mainSegment[0].lat]),
-                                turf.point([mainSegment[mainSegment.length - 1].lng, mainSegment[mainSegment.length - 1].lat])
-                            );
-                            popupLatLng = [midpoint.geometry.coordinates[1], midpoint.geometry.coordinates[0]];
-                        } else {
-                            const midIndex = Math.floor(mainSegment.length / 2);
-                            popupLatLng = [mainSegment[midIndex].lat, mainSegment[midIndex].lng];
-                        }
-
-                        L.popup({ maxWidth: 450, className: 'street-info-popup' })
-                            .setLatLng(popupLatLng)
-                            .setContent(`<strong>${question.name}</strong><br>${question.description}`)
-                            .openOn(gameState.map);
                     }, 400);
 
                     // Adjust view based on circle size
