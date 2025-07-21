@@ -2294,12 +2294,21 @@
                 };
                 
                 [layerWithLabels, layerWithoutLabels].forEach(layer => {
-                    layer.on('tileerror', handleTileError);
-                    layer.on('tileload', handleTileLoad);
                     layer.on('tileloadstart', function(e) {
+                        showLoading();
                         if (e.tile) {
                             e.tile.style.opacity = '0.5';
                         }
+                    });
+
+                    layer.on('tileload', function(e) {
+                        handleTileLoad(e);
+                        hideLoading();
+                    });
+
+                    layer.on('tileerror', function(e) {
+                        handleTileError(e);
+                        hideLoading();
                     });
                 });
                 
