@@ -3592,8 +3592,8 @@
 
                     }, 400);
 
-                    // Adjust view based on circle size
-                    adjustMapViewByCircleSize(gameState.map, gameState.center, gameState.range);
+                    // Adjust view based on street and circle size
+                    adjustMapViewByStreetAndCircle(gameState.map, displaySegments, gameState.center, gameState.range);
 
                 } else if (gameState.currentMode === 'facility') {
                     if (question.isEnclosedArea) {
@@ -3936,6 +3936,49 @@
                 map.fitBounds(bounds, { padding: [30, 30], maxZoom: 14 });
             } else {
                 map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+            }
+        }
+
+        // Calculate total length of street segments in kilometers
+        function calculateStreetLengthKm(segments) {
+            let total = 0;
+            segments.forEach(seg => {
+                for (let i = 1; i < seg.length; i++) {
+                    total += calculateSimpleDistance(
+                        seg[i - 1].lat, seg[i - 1].lng,
+                        seg[i].lat, seg[i].lng
+                    );
+                }
+            });
+            return total;
+        }
+
+        // Adjust map view considering street length and circle size
+        function adjustMapViewByStreetAndCircle(map, segments, center, radiusKm) {
+            const streetLenKm = calculateStreetLengthKm(segments);
+
+            if (streetLenKm < radiusKm * 2) {
+                const latlngs = segments.flat().map(p => [p.lat, p.lng]);
+                const poly = L.polyline(latlngs);
+                const bounds = poly.getBounds();
+
+                const diagKm = calculateSimpleDistance(
+                    bounds.getSouthWest().lat, bounds.getSouthWest().lng,
+                    bounds.getNorthEast().lat, bounds.getNorthEast().lng
+                );
+
+                let maxZoom;
+                if (diagKm > 10) {
+                    maxZoom = 12;
+                } else if (diagKm > 4) {
+                    maxZoom = 14;
+                } else {
+                    maxZoom = 16;
+                }
+
+                map.fitBounds(bounds, { padding: [30, 30], maxZoom });
+            } else {
+                adjustMapViewByCircleSize(map, center, radiusKm);
             }
         }
         function clearGameElements() {
