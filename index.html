@@ -1101,26 +1101,26 @@
         }
         /* --- Result modal --- */
         #result-modal {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            transform: none;
             background: rgba(45,45,45,0.95);
-            padding: 2rem;
+            padding: 1rem;
             border-radius: 12px;
             text-align: center;
             z-index: 2000;
             backdrop-filter: blur(10px);
-            min-width: 260px;
+            min-width: 130px;
         }
         #result-modal button {
             margin-top: 1rem;
             padding: 0.5rem 1.5rem;
         }
         .score-circle {
-            width: 120px;
-            height: 120px;
-            margin: 0 auto 1rem;
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 0.5rem;
         }
         .score-circle circle {
             fill: none;
@@ -1391,8 +1391,8 @@
             </div>
             <div id="result-modal" class="hidden">
                 <div class="score-circle" id="score-circle">
-                    <svg width="120" height="120">
-                        <circle cx="60" cy="60" r="50"></circle>
+                    <svg width="60" height="60">
+                        <circle cx="30" cy="30" r="25"></circle>
                     </svg>
                 </div>
                 <p id="score-text">スコア: <span>0</span>%</p>
@@ -2366,10 +2366,6 @@
                     'Labels On': layerWithLabels,
                     'Labels Off': layerWithoutLabels
                 };
-                
-                if (window.innerWidth > 768) {
-                    gameState.layerControl = L.control.layers(baseMaps).addTo(gameState.map);
-                }
                 
                 // レイヤー切り替えイベントを監視
                 gameState.map.on('baselayerchange', function(e) {
