@@ -3173,10 +3173,12 @@
                 
                 const loadBtn = document.getElementById('load-street-data');
                 if (loadBtn) {
-                    loadBtn.innerHTML = '<span class="loading"></span>Loading Roads...';
+                    loadBtn.textContent = 'Loading Roads...';
                     loadBtn.disabled = true;
                     loadBtn.classList.add('loading');
                 }
+
+                showLoading();
                 
                 log(`Loading roads with ${strategy.name} strategy for ${config.name}...`);
                 
@@ -3212,6 +3214,7 @@
                         loadBtn.disabled = false;
                         loadBtn.classList.remove('loading');
                     }
+                    hideLoading();
                 }
 
                 resolve(true);
