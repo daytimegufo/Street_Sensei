@@ -3695,14 +3695,12 @@
                 const distanceKm = (distance / 1000).toFixed(2);
                
                 const maxDistance = 1000;
-                if (distance <= 25) {// 25メートル以内は常に100%
+                // 25m以内なら100%、それ以上は距離から換算
+                if (distance <= 25) {
                     accuracy = 100;
-                    } else {
-                let accuracy = (distance <= 25)
-                ? 100
-                : Math.max(0, 100 - (distance / maxDistance) * 100);
-                
-                }
+                } else {
+                    accuracy = Math.max(0, 100 - (distance / maxDistance) * 100);
+            }
                 const baseScore = Math.round(accuracy);
                 const timeBonus = Math.max(0, gameState.timer * 2);
                 const streakBonus = gameState.streak * 5;
