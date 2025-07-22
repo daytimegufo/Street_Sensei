@@ -3700,7 +3700,7 @@
                     accuracy = 100;
                 } else {
                     accuracy = Math.max(0, 100 - (distance / maxDistance) * 100);
-            }
+                }
                 const baseScore = Math.round(accuracy);
                 const timeBonus = Math.max(0, gameState.timer * 2);
                 const streakBonus = gameState.streak * 5;
