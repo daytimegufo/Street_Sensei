@@ -33,7 +33,7 @@
             return { leaflet: leafletLoaded, turf: turfLoaded };
         };
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fireworks-js@2.11.0/dist/fireworks.js"></script>
     <style>
         * {
             margin: 0;
@@ -1718,20 +1718,34 @@
             }
         }
 
-        function playPopSound() {
+        function playBlastSound() {
             try {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                const oscillator = ctx.createOscillator();
-                const gain = ctx.createGain();
-                oscillator.type = 'square';
-                oscillator.frequency.value = 880;
-                gain.gain.setValueAtTime(0.3, ctx.currentTime);
-                oscillator.connect(gain);
-                gain.connect(ctx.destination);
-                oscillator.start();
-                oscillator.stop(ctx.currentTime + 0.15);
+                const boom = new Audio('/sounds/firework-boom.mp3');
+                boom.volume = 0.6;
+                boom.play();
             } catch (e) {
                 console.warn('Audio playback failed', e);
+            }
+        }
+
+        function launchFireworksAtPoint(latlng) {
+            try {
+                if (!gameState.map || !latlng || typeof Fireworks === 'undefined') return;
+                const mapEl = document.getElementById('map');
+                const point = gameState.map.latLngToContainerPoint(latlng);
+                const holder = document.createElement('div');
+                holder.style.position = 'absolute';
+                holder.style.pointerEvents = 'none';
+                holder.style.left = (point.x - 100) + 'px';
+                holder.style.top = (point.y - 100) + 'px';
+                holder.style.width = '200px';
+                holder.style.height = '200px';
+                mapEl.appendChild(holder);
+                const fw = new Fireworks(holder, { autoresize: true, rocketsPoint: 50 });
+                fw.start();
+                setTimeout(() => { fw.stop(); holder.remove(); }, 2500);
+            } catch (e) {
+                console.warn('Fireworks failed', e);
             }
         }
 
@@ -1761,11 +1775,11 @@
                 circle.style.strokeDashoffset = circumference * (1 - percent / 100);
             }, 50);
             modal.classList.remove("hidden");
-            if (percent === 100) {
-                if (typeof confetti === 'function') {
-                    confetti({ particleCount: 100, spread: 70 });
+            if (distance < 10) {
+                if (gameState.lastGuess) {
+                    launchFireworksAtPoint(gameState.lastGuess);
                 }
-                playPopSound();
+                playBlastSound();
             }
             const nextBtn = document.getElementById("next-question");
             if (nextBtn) nextBtn.classList.add("hidden");
@@ -1861,6 +1875,7 @@
             correctMarker: null,
             streetLayer: null,
             facilityLayer: null,
+            lastGuess: null,
             center: { lat: 35.6762, lng: 139.6503 },
             range: 5,
             showLabels: true,
@@ -3682,6 +3697,8 @@
                     showWarning('クリック位置がゲームエリア外です。緑の円内をクリックしてください。');
                     return;
                 }
+
+                gameState.lastGuess = userLatLng;
 
                 let distance, accuracy, points;
                 let calcResult = null; // for street mode
