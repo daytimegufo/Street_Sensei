@@ -1784,7 +1784,7 @@
                     'small': {
                         particles: 30,
                         explosion: 3,
-                        intensity: 20,
+                        intensity: 10,
                         containerSize: 200,
                         duration: 1500,
                         cssParticles: 8
@@ -1792,7 +1792,7 @@
                     'normal': {
                         particles: 50,
                         explosion: 5,
-                        intensity: 30,
+                        intensity: 20,
                         containerSize: 300,
                         duration: 2500,
                         cssParticles: 12
@@ -1800,7 +1800,7 @@
                     'good': {
                         particles: 70,
                         explosion: 7,
-                        intensity: 40,
+                        intensity: 30,
                         containerSize: 350,
                         duration: 3000,
                         cssParticles: 16
@@ -1854,7 +1854,7 @@
                         rocketsPoint: { min: containerSize / 2, max: containerSize / 2 },
                         lineWidth: {
                             explosion: { min: intensity === 'small' ? 1 : 2, max: intensity === 'spectacular' ? 4 : 3 },
-                            trace: { min: 1, max: intensity === 'spectacular' ? 3 : 2 }
+                            trace: { min: 1, max: intensity === 'spectacular' ? 5 : 2 }
                         },
                         brightness: { min: 50, max: intensity === 'spectacular' ? 90 : 80 },
                         decay: { min: 0.015, max: intensity === 'small' ? 0.05 : 0.03 }
