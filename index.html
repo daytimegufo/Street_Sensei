@@ -1720,33 +1720,250 @@
 
         function playBlastSound() {
             try {
-                const boom = new Audio('/sounds/firework-boom.mp3');
-                boom.volume = 0.6;
-                boom.play();
+                // Web Audio APIで爆発音を生成
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const frequencies = [100, 150, 200, 300];
+                const duration = 0.3;
+
+                frequencies.forEach((freq, index) => {
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    oscillator.type = 'sawtooth';
+                    oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(freq * 0.5, audioContext.currentTime + duration);
+                    gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+                    gainNode.gain.linearRampToValueAtTime(0.3 / frequencies.length, audioContext.currentTime + 0.01);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
+                    oscillator.start(audioContext.currentTime + index * 0.02);
+                    oscillator.stop(audioContext.currentTime + duration + index * 0.02);
+                });
+
+                const bufferSize = audioContext.sampleRate * 0.1;
+                const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+                const output = buffer.getChannelData(0);
+
+                for (let i = 0; i < bufferSize; i++) {
+                    output[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2);
+                }
+
+                const noiseSource = audioContext.createBufferSource();
+                const noiseGain = audioContext.createGain();
+                noiseSource.buffer = buffer;
+                noiseSource.connect(noiseGain);
+                noiseGain.connect(audioContext.destination);
+                noiseGain.gain.setValueAtTime(0.2, audioContext.currentTime);
+                noiseSource.start(audioContext.currentTime);
             } catch (e) {
                 console.warn('Audio playback failed', e);
+                try {
+                    const boom = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvGUdAy2A0PLWdiYEJmvA8NyQQAoUXrTp66hVFApGn+DyvGUdAy2A0PLWdiYEJmvA8N2QQAoTXrPp66hWFAlFnt/yumQdAy2A0PLWdiYEJmvA8N2QQAoTXrPp66hWFAlFnt/yumQdAy2A0PLWdiYEJmvA8N2QQAoTXrPp66hWFAlFnt/yumQdAy2A0PLWdiYEJmvA8N2QQAoTXrPp66hWFAlFnt/yumQdAy2A0PLWdiYEJmvA8N2QQAoTXrPp66hWFAlFnt/yumQdAy2A0PLWdiYEJmvA8N2QQAoTXrPp66hWFAlFnt/yumQdAy2A0PLWdiYEJmvA8N2QQAoTXrPp66hWFAlFnt/yumQdAy2A0PLWdiYEJmvA8N2QQAoTXrPp66hWFAlFnt/yumQdAy2A0PLWdiYEJmvA8N2QQAoTXrPp66hWFAlFnt/yumQdAy2A0PLWdiYEJmvA8N2QQAoTXrPp66hWFAlFnt/yumQdAy2A0PLWdiYEJmvA8N2QQAoTXrPp66hWFAlFnt/yumQdAy2A0PLWdiYEJmvA8N2QQAoTXrPp66hWFAlFnt/yumQdAy2A0PLWdiYEJmvA8N2QQAoTXrPp66hWFAlFnt/yumQdAy2A0PLWdiYEJmvA8N2QQAoTXrPp66hWFAlFnt/yumQdAy2A0PLWdiYEJmvA8N2QQAoTXrPp66hWFAlFnt/yumQdAy2A0PLWdiYEJmvA8N2QQAoTXrPp66hWFAlFnt/yumQdAy2A0PLWdiYEJmvA8N2QQAoTXrPp66hWFAlFnt/yumQdAy2A0PLWdiYEJmvA8N2QQAoTXrPp66hWFAlFnt/yumQdAy2A0PLWdiYEJmvA8N2QQAoTXrPp66hWFAlFnt/yumQdAy2A0PLWdiYEJmvA8N2QQAoTXrPp66hWFAlFnt/yumQdAy2A0PLWdiYEJmvA8N2QQAoTXrPp66hWFAlFnt/yumQdAy2A0PLWdiYEJmvA8N2QQAoTXrPp66hWFAlFnt/yumQdAy2A0PLWdiYEJmvA8N2QQAoTXrPp66hWFAlFnt/yumQdAy2A0PLWdiYE');
+                    boom.volume = 0.3;
+                    boom.play();
+                } catch (e2) {
+                    console.warn('Fallback audio also failed');
+                }
             }
         }
 
-        function launchFireworksAtPoint(latlng) {
+        function launchFireworksAtPoint(latlng, intensity = 'normal') {
             try {
-                if (!gameState.map || !latlng || typeof Fireworks === 'undefined') return;
+                if (!gameState.map || !latlng) {
+                    console.warn('Map or latlng not available for fireworks');
+                    return;
+                }
                 const mapEl = document.getElementById('map');
+                if (!mapEl) {
+                    console.warn('Map element not found');
+                    return;
+                }
                 const point = gameState.map.latLngToContainerPoint(latlng);
-                const holder = document.createElement('div');
-                holder.style.position = 'absolute';
-                holder.style.pointerEvents = 'none';
-                holder.style.left = (point.x - 100) + 'px';
-                holder.style.top = (point.y - 100) + 'px';
-                holder.style.width = '200px';
-                holder.style.height = '200px';
-                mapEl.appendChild(holder);
-                const fw = new Fireworks(holder, { autoresize: true, rocketsPoint: 50 });
-                fw.start();
-                setTimeout(() => { fw.stop(); holder.remove(); }, 2500);
+
+                const intensitySettings = {
+                    'small': {
+                        particles: 30,
+                        explosion: 3,
+                        intensity: 20,
+                        containerSize: 200,
+                        duration: 1500,
+                        cssParticles: 8
+                    },
+                    'normal': {
+                        particles: 50,
+                        explosion: 5,
+                        intensity: 30,
+                        containerSize: 300,
+                        duration: 2500,
+                        cssParticles: 12
+                    },
+                    'good': {
+                        particles: 70,
+                        explosion: 7,
+                        intensity: 40,
+                        containerSize: 350,
+                        duration: 3000,
+                        cssParticles: 16
+                    },
+                    'spectacular': {
+                        particles: 100,
+                        explosion: 10,
+                        intensity: 60,
+                        containerSize: 400,
+                        duration: 3500,
+                        cssParticles: 20
+                    },
+                    'bonus': {
+                        particles: 80,
+                        explosion: 8,
+                        intensity: 50,
+                        containerSize: 350,
+                        duration: 2000,
+                        cssParticles: 15
+                    }
+                };
+
+                const settings = intensitySettings[intensity] || intensitySettings['normal'];
+
+                if (typeof Fireworks !== 'undefined') {
+                    const containerSize = settings.containerSize;
+                    const fireworksContainer = document.createElement('div');
+                    fireworksContainer.style.position = 'absolute';
+                    fireworksContainer.style.pointerEvents = 'none';
+                    fireworksContainer.style.left = (point.x - containerSize/2) + 'px';
+                    fireworksContainer.style.top = (point.y - containerSize/2) + 'px';
+                    fireworksContainer.style.width = containerSize + 'px';
+                    fireworksContainer.style.height = containerSize + 'px';
+                    fireworksContainer.style.zIndex = '2000';
+                    mapEl.appendChild(fireworksContainer);
+
+                    const fireworks = new Fireworks(fireworksContainer, {
+                        autoresize: false,
+                        opacity: intensity === 'spectacular' ? 0.8 : 0.6,
+                        acceleration: 1.05,
+                        friction: 0.97,
+                        gravity: intensity === 'small' ? 2.0 : 1.5,
+                        particles: settings.particles,
+                        traceLength: intensity === 'spectacular' ? 4 : 3,
+                        explosion: settings.explosion,
+                        intensity: settings.intensity,
+                        flickering: intensity === 'spectacular' ? 70 : 50,
+                        lineStyle: 'round',
+                        hue: intensity === 'spectacular' ? { min: 0, max: 360 } : intensity === 'bonus' ? { min: 340, max: 60 } : { min: 0, max: 360 },
+                        delay: { min: 30, max: 60 },
+                        rocketsPoint: { min: containerSize / 2, max: containerSize / 2 },
+                        lineWidth: {
+                            explosion: { min: intensity === 'small' ? 1 : 2, max: intensity === 'spectacular' ? 4 : 3 },
+                            trace: { min: 1, max: intensity === 'spectacular' ? 3 : 2 }
+                        },
+                        brightness: { min: 50, max: intensity === 'spectacular' ? 90 : 80 },
+                        decay: { min: 0.015, max: intensity === 'small' ? 0.05 : 0.03 }
+                    });
+
+                    fireworks.start();
+                    setTimeout(() => {
+                        try {
+                            fireworks.stop();
+                            if (fireworksContainer.parentNode) {
+                                fireworksContainer.parentNode.removeChild(fireworksContainer);
+                            }
+                        } catch (e) {
+                            console.warn('Fireworks cleanup failed', e);
+                        }
+                    }, settings.duration);
+
+                } else {
+                    console.log('Fireworks library not available, using CSS fallback');
+                    createCSSFireworks(point, mapEl, settings);
+                }
             } catch (e) {
-                console.warn('Fireworks failed', e);
+                console.warn('Fireworks effect failed', e);
+                createSimplePulseEffect(latlng, intensity);
             }
+        }
+
+        // CSS アニメーションによるフォールバック花火
+        function createCSSFireworks(point, mapEl, settings) {
+            const colors = ['#FFD700', '#FF6B35', '#F7931E', '#FFE135', '#C4D600', '#37BC9B'];
+            const particleCount = settings.cssParticles;
+
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.style.position = 'absolute';
+                particle.style.width = '4px';
+                particle.style.height = '4px';
+                particle.style.borderRadius = '50%';
+                particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+                particle.style.left = point.x + 'px';
+                particle.style.top = point.y + 'px';
+                particle.style.pointerEvents = 'none';
+                particle.style.zIndex = '2000';
+
+                if (settings.particles > 70) {
+                    particle.style.width = '6px';
+                    particle.style.height = '6px';
+                    particle.style.boxShadow = '0 0 6px currentColor';
+                }
+
+                const angle = (i / particleCount) * 2 * Math.PI + (Math.random() - 0.5) * 0.5;
+                const distance = 30 + Math.random() * (settings.containerSize / 4);
+                const endX = point.x + Math.cos(angle) * distance;
+                const endY = point.y + Math.sin(angle) * distance;
+
+                const animationDuration = settings.duration / 2;
+                particle.style.transition = `all ${animationDuration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
+                particle.style.opacity = '1';
+
+                mapEl.appendChild(particle);
+
+                setTimeout(() => {
+                    particle.style.transform = `translate(${endX - point.x}px, ${endY - point.y}px)`;
+                    particle.style.opacity = '0';
+                }, 50);
+
+                setTimeout(() => {
+                    if (particle.parentNode) {
+                        particle.parentNode.removeChild(particle);
+                    }
+                }, animationDuration + 100);
+            }
+        }
+
+        // 最終フォールバック：シンプルなパルスエフェクト
+        function createSimplePulseEffect(latlng, intensity = 'normal') {
+            const intensityColors = {
+                'small': '#2196F3',
+                'normal': '#4CAF50',
+                'good': '#FF9800',
+                'spectacular': '#FFD700',
+                'bonus': '#FF6B35'
+            };
+
+            const color = intensityColors[intensity] || '#4CAF50';
+            const maxScale = intensity === 'spectacular' ? 6 : intensity === 'small' ? 3 : 4;
+
+            const pulseMarker = L.circleMarker([latlng.lat, latlng.lng], {
+                radius: 10,
+                color: color,
+                fillColor: color,
+                fillOpacity: 0.6,
+                weight: 3
+            }).addTo(gameState.facilityLayer);
+
+            let scale = 1;
+            const pulseInterval = setInterval(() => {
+                scale += 0.3;
+                pulseMarker.setStyle({
+                    radius: 10 * scale,
+                    fillOpacity: 0.6 / scale,
+                    opacity: 1 / scale
+                });
+
+                if (scale > maxScale) {
+                    clearInterval(pulseInterval);
+                    gameState.facilityLayer.removeLayer(pulseMarker);
+                }
+            }, 100);
         }
 
         function showResultModal(distance, accuracy) {
@@ -1775,9 +1992,18 @@
                 circle.style.strokeDashoffset = circumference * (1 - percent / 100);
             }, 50);
             modal.classList.remove("hidden");
-            if (distance < 10) {
+            let intensity = null;
+            if (distance <= 25) {
+                intensity = 'spectacular';
+            } else if (distance <= 50) {
+                intensity = gameState.timer >= 15 ? 'good' : 'normal';
+            } else if (distance <= 100) {
+                intensity = 'small';
+            }
+
+            if (intensity) {
                 if (gameState.lastGuess) {
-                    launchFireworksAtPoint(gameState.lastGuess);
+                    launchFireworksAtPoint(gameState.lastGuess, intensity);
                 }
                 playBlastSound();
             }
