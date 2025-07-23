@@ -33,6 +33,7 @@
             return { leaflet: leafletLoaded, turf: turfLoaded };
         };
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -1710,10 +1711,27 @@
 
         function hideMobileDistance() {
             if (window.innerWidth > 768) return;
-            
+
             const overlay = document.getElementById('mobile-distance-overlay');
             if (overlay) {
                 overlay.classList.add('hidden');
+            }
+        }
+
+        function playPopSound() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = ctx.createOscillator();
+                const gain = ctx.createGain();
+                oscillator.type = 'square';
+                oscillator.frequency.value = 880;
+                gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                oscillator.connect(gain);
+                gain.connect(ctx.destination);
+                oscillator.start();
+                oscillator.stop(ctx.currentTime + 0.15);
+            } catch (e) {
+                console.warn('Audio playback failed', e);
             }
         }
 
@@ -1743,6 +1761,12 @@
                 circle.style.strokeDashoffset = circumference * (1 - percent / 100);
             }, 50);
             modal.classList.remove("hidden");
+            if (percent === 100) {
+                if (typeof confetti === 'function') {
+                    confetti({ particleCount: 100, spread: 70 });
+                }
+                playPopSound();
+            }
             const nextBtn = document.getElementById("next-question");
             if (nextBtn) nextBtn.classList.add("hidden");
         }
