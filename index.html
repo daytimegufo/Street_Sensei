@@ -3457,8 +3457,12 @@
                     const query = `[out:json][timeout:60];way["highway"]["name"](${south},${west},${north},${east});out geom;`;
                     const response = await fetch('https://overpass-api.de/api/interpreter', {
                         method: 'POST',
-                        body: query
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `data=${encodeURIComponent(query)}`
                     });
+                    if (!response.ok) {
+                        throw new Error(`Overpass error: ${response.status}`);
+                    }
                     const data = await response.json();
                     const roads = data.elements
                         .filter(el => el.type === 'way' && el.geometry && el.tags && el.tags.name)
