@@ -1825,7 +1825,14 @@
 
                 const settings = intensitySettings[intensity] || intensitySettings['normal'];
 
-                if (typeof Fireworks !== 'undefined') {
+                let FireworksClass = null;
+                if (typeof Fireworks === 'function') {
+                    FireworksClass = Fireworks;
+                } else if (typeof Fireworks === 'object' && typeof Fireworks.Fireworks === 'function') {
+                    FireworksClass = Fireworks.Fireworks;
+                }
+
+                if (FireworksClass) {
                     const containerSize = settings.containerSize;
                     const fireworksContainer = document.createElement('div');
                     fireworksContainer.style.position = 'absolute';
@@ -1837,7 +1844,7 @@
                     fireworksContainer.style.zIndex = '2000';
                     mapEl.appendChild(fireworksContainer);
 
-                    const fireworks = new Fireworks(fireworksContainer, {
+                    const fireworks = new FireworksClass(fireworksContainer, {
                         autoresize: false,
                         opacity: intensity === 'spectacular' ? 0.8 : 0.6,
                         acceleration: 1.05,
