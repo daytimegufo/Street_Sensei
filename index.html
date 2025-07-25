@@ -2356,6 +2356,23 @@
             }
         };
 
+        const ROAD_TYPE_SCORES = {
+            motorway: 90,
+            trunk: 85,
+            primary: 80,
+            secondary: 75,
+            tertiary: 70,
+            residential: 55,
+            unclassified: 50,
+            service: 45
+        };
+
+        const DIFFICULTY_ALLOWED_TYPES = {
+            'tourist': ['motorway', 'trunk', 'primary'],
+            'resident': ['motorway', 'trunk', 'primary', 'secondary', 'tertiary'],
+            'taxi-driver': ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'residential', 'unclassified', 'service']
+        };
+
         // Current regional configuration and loading strategy
         let currentRegionalConfig = REGIONAL_CONFIGS['south-kanto'];
         let currentLoadingStrategy = LOADING_STRATEGIES['immediate'];
@@ -3157,10 +3174,10 @@
 
         function getStreetBreakdownByDifficulty() {
             if (!gameState.streetData) return { tourist: 0, resident: 0, taxi: 0 };
-            
-            const tourist = gameState.streetData.filter(q => q.importance >= 80).length;
-            const resident = gameState.streetData.filter(q => q.importance >= 60).length;
-            const taxi = gameState.streetData.filter(q => q.importance >= 40).length;
+
+            const tourist = gameState.streetData.filter(q => DIFFICULTY_ALLOWED_TYPES['tourist'].includes(q.roadType)).length;
+            const resident = gameState.streetData.filter(q => DIFFICULTY_ALLOWED_TYPES['resident'].includes(q.roadType)).length;
+            const taxi = gameState.streetData.filter(q => DIFFICULTY_ALLOWED_TYPES['taxi-driver'].includes(q.roadType)).length;
             
             return { tourist, resident, taxi };
         }
@@ -3438,13 +3455,17 @@
                     const data = await response.json();
                     const roads = data.elements
                         .filter(el => el.type === 'way' && el.geometry && el.tags && el.tags.name)
-                        .map(el => ({
-                            name: el.tags.name,
-                            points: [el.geometry.map(p => ({ lat: p.lat, lng: p.lon }))],
-                            importance: config.majorRoads.includes(el.tags.name) ? 80 : 60,
-                            isComplete: true,
-                            source: 'overpass'
-                        }));
+                        .map(el => {
+                            const type = el.tags.highway;
+                            return {
+                                name: el.tags.name,
+                                roadType: type,
+                                points: [el.geometry.map(p => ({ lat: p.lat, lng: p.lon }))],
+                                importance: ROAD_TYPE_SCORES[type] || 40,
+                                isComplete: true,
+                                source: 'overpass'
+                            };
+                        });
                     gameState.streetData = roads;
                     showSuccess(`✅ ${roads.length} roads loaded from OSM`);
                     updateDataStatus();
@@ -3493,66 +3514,32 @@
 
         function filterQuestionsByDifficulty(questions) {
             if (!questions || questions.length === 0) return [];
-            
+
             let filtered = questions.filter(q => {
                 const point = q.points[0][0];
                 return isWithinGameArea(point.lat, point.lng);
             });
-            
-            let importanceFiltered;
-            
-            if (gameState.difficulty === 'tourist') {
-                importanceFiltered = filtered.filter(q => q.importance >= 80);
-                log(`Tourist mode: ${importanceFiltered.length} streets with importance >= 80`);
-                
-                if (importanceFiltered.length < 10) {
-                    importanceFiltered = filtered.filter(q => q.importance >= 70);
-                    log(`Tourist mode (relaxed): ${importanceFiltered.length} streets with importance >= 70`);
-                }
-                if (importanceFiltered.length < 5) {
-                    importanceFiltered = filtered.filter(q => q.importance >= 60);
-                    log(`Tourist mode (very relaxed): ${importanceFiltered.length} streets with importance >= 60`);
-                }
-                
-            } else if (gameState.difficulty === 'resident') {
-                importanceFiltered = filtered.filter(q => q.importance >= 60);
-                log(`Resident mode: ${importanceFiltered.length} streets with importance >= 60`);
-                
-                if (importanceFiltered.length < 20) {
-                    importanceFiltered = filtered.filter(q => q.importance >= 50);
-                    log(`Resident mode (relaxed): ${importanceFiltered.length} streets with importance >= 50`);
-                }
-                
-            } else {
-                importanceFiltered = filtered.filter(q => q.importance >= 40);
-                log(`Taxi Driver mode: ${importanceFiltered.length} streets with importance >= 40`);
-                
-                if (importanceFiltered.length < 50) {
-                    importanceFiltered = filtered.filter(q => q.importance >= 30);
-                    log(`Taxi Driver mode (relaxed): ${importanceFiltered.length} streets with importance >= 30`);
-                }
+
+            const allowed = DIFFICULTY_ALLOWED_TYPES[gameState.difficulty] || DIFFICULTY_ALLOWED_TYPES['taxi-driver'];
+            let typeFiltered = filtered.filter(q => allowed.includes(q.roadType));
+
+            if (typeFiltered.length === 0) {
+                log(`No streets found for ${gameState.difficulty} difficulty, using all streets`);
+                typeFiltered = filtered;
             }
-            
-            if (importanceFiltered.length === 0) {
-                log(`No streets found for ${gameState.difficulty} difficulty, using top 20 streets`);
-                importanceFiltered = filtered.slice(0, 20);
-            }
-            
-            importanceFiltered.sort((a, b) => b.importance - a.importance);
-            
+
+            typeFiltered.sort((a, b) => b.importance - a.importance);
+
             const maxPoolSize = {
                 'tourist': 50,
-                'resident': 150, 
+                'resident': 150,
                 'taxi-driver': 300
             };
-            
-            const finalFiltered = importanceFiltered.slice(0, maxPoolSize[gameState.difficulty] || 150);
-            
+
+            const finalFiltered = typeFiltered.slice(0, maxPoolSize[gameState.difficulty] || 150);
+
             log(`Final filtered result for ${gameState.difficulty}: ${finalFiltered.length} streets`);
-            if (finalFiltered.length > 0) {
-                log(`Importance range: ${finalFiltered[finalFiltered.length-1].importance} - ${finalFiltered[0].importance}`);
-            }
-            
+
             return finalFiltered;
         }
 
