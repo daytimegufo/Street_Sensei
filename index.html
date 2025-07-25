@@ -3473,11 +3473,12 @@
                     const data = await response.json();
                     const roads = data.elements
                         .filter(el => el.type === 'way' && el.geometry && el.tags && el.tags.name)
-                        // Exclude expressway bridge names like "○○橋" from OSM results
+                        // Exclude expressway segments named like "○○橋" or "○○トンネル"
                         .filter(el => {
                             const isExpressway = el.tags.highway === 'motorway' || el.tags.highway === 'motorway_link';
-                            const hasBridgeName = /\u6a4b/.test(el.tags.name); // '橋'
-                            return !(isExpressway && hasBridgeName);
+                            const hasBridgeName = /\u6a4b/.test(el.tags.name); // 橋 = "橋"
+                            const hasTunnelName = /\u30c8\u30f3\u30cd\u30eb/.test(el.tags.name); // トンネル
+                            return !(isExpressway && (hasBridgeName || hasTunnelName));
                         })
                         .map(el => {
                             const type = el.tags.highway;
