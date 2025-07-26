@@ -1452,6 +1452,8 @@
     <script>
         // Use a CORS-enabled Overpass mirror for client-side requests
         const OVERPASS_URL = 'https://overpass.openstreetmap.fr/api/interpreter';
+        const KML_BASE_URL = "https://raw.githubusercontent.com/daytimegufo/Street_Sensei/main/kml_files/";
+        const KML_INDEX_URL = "https://api.github.com/repos/daytimegufo/Street_Sensei/contents/kml_files";
         function log(message) {
             console.log(message);
             const debugInfo = document.getElementById('debug-info');
@@ -1510,6 +1512,52 @@
             }
             
             return checks;
+        }
+
+        // KML loading functions
+        async function fetchKmlIndex() {
+            try {
+                const response = await fetch(KML_INDEX_URL);
+                const data = await response.json();
+                const kmlMap = {};
+                data.forEach(file => {
+                    if (file.name && file.name.endsWith('.kml')) {
+                        const name = file.name.replace('.kml', '');
+                        kmlMap[name] = file.download_url;
+                    }
+                });
+                log(`KML index loaded: ${Object.keys(kmlMap).length} files`);
+                return kmlMap;
+            } catch (err) {
+                log('Failed to load KML index: ' + err.message);
+                return {};
+            }
+        }
+
+        async function loadKmlIfExists(streetName, kmlMap) {
+            try {
+                const url = kmlMap ? kmlMap[streetName] : null;
+                if (!url) return null;
+                const res = await fetch(url);
+                const kmlText = await res.text();
+                const parser = new DOMParser();
+                const kmlDoc = parser.parseFromString(kmlText, 'text/xml');
+                const lines = kmlDoc.getElementsByTagName('LineString');
+                const segments = [];
+                for (let i = 0; i < lines.length; i++) {
+                    const coordsText = lines[i].getElementsByTagName('coordinates')[0]?.textContent;
+                    if (coordsText) {
+                        const coords = parseCoordinateString(coordsText);
+                        if (coords.length > 0) segments.push(coords);
+                    }
+                }
+                if (segments.length > 0) {
+                    return { points: segments };
+                }
+            } catch (err) {
+                log('Failed to load KML for ' + streetName + ': ' + err.message);
+            }
+            return null;
         }
 
         // Mobile-specific initialization with Safari fixes
@@ -2387,10 +2435,10 @@
         let currentLoadingStrategy = LOADING_STRATEGIES['immediate'];
 
         // Initialize the game
-        function initGame() {
+        async function initGame() {
             try {
                 log('Initializing game...');
-                
+
                 // Check if required libraries are loaded
                 const libCheck = checkLibraryLoading();
                 if (!libCheck.leaflet) {
@@ -2398,7 +2446,9 @@
                     setTimeout(initGame, 1000);
                     return;
                 }
-                
+
+                window.kmlMap = await fetchKmlIndex();
+
                 // Initialize components in correct order
                 initMap();
                 bindEvents();
@@ -2947,9 +2997,9 @@
 
                 const nextBtn = document.getElementById('next-question');
                 if (nextBtn) {
-                    nextBtn.addEventListener('click', () => {
+                    nextBtn.addEventListener('click', async () => {
                         log('Next question clicked');
-                        nextQuestion();
+                        await nextQuestion();
                     });
                 }
 
@@ -3722,7 +3772,7 @@
             return filtered;
         }
 
-        function startGame() {
+        async function startGame() {
             try {
                 log('Starting game...');
                 
@@ -3777,8 +3827,8 @@
                 
                 // モバイルゲームUIを表示
                 showMobileGameUI();
-                
-                nextQuestion();
+
+                await nextQuestion();
                 updateUI();
                 
                 log('Game started successfully - map interaction enabled');
@@ -3788,7 +3838,7 @@
             }
         }
 
-        function nextQuestion() {
+        async function nextQuestion() {
             try {
                 log('Loading next question...');
                 
@@ -3804,7 +3854,7 @@
                 gameState.timer = 30;
                 startTimer();
 
-                generateQuestion();
+                await generateQuestion();
                 
                 const distanceDisplay = document.getElementById('distance-display');
                 const nextBtn = document.getElementById('next-question');
@@ -3837,7 +3887,7 @@
             }
         }
 
-        function generateQuestion() {
+        async function generateQuestion() {
             try {
                 let questions;
                 
@@ -3914,8 +3964,16 @@
                 gameState.currentQuestion = selectedQuestion;
                 gameState.askedQuestions.push(selectedQuestion);
 
+                if (gameState.currentMode === 'street') {
+                    const kmlData = await loadKmlIfExists(selectedQuestion.name, window.kmlMap);
+                    if (kmlData) {
+                        selectedQuestion.points = kmlData.points;
+                        selectedQuestion.source = 'kml';
+                    }
+                }
+
                 // Gather full road segments for OSM questions
-                if (gameState.currentMode === 'street' && selectedQuestion.source !== 'custom') {
+                if (gameState.currentMode === 'street' && selectedQuestion.source !== 'custom' && selectedQuestion.source !== 'kml') {
                     const fullSegments = gatherCompleteStreetSegments(selectedQuestion.name);
                     if (fullSegments && fullSegments.length > 0) {
                         selectedQuestion.fullPoints = fullSegments;
@@ -3932,7 +3990,12 @@
                 }
                 
                 if (questionType) {
-                    const sourceLabel = gameState.currentQuestion.source === 'custom' ? ' (カスタム)' : ' (OSM)';
+                    let sourceLabel = ' (OSM)';
+                    if (gameState.currentQuestion.source === 'custom') {
+                        sourceLabel = ' (カスタム)';
+                    } else if (gameState.currentQuestion.source === 'kml') {
+                        sourceLabel = ' (KML)';
+                    }
                     questionType.textContent = `${getModeName(gameState.currentMode)}チャレンジ${sourceLabel}`;
                 }
                 
