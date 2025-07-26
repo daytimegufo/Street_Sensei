@@ -3469,8 +3469,7 @@
                     const query = `
                     [out:json][timeout:60];
                     (
-                        way["highway"](${south},${west},${north},${east});
-                        way[name~".+(通り|坂|街道|道|線)$"](${south},${west},${north},${east});
+                        way["highway"]["name"](${south},${west},${north},${east});
                     );
                 out geom;
                 `;
