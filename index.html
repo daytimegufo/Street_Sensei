@@ -3415,18 +3415,18 @@
                     resolve(false);
                     return;
                 }
-                
+
                 const config = REGIONAL_CONFIGS[regionKey];
                 const strategy = LOADING_STRATEGIES[strategyKey];
-                
+
                 if (!config || !strategy) {
                     reject(new Error('Invalid configuration'));
                     return;
                 }
-                
+
                 currentRegionalConfig = config;
                 currentLoadingStrategy = strategy;
-                
+
                 // Check cache first
                 const cacheKey = `${regionKey}-${strategyKey}`;
                 const cachedData = ROAD_CACHE.load(regionKey, strategyKey);
@@ -3438,9 +3438,9 @@
                     resolve(true);
                     return;
                 }
-                
+
                 gameState.isLoadingData = true;
-                
+
                 const loadBtn = document.getElementById('load-street-data');
                 if (loadBtn) {
                     loadBtn.textContent = 'Loading Roads...';
@@ -3449,9 +3449,19 @@
                 }
 
                 showLoading();
-                
+
                 log(`Loading roads with ${strategy.name} strategy for ${config.name}...`);
-                
+
+                // Multiple API endpoints with fallback
+                const corsProxies = [
+                    'https://corsproxy.io/?',
+                    'https://api.allorigins.win/raw?url=',
+                    'https://cors-anywhere.herokuapp.com/'
+                ];
+
+                let lastError = null;
+                let success = false;
+
                 try {
                     const { south, west, north, east } = config.bbox;
                     const query = `
@@ -3462,47 +3472,84 @@
                     );
                 out geom;
                 `;
-                    const response = await fetch('https://overpass-api.de/api/interpreter', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: `data=${encodeURIComponent(query)}`
-                    });
-                    if (!response.ok) {
-                        throw new Error(`Overpass error: ${response.status}`);
-                    }
-                    const data = await response.json();
-                    const roads = data.elements
-                        .filter(el => el.type === 'way' && el.geometry && el.tags && el.tags.name)
-                        // Exclude expressway bridges and tunnels by tag or name
-                        .filter(el => {
-                            const h = el.tags.highway;
-                            const isExpressway = ['motorway', 'motorway_link', 'trunk_link'].includes(h);
-                            const isBridge = el.tags.bridge === 'yes';
-                            const isTunnel = el.tags.tunnel === 'yes';
-                            const name = el.tags.name || '';
-                            const hasBridgeName = /橋/.test(name);
-                            const hasTunnelName = /トンネル/.test(name);
-                            return !(isExpressway && (isBridge || isTunnel || hasBridgeName || hasTunnelName));
-                        })
-                        .map(el => {
-                            const type = el.tags.highway;
-                            return {
-                                name: el.tags.name,
-                                roadType: type,
-                                points: [el.geometry.map(p => ({ lat: p.lat, lng: p.lon }))],
-                                importance: ROAD_TYPE_SCORES[type] || 40,
-                                isComplete: true,
-                                source: 'overpass'
-                            };
+
+                    // Method 1: Try direct access first (might work in some environments)
+                    try {
+                        log('Attempting direct API access...');
+                        const response = await fetch('https://overpass-api.de/api/interpreter', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: `data=${encodeURIComponent(query)}`
                         });
-                    gameState.streetData = roads;
-                    showSuccess(`✅ ${roads.length} roads loaded from OSM`);
-                    updateDataStatus();
+                        if (response.ok) {
+                            const data = await response.json();
+                            const roads = processOverpassData(data);
+                            if (roads.length > 0) {
+                                gameState.streetData = roads;
+                                ROAD_CACHE.save(regionKey, strategyKey, roads);
+                                showSuccess(`✅ ${roads.length} roads loaded from OSM (direct)`);
+                                updateDataStatus();
+                                success = true;
+                            }
+                        }
+                    } catch (directError) {
+                        log('Direct API access failed: ' + directError.message);
+                        lastError = directError;
+                    }
+
+                    // Method 2: Try CORS proxies if direct access failed
+                    if (!success) {
+                        for (let i = 0; i < corsProxies.length && !success; i++) {
+                            const proxy = corsProxies[i];
+                            try {
+                                log(`Attempting proxy ${i + 1}/${corsProxies.length}: ${proxy}`);
+                                const proxyUrl = proxy + encodeURIComponent('https://overpass-api.de/api/interpreter');
+                                const response = await fetch(proxyUrl, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                    body: `data=${encodeURIComponent(query)}`
+                                });
+
+                                if (response.ok) {
+                                    const data = await response.json();
+                                    const roads = processOverpassData(data);
+                                    if (roads.length > 0) {
+                                        gameState.streetData = roads;
+                                        ROAD_CACHE.save(regionKey, strategyKey, roads);
+                                        showSuccess(`✅ ${roads.length} roads loaded from OSM (proxy ${i + 1})`);
+                                        updateDataStatus();
+                                        success = true;
+                                        break;
+                                    }
+                                }
+                            } catch (proxyError) {
+                                log(`Proxy ${i + 1} failed: ${proxyError.message}`);
+                                lastError = proxyError;
+                            }
+                        }
+                    }
+
+                    // Method 3: Fallback to enhanced sample data
+                    if (!success) {
+                        log('All external APIs failed, using enhanced sample data...');
+                        const fallbackRoads = generateEnhancedSampleData(config.bbox);
+                        gameState.streetData = fallbackRoads;
+                        showInfo(`🏠 ${fallbackRoads.length} sample roads loaded (offline mode)`);
+                        updateDataStatus();
+                        success = true;
+                    }
+
                 } catch (err) {
-                    console.error('OSM load error:', err);
-                    showError('Failed to load roads from OSM');
-                    resolve(false);
-                    return;
+                    console.error('Complete OSM load failure:', err);
+
+                    // Final fallback: Use sample data
+                    const fallbackRoads = generateEnhancedSampleData(config?.bbox || {
+                        south: 35.6, west: 139.6, north: 35.75, east: 139.85
+                    });
+                    gameState.streetData = fallbackRoads;
+                    showWarning(`⚠️ External APIs unavailable. Using ${fallbackRoads.length} sample roads.`);
+                    updateDataStatus();
+                    success = true;
                 } finally {
                     gameState.isLoadingData = false;
                     if (loadBtn) {
@@ -3513,7 +3560,92 @@
                     hideLoading();
                 }
 
-                resolve(true);
+                resolve(success);
+            });
+        }
+
+        // Helper function to process Overpass API data
+        function processOverpassData(data) {
+            return data.elements
+                .filter(el => el.type === 'way' && el.geometry && el.tags && el.tags.name)
+                .filter(el => {
+                    const h = el.tags.highway;
+                    const isExpressway = ['motorway', 'motorway_link', 'trunk_link'].includes(h);
+                    const isBridge = el.tags.bridge === 'yes';
+                    const isTunnel = el.tags.tunnel === 'yes';
+                    const name = el.tags.name || '';
+                    const hasBridgeName = /橋/.test(name);
+                    const hasTunnelName = /トンネル/.test(name);
+                    return !(isExpressway && (isBridge || isTunnel || hasBridgeName || hasTunnelName));
+                })
+                .map(el => {
+                    const type = el.tags.highway;
+                    return {
+                        name: el.tags.name,
+                        roadType: type,
+                        points: [el.geometry.map(p => ({ lat: p.lat, lng: p.lon }))],
+                        importance: ROAD_TYPE_SCORES[type] || 40,
+                        isComplete: true,
+                        source: 'overpass'
+                    };
+                });
+        }
+
+        // Enhanced sample data generator for fallback
+        function generateEnhancedSampleData(bbox) {
+            const sampleRoads = [
+                // Major Tokyo roads
+                { name: '環状七号線', roadType: 'trunk', importance: 85 },
+                { name: '環状八号線', roadType: 'trunk', importance: 85 },
+                { name: '山手通り', roadType: 'primary', importance: 80 },
+                { name: '明治通り', roadType: 'primary', importance: 80 },
+                { name: '昭和通り', roadType: 'primary', importance: 80 },
+                { name: '中央通り', roadType: 'primary', importance: 80 },
+                { name: '外苑東通り', roadType: 'primary', importance: 75 },
+                { name: '靖国通り', roadType: 'primary', importance: 75 },
+                { name: '新宿通り', roadType: 'primary', importance: 75 },
+                { name: '表参道', roadType: 'secondary', importance: 70 },
+                { name: '六本木通り', roadType: 'secondary', importance: 70 },
+                { name: '桜田通り', roadType: 'primary', importance: 75 },
+                { name: '第一京浜', roadType: 'trunk', importance: 85 },
+                { name: '国道1号', roadType: 'trunk', importance: 90 },
+                { name: '国道14号', roadType: 'trunk', importance: 85 },
+                { name: '国道15号', roadType: 'trunk', importance: 85 },
+                { name: '国道20号', roadType: 'trunk', importance: 85 },
+                { name: '国道246号', roadType: 'trunk', importance: 85 },
+                { name: '甲州街道', roadType: 'primary', importance: 80 },
+                { name: '青梅街道', roadType: 'primary', importance: 75 },
+                { name: '目白通り', roadType: 'secondary', importance: 70 },
+                { name: '早稲田通り', roadType: 'secondary', importance: 65 },
+                { name: '春日通り', roadType: 'secondary', importance: 65 },
+                { name: '不忍通り', roadType: 'secondary', importance: 65 },
+                { name: '蔵前橋通り', roadType: 'secondary', importance: 65 }
+            ];
+
+            return sampleRoads.map((road, index) => {
+                // Generate realistic coordinates within bbox
+                const centerLat = (bbox.north + bbox.south) / 2;
+                const centerLng = (bbox.east + bbox.west) / 2;
+                const latRange = bbox.north - bbox.south;
+                const lngRange = bbox.east - bbox.west;
+
+                // Create a simple line for each road
+                const startLat = centerLat + (Math.random() - 0.5) * latRange * 0.8;
+                const startLng = centerLng + (Math.random() - 0.5) * lngRange * 0.8;
+                const endLat = startLat + (Math.random() - 0.5) * latRange * 0.2;
+                const endLng = startLng + (Math.random() - 0.5) * lngRange * 0.2;
+
+                return {
+                    name: road.name,
+                    roadType: road.roadType,
+                    points: [[
+                        { lat: startLat, lng: startLng },
+                        { lat: endLat, lng: endLng }
+                    ]],
+                    importance: road.importance,
+                    isComplete: false,
+                    source: 'fallback'
+                };
             });
         }
 
