@@ -1448,8 +1448,10 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
+    <<script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
     <script>
+        // Use a CORS-enabled Overpass mirror for client-side requests
+        const OVERPASS_URL = 'https://overpass.openstreetmap.fr/api/interpreter';
         function log(message) {
             console.log(message);
             const debugInfo = document.getElementById('debug-info');
@@ -3476,7 +3478,7 @@
                     // Method 1: Try direct access first (might work in some environments)
                     try {
                         log('Attempting direct API access...');
-                        const response = await fetch('https://overpass-api.de/api/interpreter', {
+                        const response = await fetch(OVERPASS_URL, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                             body: `data=${encodeURIComponent(query)}`
@@ -3503,7 +3505,7 @@
                             const proxy = corsProxies[i];
                             try {
                                 log(`Attempting proxy ${i + 1}/${corsProxies.length}: ${proxy}`);
-                                const proxyUrl = proxy + encodeURIComponent('https://overpass-api.de/api/interpreter');
+                                const proxyUrl = proxy + encodeURIComponent(OVERPASS_URL);
                                 const response = await fetch(proxyUrl, {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
