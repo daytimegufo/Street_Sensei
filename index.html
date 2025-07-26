@@ -3551,65 +3551,20 @@
                         }
                     }
                     
-                    // Method 3: Fallback to enhanced sample data
+                    // Method 3: All external sources failed
                     if (!success) {
-                        log('All external APIs failed, using enhanced sample data...');
-                        
-                        try {
-                            const fallbackRoads = generateEnhancedSampleData(config.bbox);
-                            
-                            // Verify sample data was generated
-                            if (fallbackRoads && fallbackRoads.length > 0) {
-                                gameState.streetData = fallbackRoads;
-                                
-                                // Mark as fallback data for proper UI display
-                                gameState.streetData.forEach(road => {
-                                    road.source = 'fallback';
-                                    road.cached = false;
-                                });
-                                
-                                log(`Sample data generated: ${fallbackRoads.length} roads`);
-                                showInfo(`🏠 ${fallbackRoads.length} sample roads loaded (offline mode)`);
-                                updateDataStatus();
-                                success = true;
-                            } else {
-                                throw new Error('Sample data generation failed');
-                            }
-                        } catch (fallbackError) {
-                            log('Sample data generation failed: ' + fallbackError.message);
-                            
-                            // Last resort: Create minimal working dataset
-                            gameState.streetData = createMinimalDataset();
-                            showWarning(`⚠️ Using minimal dataset (${gameState.streetData.length} roads). Some features may be limited.`);
-                            updateDataStatus();
-                            success = true;
-                        }
+                        log('All external APIs failed.');
+                        showError('OSMデータを取得できませんでした。インターネット接続または設定を確認してください。');
+                        updateDataStatus();
                     }
                     
                 } catch (err) {
                     console.error('Complete OSM load failure:', err);
                     
-                    // Final fallback: Use sample data with enhanced error reporting
-                    log('Final fallback: Creating sample data due to complete API failure');
-                    const fallbackRoads = generateEnhancedSampleData(config?.bbox || { 
-                        south: 35.6, west: 139.6, north: 35.75, east: 139.85 
-                    });
-                    
-                    if (fallbackRoads && fallbackRoads.length > 0) {
-                        gameState.streetData = fallbackRoads;
-                        fallbackRoads.forEach(road => road.source = 'fallback');
-                        
-                        showWarning(`⚠️ External APIs unavailable. Using ${fallbackRoads.length} sample roads for offline gameplay.`);
-                        log(`Fallback complete: ${fallbackRoads.length} roads ready for gameplay`);
-                        updateDataStatus();
-                        success = true;
-                    } else {
-                        // Ultimate fallback
-                        gameState.streetData = createMinimalDataset();
-                        showError(`🔧 Using emergency dataset (${gameState.streetData.length} roads). Limited functionality.`);
-                        updateDataStatus();
-                        success = true;
-                    }
+                    // Final fallback: report failure without sample data
+                    log('Final fallback: Unable to retrieve road data from OSM');
+                    showError('道路データを取得できませんでした。再度お試しください。');
+                    updateDataStatus();
                 } finally {
                     gameState.isLoadingData = false;
                     if (loadBtn) {
@@ -3671,118 +3626,6 @@
                         source: 'overpass'
                     };
                 });
-        }
-        
-        // Enhanced sample data generator for fallback
-        function generateEnhancedSampleData(bbox) {
-            try {
-                log('Generating enhanced sample data...');
-                
-                const sampleRoads = [
-                    // Major Tokyo roads with realistic coordinates
-                    { name: '環状七号線', roadType: 'trunk', importance: 85, coordinates: [[35.6762, 139.6503], [35.6862, 139.6603]] },
-                    { name: '環状八号線', roadType: 'trunk', importance: 85, coordinates: [[35.6762, 139.6403], [35.6962, 139.6503]] },
-                    { name: '山手通り', roadType: 'primary', importance: 80, coordinates: [[35.6662, 139.7003], [35.6762, 139.7103]] },
-                    { name: '明治通り', roadType: 'primary', importance: 80, coordinates: [[35.6562, 139.6903], [35.6762, 139.7003]] },
-                    { name: '昭和通り', roadType: 'primary', importance: 80, coordinates: [[35.6762, 139.7703], [35.6962, 139.7603]] },
-                    { name: '中央通り', roadType: 'primary', importance: 80, coordinates: [[35.6762, 139.7503], [35.6962, 139.7403]] },
-                    { name: '外苑東通り', roadType: 'primary', importance: 75, coordinates: [[35.6562, 139.7203], [35.6762, 139.7303]] },
-                    { name: '靖国通り', roadType: 'primary', importance: 75, coordinates: [[35.6962, 139.7503], [35.7062, 139.7403]] },
-                    { name: '新宿通り', roadType: 'primary', importance: 75, coordinates: [[35.6900, 139.7000], [35.6900, 139.7100]] },
-                    { name: '表参道', roadType: 'secondary', importance: 70, coordinates: [[35.6658, 139.7123], [35.6708, 139.7173]] },
-                    { name: '六本木通り', roadType: 'secondary', importance: 70, coordinates: [[35.6586, 139.7292], [35.6636, 139.7342]] },
-                    { name: '桜田通り', roadType: 'primary', importance: 75, coordinates: [[35.6762, 139.7403], [35.6862, 139.7303]] },
-                    { name: '第一京浜', roadType: 'trunk', importance: 85, coordinates: [[35.6262, 139.7403], [35.6762, 139.7503]] },
-                    { name: '国道1号', roadType: 'trunk', importance: 90, coordinates: [[35.6762, 139.7403], [35.7262, 139.7503]] },
-                    { name: '国道14号', roadType: 'trunk', importance: 85, coordinates: [[35.6762, 139.7503], [35.6762, 139.8003]] },
-                    { name: '国道15号', roadType: 'trunk', importance: 85, coordinates: [[35.6262, 139.7403], [35.6762, 139.7503]] },
-                    { name: '国道20号', roadType: 'trunk', importance: 85, coordinates: [[35.6762, 139.7003], [35.6762, 139.6003]] },
-                    { name: '国道246号', roadType: 'trunk', importance: 85, coordinates: [[35.6762, 139.7003], [35.6362, 139.6603]] },
-                    { name: '甲州街道', roadType: 'primary', importance: 80, coordinates: [[35.6762, 139.7003], [35.6662, 139.6503]] },
-                    { name: '青梅街道', roadType: 'primary', importance: 75, coordinates: [[35.6962, 139.7003], [35.7162, 139.6803]] },
-                    { name: '目白通り', roadType: 'secondary', importance: 70, coordinates: [[35.7162, 139.7003], [35.7262, 139.7103]] },
-                    { name: '早稲田通り', roadType: 'secondary', importance: 65, coordinates: [[35.7062, 139.7203], [35.7162, 139.7303]] },
-                    { name: '春日通り', roadType: 'secondary', importance: 65, coordinates: [[35.7162, 139.7503], [35.7262, 139.7603]] },
-                    { name: '不忍通り', roadType: 'secondary', importance: 65, coordinates: [[35.7162, 139.7703], [35.7262, 139.7803]] },
-                    { name: '蔵前橋通り', roadType: 'secondary', importance: 65, coordinates: [[35.7062, 139.7803], [35.7162, 139.7903]] }
-                ];
-                
-                const generatedRoads = sampleRoads.map((road, index) => {
-                    // Use predefined coordinates if available, otherwise generate within bbox
-                    let points;
-                    if (road.coordinates) {
-                        points = road.coordinates.map(coord => ({ lat: coord[0], lng: coord[1] }));
-                    } else {
-                        // Generate realistic coordinates within bbox
-                        const centerLat = (bbox.north + bbox.south) / 2;
-                        const centerLng = (bbox.east + bbox.west) / 2;
-                        const latRange = bbox.north - bbox.south;
-                        const lngRange = bbox.east - bbox.west;
-                        
-                        const startLat = centerLat + (Math.random() - 0.5) * latRange * 0.8;
-                        const startLng = centerLng + (Math.random() - 0.5) * lngRange * 0.8;
-                        const endLat = startLat + (Math.random() - 0.5) * latRange * 0.2;
-                        const endLng = startLng + (Math.random() - 0.5) * lngRange * 0.2;
-                        
-                        points = [
-                            { lat: startLat, lng: startLng },
-                            { lat: endLat, lng: endLng }
-                        ];
-                    }
-                    
-                    return {
-                        name: road.name,
-                        roadType: road.roadType,
-                        points: [points],
-                        importance: road.importance,
-                        isComplete: false,
-                        source: 'fallback',
-                        id: `fallback_${index}`
-                    };
-                });
-                
-                log(`Generated ${generatedRoads.length} sample roads`);
-                return generatedRoads;
-                
-            } catch (error) {
-                log('Error generating sample data: ' + error.message);
-                return createMinimalDataset();
-            }
-        }
-
-        // Create minimal working dataset as last resort
-        function createMinimalDataset() {
-            log('Creating minimal dataset...');
-            
-            return [
-                {
-                    name: '山手通り',
-                    roadType: 'primary',
-                    points: [[{ lat: 35.6762, lng: 139.7003 }, { lat: 35.6862, lng: 139.7103 }]],
-                    importance: 80,
-                    isComplete: false,
-                    source: 'minimal',
-                    id: 'minimal_1'
-                },
-                {
-                    name: '明治通り',
-                    roadType: 'primary',
-                    points: [[{ lat: 35.6662, lng: 139.6903 }, { lat: 35.6762, lng: 139.7003 }]],
-                    importance: 80,
-                    isComplete: false,
-                    source: 'minimal',
-                    id: 'minimal_2'
-                },
-                {
-                    name: '国道1号',
-                    roadType: 'trunk',
-                    points: [[{ lat: 35.6762, lng: 139.7403 }, { lat: 35.7262, lng: 139.7503 }]],
-                    importance: 90,
-                    isComplete: false,
-                    source: 'minimal',
-                    id: 'minimal_3'
-                }
-            ];
         }
 
         function isWithinGameArea(lat, lng) {
