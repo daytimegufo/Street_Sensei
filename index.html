@@ -4098,8 +4098,9 @@
                     }
                 }
 
-                // Gather full road segments for OSM questions
-                if (gameState.currentMode === 'street' && selectedQuestion.source !== 'custom' && selectedQuestion.source !== 'kml') {
+                // Gather full road segments only for Overpass questions
+                if (gameState.currentMode === 'street' &&
+                    (selectedQuestion.source === 'overpass' || selectedQuestion.source === 'overpass-regional')) {
                     const fullSegments = gatherCompleteStreetSegments(selectedQuestion.name);
                     if (fullSegments && fullSegments.length > 0) {
                         selectedQuestion.fullPoints = fullSegments;
