@@ -1452,8 +1452,8 @@
     <script>
         // Use a CORS-enabled Overpass mirror for client-side requests
         const OVERPASS_URL = 'https://overpass.openstreetmap.fr/api/interpreter';
-        const KML_BASE_URL = "https://raw.githubusercontent.com/daytimegufo/Street_Sensei/main/kml_files/";
-        const KML_INDEX_URL = "https://api.github.com/repos/daytimegufo/Street_Sensei/contents/kml_files";
+        const KML_BASE_URL = "https://raw.githubusercontent.com/daytimegufo/Street_Sensei/New-map/kml_files/";
+        const KML_INDEX_URL = "https://api.github.com/repos/daytimegufo/Street_Sensei/contents/kml_files?ref=New-map";
         function log(message) {
             console.log(message);
             const debugInfo = document.getElementById('debug-info');
@@ -1546,20 +1546,19 @@
         }
 
         async function loadKmlIfExists(streetName, kmlMap) {
+            const baseName = extractBaseStreetName(streetName);
+            const matchKey = Object.keys(kmlMap || {}).find(k => {
+                const kmlBase = extractKmlBaseName(k);
+                return (
+                    baseName === kmlBase ||
+                    baseName.startsWith(kmlBase) ||
+                    kmlBase.startsWith(baseName) ||
+                    baseName.includes(kmlBase) ||
+                    kmlBase.includes(baseName)
+                );
+            });
+            if (!matchKey) return null;
             try {
-                const baseName = extractBaseStreetName(streetName);
-                const matchKey = Object.keys(kmlMap || {}).find(k => {
-                    const kmlBase = extractKmlBaseName(k);
-                    return (
-                        baseName === kmlBase ||
-                        baseName.startsWith(kmlBase) ||
-                        kmlBase.startsWith(baseName) ||
-                        baseName.includes(kmlBase) ||
-                        kmlBase.includes(baseName)
-                    );
-                });
-
-                if (!matchKey) return null;
 
                 const res = await fetch(kmlMap[matchKey]);
                 const kmlText = await res.text();
