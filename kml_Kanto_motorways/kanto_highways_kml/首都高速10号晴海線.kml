@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
+    <Document id="483">
+        <Placemark id="485">
+            <name>首都高速10号晴海線</name>
+            <LineString id="484">
+                <coordinates>139.79028312,35.64658029,0.0 139.79165,35.644735,0.0 139.79351,35.642452,0.0 139.795233,35.640411,0.0 139.796388,35.63897,0.0 139.79709,35.638003,0.0</coordinates>
+            </LineString>
+        </Placemark>
+        <Placemark id="487">
+            <name>首都高速10号晴海線</name>
+            <LineString id="486">
+                <coordinates>139.78246012,35.65463692,0.0 139.78323967,35.65383409,0.0 139.78520765,35.65189109,0.0 139.78754229,35.64958153,0.0 139.78834828,35.64878498,0.0 139.78911567,35.6479531,0.0 139.79028312,35.64658029,0.0</coordinates>
+            </LineString>
+        </Placemark>
+    </Document>
+</kml>
