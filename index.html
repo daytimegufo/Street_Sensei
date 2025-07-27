@@ -3678,9 +3678,73 @@
             });
         }
         
-        // Helper function to process Overpass API data
+        // Calculate length of a single line segment array in meters
+        function calculateWayLength(coords) {
+            if (!coords || coords.length < 2) return 0;
+            let total = 0;
+            for (let i = 1; i < coords.length; i++) {
+                if (typeof turf !== 'undefined') {
+                    total += turf.distance(
+                        turf.point([coords[i - 1].lng, coords[i - 1].lat]),
+                        turf.point([coords[i].lng, coords[i].lat]),
+                        { units: 'meters' }
+                    );
+                } else {
+                    total += calculateSimpleDistance(
+                        coords[i - 1].lat, coords[i - 1].lng,
+                        coords[i].lat, coords[i].lng
+                    ) * 1000;
+                }
+            }
+            return total;
+        }
+
+        // Check if two segments are connected within a threshold (meters)
+        function segmentsAreConnected(seg1, seg2, threshold = 50) {
+            const ends1 = [seg1[0], seg1[seg1.length - 1]];
+            const ends2 = [seg2[0], seg2[seg2.length - 1]];
+            for (const p1 of ends1) {
+                for (const p2 of ends2) {
+                    const dist = typeof turf !== 'undefined'
+                        ? turf.distance(
+                            turf.point([p1.lng, p1.lat]),
+                            turf.point([p2.lng, p2.lat]),
+                            { units: 'meters' }
+                        )
+                        : calculateSimpleDistance(p1.lat, p1.lng, p2.lat, p2.lng) * 1000;
+                    if (dist <= threshold) return true;
+                }
+            }
+            return false;
+        }
+
+        // Cluster segments that are close to each other
+        function clusterSegments(segments, threshold = 50) {
+            const clusters = [];
+            segments.forEach(seg => {
+                let added = false;
+                for (const cluster of clusters) {
+                    if (cluster.some(s => segmentsAreConnected(s, seg, threshold))) {
+                        cluster.push(seg);
+                        added = true;
+                        break;
+                    }
+                }
+                if (!added) clusters.push([seg]);
+            });
+            return clusters;
+        }
+
+        function shouldExcludeWayGroup(segGroup) {
+            const totalLength = segGroup.reduce((sum, coords) => sum + calculateWayLength(coords), 0);
+            if (totalLength < 100) return true;
+            if (totalLength < 200 && segGroup.length > 1) return true;
+            return false;
+        }
+
+        // Helper function to process Overpass API data with length filtering
         function processOverpassData(data) {
-            return data.elements
+            const rawWays = data.elements
                 .filter(el => el.type === 'way' && el.geometry && el.tags && el.tags.name)
                 .filter(el => {
                     const h = el.tags.highway;
@@ -3692,17 +3756,46 @@
                     const hasTunnelName = /トンネル/.test(name);
                     return !(isExpressway && (isBridge || isTunnel || hasBridgeName || hasTunnelName));
                 })
-                .map(el => {
-                    const type = el.tags.highway;
-                    return {
-                        name: el.tags.name,
-                        roadType: type,
-                        points: [el.geometry.map(p => ({ lat: p.lat, lng: p.lon }))],
-                        importance: ROAD_TYPE_SCORES[type] || 40,
+                .map(el => ({
+                    name: el.tags.name,
+                    roadType: el.tags.highway,
+                    points: el.geometry.map(p => ({ lat: p.lat, lng: p.lon }))
+                }));
+
+            const grouped = {};
+            rawWays.forEach(w => {
+                if (!grouped[w.name]) grouped[w.name] = [];
+                grouped[w.name].push(w);
+            });
+
+            const results = [];
+            Object.keys(grouped).forEach(name => {
+                const ways = grouped[name];
+                const segs = ways.map(w => w.points);
+                const clusters = clusterSegments(segs);
+                clusters.forEach(cluster => {
+                    if (shouldExcludeWayGroup(cluster)) return;
+
+                    // Determine most important road type within cluster
+                    let bestType = ways[0].roadType;
+                    ways.forEach(w => {
+                        if ((ROAD_TYPE_SCORES[w.roadType] || 0) > (ROAD_TYPE_SCORES[bestType] || 0)) {
+                            bestType = w.roadType;
+                        }
+                    });
+
+                    results.push({
+                        name,
+                        roadType: bestType,
+                        points: cluster.map(seg => seg),
+                        importance: ROAD_TYPE_SCORES[bestType] || 40,
                         isComplete: true,
                         source: 'overpass'
-                    };
+                    });
                 });
+            });
+
+            return results;
         }
 
         function isWithinGameArea(lat, lng) {
