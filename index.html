@@ -1545,6 +1545,38 @@
             return filename.replace(/_merged$/, '').trim();
         }
 
+        // Remove directional or lane information from road names
+        function normalizeName(name) {
+            return name.replace(/（[^）]*）|\([^)]*\)|第[一二三四五六七八九十]+通行帯/g, '').trim();
+        }
+
+        // Merge nearby segments that share the same name
+        function mergeNearbySegments(segments, threshold = 500) {
+            const segs = segments.slice();
+            const merged = [];
+            while (segs.length > 0) {
+                const base = segs.shift();
+                let group = [base];
+                for (let i = segs.length - 1; i >= 0; i--) {
+                    const dist = typeof turf !== 'undefined'
+                        ? turf.distance(
+                            turf.point([base[0].lng, base[0].lat]),
+                            turf.point([segs[i][0].lng, segs[i][0].lat]),
+                            { units: 'meters' }
+                        )
+                        : calculateSimpleDistance(
+                            base[0].lat, base[0].lng,
+                            segs[i][0].lat, segs[i][0].lng
+                        ) * 1000;
+                    if (dist < threshold) {
+                        group.push(segs.splice(i, 1)[0]);
+                    }
+                }
+                merged.push(group.flat());
+            }
+            return merged;
+        }
+
         async function loadKmlIfExists(streetName, kmlMap) {
             try {
                 const baseName = extractBaseStreetName(streetName);
@@ -3293,8 +3325,9 @@
         // Collect all segments of a road by name
         function gatherCompleteStreetSegments(roadName) {
             if (!gameState.streetData) return [];
+            const target = normalizeName(roadName);
             return gameState.streetData
-                .filter(r => r.name === roadName)
+                .filter(r => normalizeName(r.name) === target)
                 .flatMap(r => r.points);
         }
 
@@ -3757,7 +3790,7 @@
                     return !(isExpressway && (isBridge || isTunnel || hasBridgeName || hasTunnelName));
                 })
                 .map(el => ({
-                    name: el.tags.name,
+                    name: normalizeName(el.tags.name),
                     roadType: el.tags.highway,
                     points: el.geometry.map(p => ({ lat: p.lat, lng: p.lon }))
                 }));
@@ -3789,10 +3822,11 @@
                 });
 
                 if (allSegments.length > 0) {
+                    const merged = mergeNearbySegments(allSegments, 500);
                     results.push({
                         name,
                         roadType: bestType,
-                        points: allSegments,
+                        points: merged,
                         importance: ROAD_TYPE_SCORES[bestType] || 40,
                         isComplete: true,
                         source: 'overpass'
