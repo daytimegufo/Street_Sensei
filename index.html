@@ -1535,22 +1535,39 @@
         }
 
         function extractBaseStreetName(name) {
-            // Remove additional notes like "昭和通り（Showa-dori）" → "昭和通り"
-            // or "中央通り；万世橋" → "中央通り"
+            // "昭和通り（Showa-dori）" → "昭和通り"
+            // "中央通り；万世橋" → "中央通り"
             return name.split(/[（(;；]/)[0].trim();
+        }
+
+        // Normalize KML filename (e.g., "昭和通り_merged" → "昭和通り")
+        function extractKmlBaseName(filename) {
+            return filename.replace(/_merged$/, '').trim();
         }
 
         async function loadKmlIfExists(streetName, kmlMap) {
             try {
                 const baseName = extractBaseStreetName(streetName);
-                const matchKey = Object.keys(kmlMap || {}).find(k => baseName === k || baseName.startsWith(k));
+                const matchKey = Object.keys(kmlMap || {}).find(k => {
+                    const kmlBase = extractKmlBaseName(k);
+                    return (
+                        baseName === kmlBase ||
+                        baseName.startsWith(kmlBase) ||
+                        kmlBase.startsWith(baseName) ||
+                        baseName.includes(kmlBase) ||
+                        kmlBase.includes(baseName)
+                    );
+                });
+
                 if (!matchKey) return null;
+
                 const res = await fetch(kmlMap[matchKey]);
                 const kmlText = await res.text();
                 const parser = new DOMParser();
                 const kmlDoc = parser.parseFromString(kmlText, 'text/xml');
                 const lines = kmlDoc.getElementsByTagName('LineString');
                 const segments = [];
+
                 for (let i = 0; i < lines.length; i++) {
                     const coordsText = lines[i].getElementsByTagName('coordinates')[0]?.textContent;
                     if (coordsText) {
@@ -1558,12 +1575,16 @@
                         if (coords.length > 0) segments.push(coords);
                     }
                 }
+
                 if (segments.length > 0) {
+                    log(`✅ KML loaded for ${streetName} → ${matchKey}`);
                     return { points: segments };
                 }
+
             } catch (err) {
-                log('Failed to load KML for ' + streetName + ': ' + err.message);
+                log('❌ Failed to load KML for ' + streetName + ': ' + err.message);
             }
+
             return null;
         }
 
