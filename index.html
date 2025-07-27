@@ -1534,11 +1534,18 @@
             }
         }
 
+        function extractBaseStreetName(name) {
+            // Remove additional notes like "昭和通り（Showa-dori）" → "昭和通り"
+            // or "中央通り；万世橋" → "中央通り"
+            return name.split(/[（(;；]/)[0].trim();
+        }
+
         async function loadKmlIfExists(streetName, kmlMap) {
             try {
-                const url = kmlMap ? kmlMap[streetName] : null;
-                if (!url) return null;
-                const res = await fetch(url);
+                const baseName = extractBaseStreetName(streetName);
+                const matchKey = Object.keys(kmlMap || {}).find(k => baseName === k || baseName.startsWith(k));
+                if (!matchKey) return null;
+                const res = await fetch(kmlMap[matchKey]);
                 const kmlText = await res.text();
                 const parser = new DOMParser();
                 const kmlDoc = parser.parseFromString(kmlText, 'text/xml');
