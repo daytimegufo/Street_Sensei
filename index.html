@@ -3773,26 +3773,31 @@
                 const ways = grouped[name];
                 const segs = ways.map(w => w.points);
                 const clusters = clusterSegments(segs);
+
+                let bestType = ways[0].roadType;
+                const allSegments = [];
+
+                ways.forEach(w => {
+                    if ((ROAD_TYPE_SCORES[w.roadType] || 0) > (ROAD_TYPE_SCORES[bestType] || 0)) {
+                        bestType = w.roadType;
+                    }
+                });
+
                 clusters.forEach(cluster => {
                     if (shouldExcludeWayGroup(cluster)) return;
+                    allSegments.push(...cluster.map(seg => seg));
+                });
 
-                    // Determine most important road type within cluster
-                    let bestType = ways[0].roadType;
-                    ways.forEach(w => {
-                        if ((ROAD_TYPE_SCORES[w.roadType] || 0) > (ROAD_TYPE_SCORES[bestType] || 0)) {
-                            bestType = w.roadType;
-                        }
-                    });
-
+                if (allSegments.length > 0) {
                     results.push({
                         name,
                         roadType: bestType,
-                        points: cluster.map(seg => seg),
+                        points: allSegments,
                         importance: ROAD_TYPE_SCORES[bestType] || 40,
                         isComplete: true,
                         source: 'overpass'
                     });
-                });
+                }
             });
 
             return results;
