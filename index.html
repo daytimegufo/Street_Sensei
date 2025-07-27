@@ -2195,6 +2195,8 @@
             isMapInitialized: false,
             settingsVisible: true,
             customProblems: [],
+            customIndex: 0,
+            customProblemsOnly: false,
             editorMode: false,
             currentEditPoints: [],
             editingProblem: null,
@@ -3979,7 +3981,7 @@
                 gameState.timer = 30;
                 startTimer();
 
-                await generateQuestion();
+                await generateNextQuestion();
                 
                 const distanceDisplay = document.getElementById('distance-display');
                 const nextBtn = document.getElementById('next-question');
@@ -4010,6 +4012,59 @@
                 log('Error loading next question: ' + error.message);
                 console.error('Next question error:', error);
             }
+        }
+
+        function getNextCustomProblem() {
+            if (gameState.customProblems.length === 0) return null;
+            const next =
+                gameState.customProblems[gameState.customIndex % gameState.customProblems.length];
+            gameState.customIndex += 1;
+            return next;
+        }
+
+        async function generateQuestionFromCustom(problem) {
+            try {
+                const selectedQuestion = { ...problem, source: 'custom' };
+                gameState.currentQuestion = selectedQuestion;
+                gameState.askedQuestions.push(selectedQuestion);
+
+                if (gameState.currentMode === 'street') {
+                    const kmlData = await loadKmlIfExists(selectedQuestion.name, window.kmlMap);
+                    if (kmlData) {
+                        selectedQuestion.points = kmlData.points;
+                        selectedQuestion.source = 'kml';
+                    }
+                }
+
+                const questionText = document.getElementById('question-text');
+                const questionType = document.getElementById('question-type');
+
+                if (questionText) {
+                    questionText.textContent = gameState.currentMode === 'reverse'
+                        ? `強調表示された場所は何ですか？`
+                        : `見つけてください: ${selectedQuestion.name}`;
+                }
+
+                if (questionType) {
+                    questionType.textContent = `${getModeName(gameState.currentMode)}チャレンジ (カスタム)`;
+                }
+
+                log(`Custom question generated: ${selectedQuestion.name}`);
+            } catch (error) {
+                log('Error generating custom question: ' + error.message);
+                console.error('Custom question error:', error);
+            }
+        }
+
+        async function generateNextQuestion() {
+            if (gameState.customProblemsOnly) {
+                const problem = getNextCustomProblem();
+                if (problem) {
+                    await generateQuestionFromCustom(problem);
+                    return;
+                }
+            }
+            await generateQuestion();
         }
 
         async function generateQuestion() {
