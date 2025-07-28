@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Street Sensei Map Challenge Game</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="libs/leaflet.css" />
     <script>
         // Simplified library load check
         window.checkLibrariesLoaded = function() {
@@ -1428,8 +1428,8 @@
         </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/@turf/turf@7/turf.min.js"></script>
+    <script src="libs/leaflet.js" defer></script>
+    <script src="libs/turf.min.js" defer></script>
     <script>
         // Use a CORS-enabled Overpass mirror for client-side requests
         const OVERPASS_URL = 'https://overpass.openstreetmap.fr/api/interpreter';
