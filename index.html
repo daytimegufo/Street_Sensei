@@ -2363,7 +2363,7 @@
                 
                 try {
                     const compressed = JSON.stringify({
-                        roads: roadData.slice(0, 50),
+                        roads: roadData,
                         timestamp: Date.now()
                     });
                     localStorage.setItem(`roadCache_${cacheKey}`, compressed);
