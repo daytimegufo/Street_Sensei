@@ -2197,6 +2197,7 @@
             customProblems: [],
             customIndex: 0,
             customProblemsOnly: false,
+            skipMissingKml: true,
             editorMode: false,
             currentEditPoints: [],
             editingProblem: null,
@@ -4030,6 +4031,11 @@
 
                 if (gameState.currentMode === 'street') {
                     const kmlData = await loadKmlIfExists(selectedQuestion.name, window.kmlMap);
+                    if (!kmlData && gameState.skipMissingKml && gameState.customProblemsOnly) {
+                        console.warn('⚠ カスタムKMLが見つからないためスキップ');
+                        await generateNextQuestion();
+                        return;
+                    }
                     if (kmlData) {
                         selectedQuestion.points = kmlData.points;
                         selectedQuestion.source = 'kml';
@@ -4146,6 +4152,11 @@
 
                 if (gameState.currentMode === 'street') {
                     const kmlData = await loadKmlIfExists(selectedQuestion.name, window.kmlMap);
+                    if (!kmlData && gameState.skipMissingKml && gameState.customProblemsOnly) {
+                        console.warn('⚠ カスタムKMLが見つからないためスキップ');
+                        await generateNextQuestion();
+                        return;
+                    }
                     if (kmlData) {
                         selectedQuestion.points = kmlData.points;
                         selectedQuestion.source = 'kml';
