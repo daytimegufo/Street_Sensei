@@ -4,33 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Street Sensei Map Challenge Game</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script>
-        // CDN fallback system
-        window.leafletLoadAttempts = 0;
+        // Simplified library load check
         window.checkLibrariesLoaded = function() {
-            const leafletLoaded = typeof L !== 'undefined';
-            const turfLoaded = typeof turf !== 'undefined';
-            
-            console.log(`Libraries check: Leaflet=${leafletLoaded}, Turf=${turfLoaded}`);
-            
-            if (!leafletLoaded && window.leafletLoadAttempts < 3) {
-                window.leafletLoadAttempts++;
-                console.log(`Retrying Leaflet load attempt ${window.leafletLoadAttempts}/3...`);
-                
-                // Try alternative CDN
-                const script = document.createElement('script');
-                script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-                script.onload = function() {
-                    console.log('Leaflet loaded from alternative CDN');
-                };
-                script.onerror = function() {
-                    console.error('Failed to load Leaflet from alternative CDN');
-                };
-                document.head.appendChild(script);
-            }
-            
-            return { leaflet: leafletLoaded, turf: turfLoaded };
+            return {
+                leaflet: typeof L !== 'undefined',
+                turf: typeof turf !== 'undefined'
+            };
         };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/fireworks-js@2.10.8/dist/index.umd.min.js"></script>
@@ -1447,8 +1428,8 @@
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/@turf/turf@7/turf.min.js"></script>
     <script>
         // Use a CORS-enabled Overpass mirror for client-side requests
         const OVERPASS_URL = 'https://overpass.openstreetmap.fr/api/interpreter';
@@ -1494,21 +1475,6 @@
             // Safari specific debugging
             if (navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome')) {
                 log('Safari detected - applying Safari-specific optimizations');
-                // Force script re-evaluation for Safari
-                if (!checks.leaflet) {
-                    setTimeout(() => {
-                        if (typeof L === 'undefined') {
-                            log('Safari: Force reloading Leaflet...');
-                            const script = document.createElement('script');
-                            script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-                            script.onload = () => {
-                                log('Safari: Leaflet reloaded successfully');
-                                setTimeout(initGame, 500);
-                            };
-                            document.head.appendChild(script);
-                        }
-                    }, 2000);
-                }
             }
             
             return checks;
@@ -2207,7 +2173,7 @@
             backgroundLoading: false,
             cacheEnabled: true,
             dataQuality: 'partial',
-            initRetryCount: 0,
+            initRetryCount: 0,            
             isMobileDevice: false,
             networkStatus: 'unknown',
             // New fields for problem source management
@@ -2496,10 +2462,10 @@
                 console.error('Game initialization error:', error);
                 
                 // Retry initialization
-                if (gameState.initRetryCount < 3) {
+                if (gameState.initRetryCount < 1) {
                     gameState.initRetryCount++;
                     setTimeout(() => {
-                        log(`Retrying game initialization... (attempt ${gameState.initRetryCount}/3)`);
+                        log(`Retrying game initialization... (attempt ${gameState.initRetryCount}/1)`);
                         initGame();
                     }, 2000);
                 } else {
@@ -2603,7 +2569,7 @@
                 
                 // フォールバック機能
                 let retryCount = 0;
-                const maxRetries = 2;
+                const maxRetries = 1;
                 
                 const createFallbackLayer = function(isLabeled) {
                     retryCount++;
@@ -2706,8 +2672,8 @@
                     });
                 }
                 
-                // 地図読み込み完了後にタイルサーバーをチェック
-                setTimeout(checkTileServerHealth, 2000);
+                // 地図読み込み完了後にタイルサーバーをチェック (disabled for faster startup)
+                // setTimeout(checkTileServerHealth, 2000);
                 
                 // レイヤーコントロールを追加
                 const baseMaps = {
@@ -2779,10 +2745,10 @@
                 hideLoading();
                 
                 // 無限ループを防ぐため、リトライ回数を制限
-                if (gameState.initRetryCount < 3) {
+                if (gameState.initRetryCount < 1) {
                     gameState.initRetryCount++;
                     setTimeout(() => {
-                        log(`Retrying map initialization... (attempt ${gameState.initRetryCount}/3)`);
+                        log(`Retrying map initialization... (attempt ${gameState.initRetryCount}/1)`);
                         initMap();
                     }, 3000);
                 } else {
@@ -5439,19 +5405,14 @@
 
         // Initialize game when page loads with multiple fallbacks
         document.addEventListener('DOMContentLoaded', function() {
-            log('DOM loaded, checking dependencies...');
-            
-            function checkLeafletAndInit() {
+            log('DOM loaded, initializing game...');
+            setTimeout(() => {
                 if (typeof L !== 'undefined') {
-                    log('Leaflet detected, initializing game...');
-                    setTimeout(initGame, 100);
+                    initGame();
                 } else {
-                    log('Leaflet not loaded yet, waiting...');
-                    setTimeout(checkLeafletAndInit, 200);
+                    log('Leaflet not loaded');
                 }
-            }
-            
-            checkLeafletAndInit();
+            }, 100);
         });
 
         window.addEventListener('load', function() {
@@ -5460,25 +5421,10 @@
                     log('Backup initialization triggered');
                     initGame();
                 }
-            }, 1000);
+            }, 500);
         });
 
-        setTimeout(() => {
-            if (!gameState.isMapInitialized) {
-                log('Emergency initialization attempt...');
-                if (typeof L !== 'undefined') {
-                    initGame();
-                } else {
-                    log('ERROR: Leaflet failed to load. Please refresh the page.');
-                    const debugInfo = document.getElementById('debug-info');
-                    if (debugInfo) {
-                        debugInfo.innerHTML = 'ERROR: Map library failed to load. <button onclick="location.reload()" style="background:#f44336;color:white;border:none;padding:0.5rem;border-radius:4px;margin-left:0.5rem;">Refresh Page</button>';
-                        debugInfo.style.display = 'block';
-                        debugInfo.style.background = '#f44336';
-                    }
-                }
-            }
-        }, 5000);
+        // Emergency initialization removed for faster startup
 
         window.addEventListener('resize', function() {
             if (gameState.map) {
