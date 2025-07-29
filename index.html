@@ -1513,16 +1513,28 @@
 
         async function loadKmlIfExists(streetName, kmlMap) {
             const baseName = extractBaseStreetName(streetName);
-            const matchKey = Object.keys(kmlMap || {}).find(k => {
-                const kmlBase = extractKmlBaseName(k);
-                return (
-                    baseName === kmlBase ||
-                    baseName.startsWith(kmlBase) ||
-                    kmlBase.startsWith(baseName) ||
-                    baseName.includes(kmlBase) ||
-                    kmlBase.includes(baseName)
-                );
-            });
+            let matchKey = null;
+
+            // 1) Prefer exactly matched "_merged" file
+            if (kmlMap[baseName + '_merged']) {
+                matchKey = baseName + '_merged';
+            // 2) Next, exact match without suffix
+            } else if (kmlMap[baseName]) {
+                matchKey = baseName;
+            // 3) Fallback to partial matching (old behavior)
+            } else {
+                matchKey = Object.keys(kmlMap || {}).find(k => {
+                    const kmlBase = extractKmlBaseName(k);
+                    return (
+                        baseName === kmlBase ||
+                        baseName.startsWith(kmlBase) ||
+                        kmlBase.startsWith(baseName) ||
+                        baseName.includes(kmlBase) ||
+                        kmlBase.includes(baseName)
+                    );
+                });
+            }
+
             if (!matchKey) return null;
             try {
 
