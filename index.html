@@ -1229,6 +1229,8 @@
 
             <div class="setup-section">
                 <button id="load-street-data" style="background: #ff9800; font-size: 0.85rem; margin-top: 0.5rem;">🗺️ Load Regional Roads</button>
+                <button id="load-facility-data" style="background: #2196F3; font-size: 0.85rem; margin-top: 0.5rem;">🏥 Load Facility Data</button>
+                <button id="load-intersection-data" style="background: #9C27B0; font-size: 0.85rem; margin-top: 0.5rem;">🚦 Load Intersection Data</button>
                 <button id="toggle-settings" style="background: #666; font-size: 0.85rem; margin-top: 0.5rem;">🔧 Show Advanced Tools</button>
                 <div id="data-status" style="margin-top: 0.5rem; padding: 0.5rem; background: #5a2d2d; border-radius: 4px; font-size: 0.8rem; color: white;">
                     ⚠️ Street mode requires regional data - click above to load complete road network
@@ -2956,11 +2958,27 @@
                         log('Load regional roads clicked');
                         const regionSelect = document.getElementById('region-select');
                         const strategySelect = document.getElementById('loading-strategy');
-                        
+
                         const selectedRegion = regionSelect ? regionSelect.value : 'south-kanto';
                         const selectedStrategy = strategySelect ? strategySelect.value : 'immediate';
-                        
+
                         loadRegionalRoadsOptimized(selectedRegion, selectedStrategy);
+                    });
+                }
+
+                const loadFacilityBtn = document.getElementById('load-facility-data');
+                if (loadFacilityBtn) {
+                    loadFacilityBtn.addEventListener('click', () => {
+                        log('Load facility data clicked');
+                        loadFacilityDataFromOverpass();
+                    });
+                }
+
+                const loadIntersectionBtn = document.getElementById('load-intersection-data');
+                if (loadIntersectionBtn) {
+                    loadIntersectionBtn.addEventListener('click', () => {
+                        log('Load intersection data clicked');
+                        loadIntersectionDataFromOverpass();
                     });
                 }
 
@@ -3655,6 +3673,76 @@
                 }
 
                 resolve(success);
+            });
+        }
+
+        function loadFacilityDataFromOverpass() {
+            const { lat, lng } = gameState.center;
+            const radius = gameState.range * 1000;
+            const query = `
+                [out:json][timeout:25];
+                (
+                    node["amenity"](around:${radius},${lat},${lng});
+                );
+                out body;
+            `;
+            fetch("https://overpass-api.de/api/interpreter", {
+                method: "POST",
+                body: query
+            })
+            .then(res => res.json())
+            .then(data => {
+                const facilities = data.elements
+                    .filter(el => el.type === 'node' && el.tags && el.tags.name)
+                    .map(el => ({
+                        name: el.tags.name,
+                        type: 'facility',
+                        description: el.tags.amenity || '施設',
+                        importance: 70,
+                        points: [[{ lat: el.lat, lng: el.lon }]],
+                        isEnclosedArea: false,
+                        source: 'overpass'
+                    }));
+                facilityQuestions.push(...facilities);
+                showSuccess(`${facilities.length} 件の施設データを取得しました`);
+            })
+            .catch(err => {
+                showError('施設データ取得失敗: ' + err.message);
+            });
+        }
+
+        function loadIntersectionDataFromOverpass() {
+            const { lat, lng } = gameState.center;
+            const radius = gameState.range * 1000;
+            const query = `
+                [out:json][timeout:25];
+                (
+                    node["highway"="traffic_signals"](around:${radius},${lat},${lng});
+                    node["junction"="intersection"](around:${radius},${lat},${lng});
+                );
+                out body;
+            `;
+            fetch("https://overpass-api.de/api/interpreter", {
+                method: "POST",
+                body: query
+            })
+            .then(res => res.json())
+            .then(data => {
+                const intersections = data.elements
+                    .filter(el => el.type === 'node')
+                    .map(el => ({
+                        name: el.tags.name || `交差点 (${el.id})`,
+                        type: 'intersection',
+                        description: el.tags.highway || el.tags.junction || '交差点',
+                        importance: 65,
+                        points: [[{ lat: el.lat, lng: el.lon }]],
+                        source: 'overpass'
+                    }));
+                intersectionQuestions.push(...intersections);
+                showSuccess(`${intersections.length} 件の交差点データを取得しました`);
+            })
+            .catch(err => {
+                showError('交差点データ取得失敗: ' + err.message);
             });
         }
         
