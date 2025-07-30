@@ -1424,6 +1424,7 @@
                     <option value="facility">Facility</option>
                     <option value="intersection">Intersection</option>
                     <option value="reverse">Reverse</option>
+                    <option value="geotextbook">地理教本施設モード</option>
                 </select>
                 <button id="start-game">Start Game</button>
             </div>
@@ -2183,6 +2184,7 @@
             editingProblem: null,
             askedQuestions: [],
             currentLocation: null,
+            geotextbookFacilities: [],
             
             backgroundLoading: false,
             cacheEnabled: true,
@@ -2463,6 +2465,7 @@
                 initMap();
                 bindEvents();
                 loadCustomProblems();
+                await loadGeotextbookFacilities();
                 updateRangeDisplay();
                 updateImportanceDisplay();
                 updateAutoDifficultyDisplay();
@@ -3333,6 +3336,35 @@
             });
         }
 
+        function pickRandom(arr) {
+            if (!Array.isArray(arr) || arr.length === 0) return null;
+            return arr[Math.floor(Math.random() * arr.length)];
+        }
+
+        async function resolveNameToLocation(name) {
+            const bbox = '35.5,139.4,35.9,139.9';
+            const query = `
+                [out:json][timeout:10];
+                (
+                    node["name"="${name}"](${bbox});
+                    way["name"="${name}"](${bbox});
+                );
+                out center 1;
+            `;
+            const res = await fetch("https://overpass-api.de/api/interpreter", {
+                method: "POST",
+                body: query
+            });
+            const data = await res.json();
+            if (data.elements.length > 0) {
+                const el = data.elements[0];
+                const lat = el.lat || el.center?.lat;
+                const lng = el.lon || el.center?.lon;
+                if (lat && lng) return { lat, lng };
+            }
+            throw new Error(`"${name}" をOverpassから見つけられませんでした`);
+        }
+
         function updateLocation() {
             const locationInput = document.getElementById('location');
             const locationValue = locationInput ? locationInput.value.trim() : '';
@@ -4168,6 +4200,41 @@
 
         async function generateQuestion() {
             try {
+                if (gameState.currentMode === 'geotextbook') {
+                    const candidate = pickRandom(gameState.geotextbookFacilities || []);
+                    if (!candidate) {
+                        showError('地理教本施設データが未登録です');
+                        return;
+                    }
+                    try {
+                        const location = await resolveNameToLocation(candidate.name);
+                        gameState.currentQuestion = {
+                            name: candidate.name,
+                            type: 'facility',
+                            description: '地理教本施設',
+                            importance: 90,
+                            points: [[location]],
+                            isEnclosedArea: false,
+                            source: 'overpass_live'
+                        };
+                        gameState.askedQuestions.push(gameState.currentQuestion);
+
+                        const questionText = document.getElementById('question-text');
+                        const questionType = document.getElementById('question-type');
+                        if (questionText) {
+                            questionText.textContent = `見つけてください: ${candidate.name}`;
+                        }
+                        if (questionType) {
+                            questionType.textContent = `${getModeName(gameState.currentMode)}チャレンジ`;
+                        }
+
+                        log(`Question generated: ${candidate.name} (source: geotextbook)`);
+                        return;
+                    } catch (e) {
+                        showError(e.message);
+                        return;
+                    }
+                }
                 let questions;
                 
                 // First collect all potential questions based on mode
@@ -4953,7 +5020,8 @@
                 'street': 'street',
                 'facility': '施設',
                 'intersection': '交差点',
-                'reverse': '逆'
+                'reverse': '逆',
+                'geotextbook': '地理教本施設'
             };
             return names[mode] || mode;
         }
@@ -5408,6 +5476,23 @@
             } catch (error) {
                 console.warn('Could not load custom problems:', error);
                 gameState.customProblems = [];
+            }
+        }
+
+        async function loadGeotextbookFacilities() {
+            try {
+                const res = await fetch('locations.json');
+                const locationsJson = await res.json();
+                if (Array.isArray(locationsJson)) {
+                    gameState.geotextbookFacilities = locationsJson.map(item => ({
+                        name: item.name,
+                        area_codes: item.area_codes
+                    }));
+                    log(`地理教本施設: ${gameState.geotextbookFacilities.length}件ロード`);
+                }
+            } catch (e) {
+                log('Failed to load geotextbook facilities: ' + e.message);
+                gameState.geotextbookFacilities = [];
             }
         }
 
