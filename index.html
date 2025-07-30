@@ -3970,9 +3970,36 @@
             try {
                 log('Starting game...');
                 
-                if (gameState.currentMode === 'street' && (!gameState.streetData || gameState.streetData.length === 0)) {
-                    showWarning('Street mode requires data to be loaded first. Please click "Load Regional Roads" before starting the game.');
-                    return;
+                if (gameState.currentMode === 'street') {
+                    const hasCustom = gameState.customProblems.some(p => p.type === 'street');
+                    const hasOSM = gameState.streetData && gameState.streetData.length > 0;
+                    if (!hasCustom && !hasOSM) {
+                        showWarning('Streetモードでは事前に「Load Regional Roads」でデータを読み込んでください。');
+                        return;
+                    } else if (hasCustom && !hasOSM) {
+                        log('Streetモード: カスタムのみで即開始 → 背景でOverpassロード開始');
+                        const regionSelect = document.getElementById('region-select');
+                        const strategySelect = document.getElementById('loading-strategy');
+                        const selectedRegion = regionSelect ? regionSelect.value : 'south-kanto';
+                        const selectedStrategy = strategySelect ? strategySelect.value : 'immediate';
+                        loadRegionalRoadsOptimized(selectedRegion, selectedStrategy);
+                    }
+                }
+
+                if (gameState.currentMode === 'facility') {
+                    const hasCustom = gameState.customProblems.some(p => p.type === 'facility');
+                    if (!hasCustom && facilityQuestions.length < 3) {
+                        log('施設モード: デフォルト or カスタム不足 → Overpassロード');
+                        loadFacilityDataFromOverpass();
+                    }
+                }
+
+                if (gameState.currentMode === 'intersection') {
+                    const hasCustom = gameState.customProblems.some(p => p.type === 'intersection');
+                    if (!hasCustom && intersectionQuestions.length < 3) {
+                        log('交差点モード: デフォルト or カスタム不足 → Overpassロード');
+                        loadIntersectionDataFromOverpass();
+                    }
                 }
                 
                 gameState.isPlaying = true;
