@@ -2312,6 +2312,18 @@
             }
         ];
 
+        // Geotextbook facilities for simplified mode
+        const geotextbookQuestions = [
+            {
+                name: "日本獣医生命科学大学",
+                points: [[{ lat: 35.6859, lng: 139.6206 }]]
+            },
+            {
+                name: "国会議事堂",
+                points: [[{ lat: 35.6759, lng: 139.7447 }]]
+            }
+        ];
+
         // Regional bbox configurations for full road network extraction
         const REGIONAL_CONFIGS = {
             'south-kanto': {
@@ -2807,8 +2819,13 @@
             try {
                 if (gameState.gameArea) {
                     gameState.map.removeLayer(gameState.gameArea);
+                    gameState.gameArea = null;
                 }
-                
+
+                if (gameState.currentMode === 'geotextbook') {
+                    return;
+                }
+
                 gameState.gameArea = L.circle([gameState.center.lat, gameState.center.lng], {
                     radius: gameState.range * 1000,
                     fillColor: '#4CAF50',
@@ -2927,6 +2944,7 @@
                     modeSelect.addEventListener('change', (e) => {
                         gameState.currentMode = e.target.value;
                         log('Mode changed to: ' + gameState.currentMode);
+                        updateGameArea();
                     });
                 }
 
@@ -4206,34 +4224,29 @@
                         showError('地理教本施設データが未登録です');
                         return;
                     }
-                    try {
-                        const location = await resolveNameToLocation(candidate.name);
-                        gameState.currentQuestion = {
-                            name: candidate.name,
-                            type: 'facility',
-                            description: '地理教本施設',
-                            importance: 90,
-                            points: [[location]],
-                            isEnclosedArea: false,
-                            source: 'overpass_live'
-                        };
-                        gameState.askedQuestions.push(gameState.currentQuestion);
 
-                        const questionText = document.getElementById('question-text');
-                        const questionType = document.getElementById('question-type');
-                        if (questionText) {
-                            questionText.textContent = `見つけてください: ${candidate.name}`;
-                        }
-                        if (questionType) {
-                            questionType.textContent = `${getModeName(gameState.currentMode)}チャレンジ`;
-                        }
+                    gameState.currentQuestion = {
+                        name: candidate.name,
+                        type: 'facility',
+                        description: '地理教本施設',
+                        importance: 90,
+                        points: candidate.points,
+                        isEnclosedArea: false,
+                        source: 'preset'
+                    };
+                    gameState.askedQuestions.push(gameState.currentQuestion);
 
-                        log(`Question generated: ${candidate.name} (source: geotextbook)`);
-                        return;
-                    } catch (e) {
-                        showError(e.message);
-                        return;
+                    const questionText = document.getElementById('question-text');
+                    const questionType = document.getElementById('question-type');
+                    if (questionText) {
+                        questionText.textContent = `見つけてください: ${candidate.name}`;
                     }
+                    if (questionType) {
+                        questionType.textContent = `${getModeName(gameState.currentMode)}チャレンジ`;
+                    }
+
+                    log(`Question generated: ${candidate.name} (source: geotextbook)`);
+                    return;
                 }
                 let questions;
                 
@@ -5481,15 +5494,8 @@
 
         async function loadGeotextbookFacilities() {
             try {
-                const res = await fetch('locations.json');
-                const locationsJson = await res.json();
-                if (Array.isArray(locationsJson)) {
-                    gameState.geotextbookFacilities = locationsJson.map(item => ({
-                        name: item.name,
-                        area_codes: item.area_codes
-                    }));
-                    log(`地理教本施設: ${gameState.geotextbookFacilities.length}件ロード`);
-                }
+                gameState.geotextbookFacilities = geotextbookQuestions;
+                log(`地理教本施設: ${gameState.geotextbookFacilities.length}件ロード`);
             } catch (e) {
                 log('Failed to load geotextbook facilities: ' + e.message);
                 gameState.geotextbookFacilities = [];
