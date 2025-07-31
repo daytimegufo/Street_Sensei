@@ -1144,6 +1144,15 @@
             from { opacity: 0; transform: translate(-50%, -60%); }
             to { opacity: 1; transform: translate(-50%, -50%); }
         }
+
+        #reverse-feedback-popup {
+            animation: fadein 0.5s;
+        }
+
+        @keyframes fadein {
+            from { opacity: 0; transform: translate(-50%, -60%); }
+            to { opacity: 1; transform: translate(-50%, -50%); }
+        }
     </style>
 </head>
 <body>
@@ -1710,15 +1719,14 @@
             }
         }
 
-        function showMobileChoices(choices) {
+        function showMobileChoices(choices, hideQuestion = true) {
             const questionOverlay = document.getElementById('game-question-overlay');
             const choicesOverlay = document.getElementById('game-choices-overlay');
             const grid = document.getElementById('game-choices-grid');
             
             if (!choicesOverlay || !grid) return;
-            
-            // Hide normal question overlay
-            if (questionOverlay) {
+
+            if (questionOverlay && hideQuestion) {
                 questionOverlay.classList.add('hidden');
             }
             
@@ -1737,17 +1745,20 @@
             choicesOverlay.classList.remove('hidden');
         }
 
-        function hideMobileChoices() {
+        function hideMobileChoices(showQuestion = true) {
             const choicesOverlay = document.getElementById('game-choices-overlay');
             const questionOverlay = document.getElementById('game-question-overlay');
-            
+
             if (choicesOverlay) {
                 choicesOverlay.classList.add('hidden');
             }
-            
-            // Show normal question overlay again
-            if (questionOverlay && gameState.isPlaying) {
-                questionOverlay.classList.remove('hidden');
+
+            if (questionOverlay) {
+                if (showQuestion && gameState.isPlaying) {
+                    questionOverlay.classList.remove('hidden');
+                } else {
+                    questionOverlay.classList.add('hidden');
+                }
             }
         }
 
@@ -5102,7 +5113,7 @@
                     });
                 }
 
-                showMobileChoices(choices);
+                showMobileChoices(choices, false);
 
                 const showAnswerBtn = document.getElementById('show-answer');
                 if (showAnswerBtn) {
@@ -5181,8 +5192,8 @@
                 if (showAnswerBtn) showAnswerBtn.classList.add('hidden');
                 if (gameBtnAnswer) gameBtnAnswer.classList.add('hidden');
 
-                // Hide choices and show question overlay
-                hideMobileChoices();
+                // Hide choices and remove question overlay until next question
+                hideMobileChoices(false);
             } catch (error) {
                 log('Error handling reverse answer: ' + error.message);
             }
