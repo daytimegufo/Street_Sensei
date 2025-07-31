@@ -1135,6 +1135,15 @@
             font-size: 1.2em;
             line-height: 1.4;
         }
+
+        #reverse-feedback-popup {
+            animation: fadein 0.5s;
+        }
+
+        @keyframes fadein {
+            from { opacity: 0; transform: translate(-50%, -60%); }
+            to { opacity: 1; transform: translate(-50%, -50%); }
+        }
     </style>
 </head>
 <body>
@@ -4576,6 +4585,7 @@
 
                 stopTimer();
                 updateUI();
+                showReverseFeedback(selectedChoice.name, isCorrect, gameState.currentQuestion.name);
                 updateMobileGameStats();
                 
                 log(`Answer processed: ${distanceKm}km, ${accuracy.toFixed(1)}% accuracy, ${points} points`);
@@ -5004,12 +5014,43 @@
             messageDiv.className = className;
             messageDiv.textContent = message;
             sidebar.insertBefore(messageDiv, sidebar.firstChild);
-            
+
             setTimeout(() => {
                 if (messageDiv.parentNode) {
                     messageDiv.parentNode.removeChild(messageDiv);
                 }
             }, 5000);
+        }
+
+        function showReverseFeedback(selectedName, isCorrect, correctName) {
+            const existing = document.getElementById('reverse-feedback-popup');
+            if (existing) existing.remove();
+
+            const popup = document.createElement('div');
+            popup.id = 'reverse-feedback-popup';
+            popup.style.position = 'absolute';
+            popup.style.top = '50%';
+            popup.style.left = '50%';
+            popup.style.transform = 'translate(-50%, -50%)';
+            popup.style.background = 'rgba(45, 45, 45, 0.95)';
+            popup.style.padding = '1.5rem';
+            popup.style.borderRadius = '12px';
+            popup.style.color = 'white';
+            popup.style.zIndex = '2000';
+            popup.style.textAlign = 'center';
+            popup.style.fontSize = '1rem';
+            popup.style.backdropFilter = 'blur(10px)';
+            popup.innerHTML = `
+                <div style="font-size: 1.25rem; font-weight: bold; margin-bottom: 1rem;">
+                    ${isCorrect ? '✅ 正解！' : '❌ 不正解'}
+                </div>
+                <div>あなたの選択: <strong>${selectedName}</strong></div>
+                ${isCorrect ? '' : `<div>正しい答え: <strong>${correctName}</strong></div>`}
+            `;
+
+            document.body.appendChild(popup);
+
+            setTimeout(() => popup.remove(), 5000);
         }
 
         function getModeName(mode) {
@@ -5129,6 +5170,7 @@
 
                 stopTimer();
                 updateUI();
+                showReverseFeedback(selectedChoice.name, isCorrect, gameState.currentQuestion.name);
                 updateMobileGameStats();
                 
                 const nextBtn = document.getElementById('next-question');
