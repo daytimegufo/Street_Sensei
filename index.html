@@ -2319,7 +2319,7 @@
         // Cache system for loaded road data
         const ROAD_CACHE = {
             data: new Map(),
-            
+
             save: function(regionKey, strategyKey, roadData) {
                 const cacheKey = `${regionKey}-${strategyKey}`;
                 this.data.set(cacheKey, {
@@ -2327,54 +2327,44 @@
                     timestamp: Date.now(),
                     version: '1.0'
                 });
-                
-                try {
-                    const compressed = JSON.stringify({
-                        roads: roadData,
-                        timestamp: Date.now()
-                    });
-                    localStorage.setItem(`roadCache_${cacheKey}`, compressed);
-                } catch (error) {
-                    console.warn('Could not save to localStorage:', error);
-                }
+
+                // localStorageへの保存を廃止
+                // try {
+                //     const compressed = JSON.stringify({
+                //         roads: roadData,
+                //         timestamp: Date.now()
+                //     });
+                //     localStorage.setItem(`roadCache_${cacheKey}`, compressed);
+                // } catch (error) {
+                //     console.warn('Could not save to localStorage:', error);
+                // }
             },
-            
+
             load: function(regionKey, strategyKey) {
-                const cacheKey = `${regionKey}-${strategyKey}`;
-                
-                if (this.data.has(cacheKey)) {
-                    const cached = this.data.get(cacheKey);
-                    const age = Date.now() - cached.timestamp;
-                    if (age < 24 * 60 * 60 * 1000) {
-                        return cached.roads;
-                    }
-                }
-                
-                try {
-                    const stored = localStorage.getItem(`roadCache_${cacheKey}`);
-                    if (stored) {
-                        const parsed = JSON.parse(stored);
-                        const age = Date.now() - parsed.timestamp;
-                        if (age < 24 * 60 * 60 * 1000) {
-                            this.data.set(cacheKey, {
-                                roads: parsed.roads,
-                                timestamp: parsed.timestamp,
-                                version: '1.0'
-                            });
-                            return parsed.roads;
-                        }
-                    }
-                } catch (error) {
-                    console.warn('Could not load from localStorage:', error);
-                }
-                
-                return null;
+                return null; // キャッシュからの読み込みは使わない
             },
-            
+
             exists: function(regionKey, strategyKey) {
                 return this.load(regionKey, strategyKey) !== null;
             }
         };
+
+        function saveSetting(key, value) {
+            try {
+                localStorage.setItem(key, JSON.stringify(value));
+            } catch (e) {
+                console.warn("保存に失敗:", key, e);
+            }
+        }
+
+        function loadSetting(key, defaultValue = null) {
+            try {
+                const val = localStorage.getItem(key);
+                return val ? JSON.parse(val) : defaultValue;
+            } catch (e) {
+                return defaultValue;
+            }
+        }
 
         const ROAD_TYPE_SCORES = {
             motorway: 90,
@@ -2412,9 +2402,26 @@
 
                 window.kmlMap = await fetchKmlIndex();
 
+                gameState.difficulty = loadSetting('boh_difficulty', 'tourist');
+                gameState.currentMode = loadSetting('boh_mode', 'street');
+                gameState.range = loadSetting('boh_rangeKm', 5);
+                const savedLoc = loadSetting('boh_lastLocation', null);
+                if (savedLoc && savedLoc.lat && savedLoc.lng) {
+                    gameState.center = savedLoc;
+                }
+
                 // Initialize components in correct order
                 initMap();
                 bindEvents();
+                const diffEl = document.getElementById('difficulty');
+                if (diffEl) diffEl.value = gameState.difficulty;
+                const modeTab = document.querySelector(`.mode-tab[data-mode="${gameState.currentMode}"]`);
+                if (modeTab) modeTab.classList.add('active');
+                const modeSelect = document.getElementById('game-mode-select');
+                if (modeSelect) modeSelect.value = gameState.currentMode;
+                const rangeEl = document.getElementById('range');
+                if (rangeEl) rangeEl.value = gameState.range;
+                updateRangeDisplay();
                 loadCustomProblems();
                 await loadGeotextbookFacilities();
                 updateRangeDisplay();
@@ -2781,6 +2788,7 @@
 
         async function handleModeChange(mode) {
             gameState.currentMode = mode;
+            saveSetting('boh_mode', gameState.currentMode);
             log('Mode changed to: ' + gameState.currentMode);
             updateGameArea();
 
@@ -2831,6 +2839,7 @@
                 if (rangeSlider) {
                     rangeSlider.addEventListener('input', (e) => {
                         gameState.range = parseInt(e.target.value);
+                        saveSetting('boh_rangeKm', gameState.range);
                         updateRangeDisplay();
                         updateGameArea();
                     });
@@ -2848,6 +2857,7 @@
                 if (difficultySelect) {
                     difficultySelect.addEventListener('change', (e) => {
                         gameState.difficulty = e.target.value;
+                        saveSetting('boh_difficulty', gameState.difficulty);
                         log('Difficulty changed to: ' + gameState.difficulty);
                     });
                 }
@@ -3979,6 +3989,7 @@
         async function startGame() {
             try {
                 log('Starting game...');
+                saveSetting('boh_lastLocation', gameState.center);
                 
                 if (gameState.currentMode === 'street') {
                     const hasCustom = gameState.customProblems.some(p => p.type === 'street');
@@ -5146,6 +5157,10 @@
                 if (finalScoreEl) {
                     finalScoreEl.textContent = `Final Score: ${gameState.score}`;
                 }
+
+                saveSetting('boh_lastScore', gameState.score);
+                saveSetting('boh_highScore', Math.max(gameState.score, loadSetting('boh_highScore', 0)));
+                saveSetting('boh_lastLocation', gameState.center);
                 
                 if (finalStatsEl) {
                     const avgScore = gameState.totalQuestions > 0 ? Math.round(gameState.score / gameState.totalQuestions) : 0;
