@@ -5126,18 +5126,16 @@
                 updateUI();
                 updateMobileGameStats();
                 
-                setTimeout(() => {
-                    const nextBtn = document.getElementById('next-question');
-                    if (nextBtn) nextBtn.classList.remove('hidden');
-                    
-                    const showAnswerBtn = document.getElementById('show-answer');
-                    const gameBtnAnswer = document.getElementById('game-btn-answer');
-                    if (showAnswerBtn) showAnswerBtn.classList.add('hidden');
-                    if (gameBtnAnswer) gameBtnAnswer.classList.add('hidden');
-                    
-                    // Hide choices and show question overlay
-                    hideMobileChoices();
-                }, 1500);
+                const nextBtn = document.getElementById('next-question');
+                if (nextBtn) nextBtn.classList.remove('hidden');
+
+                const showAnswerBtn = document.getElementById('show-answer');
+                const gameBtnAnswer = document.getElementById('game-btn-answer');
+                if (showAnswerBtn) showAnswerBtn.classList.add('hidden');
+                if (gameBtnAnswer) gameBtnAnswer.classList.add('hidden');
+
+                // Hide choices and show question overlay
+                hideMobileChoices();
             } catch (error) {
                 log('Error handling reverse answer: ' + error.message);
             }
