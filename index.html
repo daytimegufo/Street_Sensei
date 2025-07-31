@@ -4862,6 +4862,11 @@
                     mobileNext.classList.remove('hidden');
                     mobileNext.disabled = false;
                 }
+
+                const showAnswerBtn = document.getElementById('show-answer');
+                const mobileAnswer = document.getElementById('game-btn-answer');
+                if (showAnswerBtn) showAnswerBtn.classList.add('hidden');
+                if (mobileAnswer) mobileAnswer.classList.add('hidden');
                 
                 log('Timer expired');
             } catch (error) {
