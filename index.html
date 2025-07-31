@@ -2779,6 +2779,29 @@
             }
         }
 
+        async function handleModeChange(mode) {
+            gameState.currentMode = mode;
+            log('Mode changed to: ' + gameState.currentMode);
+            updateGameArea();
+
+            if (mode === 'street') {
+                const regionSelect = document.getElementById('region-select');
+                const strategySelect = document.getElementById('loading-strategy');
+                const selectedRegion = regionSelect ? regionSelect.value : 'south-kanto';
+                const selectedStrategy = strategySelect ? strategySelect.value : 'immediate';
+                loadRegionalRoadsOptimized(selectedRegion, selectedStrategy);
+            } else if (mode === 'facility') {
+                loadFacilityDataFromOverpass();
+            } else if (mode === 'intersection') {
+                loadIntersectionDataFromOverpass();
+            } else if (mode === 'geotextbook') {
+                await loadGeotextbookFacilities();
+            } else if (mode === 'reverse') {
+                loadFacilityDataFromOverpass();
+                loadIntersectionDataFromOverpass();
+            }
+        }
+
         function bindEvents() {
             try {
                 log('Binding events...');
@@ -2800,7 +2823,7 @@
                         log('Mode tab clicked: ' + e.target.dataset.mode);
                         document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
                         e.target.classList.add('active');
-                        gameState.currentMode = e.target.dataset.mode;
+                        handleModeChange(e.target.dataset.mode);
                     });
                 });
 
@@ -2881,9 +2904,7 @@
                 const modeSelect = document.getElementById('game-mode-select');
                 if (modeSelect) {
                     modeSelect.addEventListener('change', (e) => {
-                        gameState.currentMode = e.target.value;
-                        log('Mode changed to: ' + gameState.currentMode);
-                        updateGameArea();
+                        handleModeChange(e.target.value);
                     });
                 }
 
