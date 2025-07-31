@@ -2087,67 +2087,6 @@
             }
             nextQuestion();
         }
-        // Check if Turf.js is loaded, if not load alternative or use fallback
-        if (typeof turf === 'undefined') {
-            console.warn('Turf.js not loaded, using fallback geometry functions');
-            
-            window.turf = {
-                point: function(coords) {
-                    return { geometry: { coordinates: coords, type: 'Point' } };
-                },
-                distance: function(from, to, options) {
-                    const lat1 = from.geometry.coordinates[1];
-                    const lon1 = from.geometry.coordinates[0];
-                    const lat2 = to.geometry.coordinates[1];
-                    const lon2 = to.geometry.coordinates[0];
-                    
-                    const R = 6371;
-                    const dLat = (lat2 - lat1) * Math.PI / 180;
-                    const dLon = (lon2 - lon1) * Math.PI / 180;
-                    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                             Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                             Math.sin(dLon/2) * Math.sin(dLon/2);
-                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-                    const distance = R * c;
-                    
-                    return options && options.units === 'meters' ? distance * 1000 : distance;
-                },
-                lineString: function(coords) {
-                    return { geometry: { coordinates: coords, type: 'LineString' } };
-                },
-                nearestPointOnLine: function(line, point) {
-                    const coords = line.geometry.coordinates;
-                    let minDist = Infinity;
-                    let nearest = coords[0];
-                    
-                    for (let i = 0; i < coords.length; i++) {
-                        const dist = this.distance(
-                            { geometry: { coordinates: coords[i] } },
-                            point,
-                            { units: 'meters' }
-                        );
-                        if (dist < minDist) {
-                            minDist = dist;
-                            nearest = coords[i];
-                        }
-                    }
-                    
-                    return { geometry: { coordinates: nearest } };
-                },
-                midpoint: function(point1, point2) {
-                    const lat1 = point1.geometry.coordinates[1];
-                    const lon1 = point1.geometry.coordinates[0];
-                    const lat2 = point2.geometry.coordinates[1];
-                    const lon2 = point2.geometry.coordinates[0];
-                    
-                    return {
-                        geometry: {
-                            coordinates: [(lon1 + lon2) / 2, (lat1 + lat2) / 2]
-                        }
-                    };
-                }
-            };
-        }
 
         // Game state
         let gameState = {
@@ -5621,25 +5560,86 @@
         window.deleteProblem = deleteProblem;
         window.resetGame = resetGame;
 
-        // Initialize game when page loads with multiple fallbacks
-        document.addEventListener('DOMContentLoaded', function() {
-            log('DOM loaded, initializing game...');
-            setTimeout(() => {
-                if (typeof L !== 'undefined') {
+        // Wait for required libraries to load
+        async function waitForLibraries(maxAttempts = 50, interval = 100) {
+            for (let i = 0; i < maxAttempts; i++) {
+                const checks = window.checkLibrariesLoaded ? window.checkLibrariesLoaded() : {};
+                if (checks.leaflet && checks.turf) {
+                    return true;
+                }
+                await new Promise(r => setTimeout(r, interval));
+            }
+            return false;
+        }
+
+        // Initialize the game after libraries are ready
+        window.addEventListener('load', function () {
+            waitForLibraries().then(success => {
+                if (!success) {
+                    console.warn('Fallback turf functions activated');
+                    window.turf = {
+                        point: function(coords) {
+                            return { geometry: { coordinates: coords, type: 'Point' } };
+                        },
+                        distance: function(from, to, options) {
+                            const lat1 = from.geometry.coordinates[1];
+                            const lon1 = from.geometry.coordinates[0];
+                            const lat2 = to.geometry.coordinates[1];
+                            const lon2 = to.geometry.coordinates[0];
+
+                            const R = 6371;
+                            const dLat = (lat2 - lat1) * Math.PI / 180;
+                            const dLon = (lon2 - lon1) * Math.PI / 180;
+                            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                                     Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                                     Math.sin(dLon/2) * Math.sin(dLon/2);
+                            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                            const distance = R * c;
+
+                            return options && options.units === 'meters' ? distance * 1000 : distance;
+                        },
+                        lineString: function(coords) {
+                            return { geometry: { coordinates: coords, type: 'LineString' } };
+                        },
+                        nearestPointOnLine: function(line, point) {
+                            const coords = line.geometry.coordinates;
+                            let minDist = Infinity;
+                            let nearest = coords[0];
+
+                            for (let i = 0; i < coords.length; i++) {
+                                const dist = this.distance(
+                                    { geometry: { coordinates: coords[i] } },
+                                    point,
+                                    { units: 'meters' }
+                                );
+                                if (dist < minDist) {
+                                    minDist = dist;
+                                    nearest = coords[i];
+                                }
+                            }
+
+                            return { geometry: { coordinates: nearest } };
+                        },
+                        midpoint: function(point1, point2) {
+                            const lat1 = point1.geometry.coordinates[1];
+                            const lon1 = point1.geometry.coordinates[0];
+                            const lat2 = point2.geometry.coordinates[1];
+                            const lon2 = point2.geometry.coordinates[0];
+
+                            return {
+                                geometry: {
+                                    coordinates: [(lon1 + lon2) / 2, (lat1 + lat2) / 2]
+                                }
+                            };
+                        }
+                    };
+                }
+                if (typeof initGame === 'function') {
                     initGame();
                 } else {
-                    log('Leaflet not loaded');
+                    console.error('❌ initGame not defined.');
                 }
-            }, 100);
-        });
-
-        window.addEventListener('load', function() {
-            setTimeout(() => {
-                if (!gameState.isMapInitialized) {
-                    log('Backup initialization triggered');
-                    initGame();
-                }
-            }, 500);
+            });
         });
 
         // Emergency initialization removed for faster startup
