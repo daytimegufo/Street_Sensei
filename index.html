@@ -4853,7 +4853,15 @@
                 updateMobileGameStats();
                 
                 const nextBtn = document.getElementById('next-question');
-                if (nextBtn) nextBtn.classList.remove('hidden');
+                const mobileNext = document.getElementById('game-btn-next');
+                if (nextBtn) {
+                    nextBtn.classList.remove('hidden');
+                    nextBtn.disabled = false;
+                }
+                if (mobileNext) {
+                    mobileNext.classList.remove('hidden');
+                    mobileNext.disabled = false;
+                }
                 
                 log('Timer expired');
             } catch (error) {
