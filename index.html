@@ -4868,38 +4868,54 @@
                 stopTimer();
                 gameState.streak = 0;
 
-                const correctName = gameState.currentQuestion?.name ?? '';
-
-                // Disable and mark choices
-                document.querySelectorAll('.choice-button, .mobile-choice-btn').forEach(btn => {
-                    btn.disabled = true;
-                    btn.style.pointerEvents = 'none';
-                    if (btn.textContent === correctName) {
-                        btn.classList.add('correct');
-                    }
-                });
-
-                // Show buttons
-                ['next-question', 'mobile-next', 'game-btn-next'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) {
-                        el.classList.remove('hidden');
-                        el.disabled = false;
-                    }
-                });
-
-                ['show-answer', 'mobile-answer', 'game-btn-answer'].forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) el.classList.add('hidden');
-                });
+                if (gameState.currentMode === 'reverse') {
+                    showReverseAnswer();
+                } else {
+                    showAnswer();
+                }
 
                 updateUI();
                 updateMobileGameStats();
-                
+
                 log('Timer expired');
             } catch (error) {
                 log('Error handling timeout: ' + error.message);
             }
+        }
+
+        function showReverseAnswer(selectedName, isCorrect) {
+            const correctName = gameState.currentQuestion?.name;
+
+            document.querySelectorAll('.choice-button, .mobile-choice-btn').forEach(btn => {
+                btn.disabled = true;
+                btn.style.pointerEvents = 'none';
+                if (btn.textContent === correctName) {
+                    btn.classList.add('correct');
+                } else if (selectedName && btn.textContent === selectedName) {
+                    btn.classList.add('incorrect');
+                }
+            });
+
+            const qOverlay = document.getElementById('game-question-overlay');
+            if (qOverlay) qOverlay.classList.add('hidden');
+
+            ['next-question', 'mobile-next', 'game-btn-next'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.classList.remove('hidden');
+                    el.disabled = false;
+                }
+            });
+
+            ['show-answer', 'mobile-answer', 'game-btn-answer'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.add('hidden');
+            });
+
+            showReverseFeedback(selectedName || '', !!isCorrect, correctName);
+            hideMobileChoices();
+            updateUI();
+            updateMobileGameStats();
         }
 
         function updateTimer() {
@@ -5165,26 +5181,8 @@
             try {
                 const isCorrect = selectedChoice.name === gameState.currentQuestion.name;
 
-                gameState.timerExpired = true; // ✅ 回答済みでタイマー止めておく
-
-                // ボタンの正解・不正解表示
-                document.querySelectorAll('.choice-button').forEach(btn => {
-                    btn.disabled = true;
-                    if (btn.textContent === gameState.currentQuestion.name) {
-                        btn.classList.add('correct');
-                    } else if (btn === button && !isCorrect) {
-                        btn.classList.add('incorrect');
-                    }
-                });
-
-                document.querySelectorAll('.mobile-choice-btn').forEach(btn => {
-                    btn.disabled = true;
-                    if (btn.textContent === gameState.currentQuestion.name) {
-                        btn.classList.add('correct');
-                    } else if (btn === button && !isCorrect) {
-                        btn.classList.add('incorrect');
-                    }
-                });
+                gameState.timerExpired = true; // 回答済みでタイマー停止
+                stopTimer();
 
                 // スコア処理
                 if (isCorrect) {
@@ -5201,33 +5199,7 @@
                     log('Incorrect answer');
                 }
 
-                // タイマー停止・UI更新・ポップアップ表示
-                stopTimer();
-                updateUI();
-                updateMobileGameStats();
-                showReverseFeedback(selectedChoice.name, isCorrect, gameState.currentQuestion.name);
-
-                // 「次へ」ボタン表示
-                const nextBtn = document.getElementById('next-question');
-                const mobileNext = document.getElementById('mobile-next');
-                if (nextBtn) {
-                    nextBtn.classList.remove('hidden');
-                    nextBtn.disabled = false;
-                }
-                if (mobileNext) {
-                    mobileNext.classList.remove('hidden');
-                    mobileNext.disabled = false;
-                }
-
-                // 「答えを見る」ボタンは隠す
-                const showAnswerBtn = document.getElementById('show-answer');
-                const mobileAnswer = document.getElementById('mobile-answer');
-                if (showAnswerBtn) showAnswerBtn.classList.add('hidden');
-                if (mobileAnswer) mobileAnswer.classList.add('hidden');
-
-                // 選択肢を非表示に（重なり防止）
-                hideMobileChoices();  // ← 重要！
-
+                showReverseAnswer(selectedChoice.name, isCorrect);
             } catch (error) {
                 log('Error handling reverse answer: ' + error.message);
                 console.error(error);
