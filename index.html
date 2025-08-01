@@ -1023,7 +1023,7 @@
             gap: 0.5rem;
         }
 
-        .game-choice-btn {
+        .mobile-choice-btn {
             background: rgba(61, 61, 61, 0.9);
             color: #fff;
             border: 1px solid #555;
@@ -1035,17 +1035,17 @@
             transition: all 0.2s;
         }
 
-        .game-choice-btn:hover {
+        .mobile-choice-btn:hover {
             background: rgba(77, 77, 77, 0.9);
             border-color: #4CAF50;
         }
 
-        .game-choice-btn.correct {
+        .mobile-choice-btn.correct {
             background: rgba(76, 175, 80, 0.9);
             border-color: #4CAF50;
         }
 
-        .game-choice-btn.incorrect {
+        .mobile-choice-btn.incorrect {
             background: rgba(244, 67, 54, 0.9);
             border-color: #f44336;
         }
@@ -1736,12 +1736,12 @@
             // Create choice buttons
             choices.forEach((choice, index) => {
                 const button = document.createElement('button');
-                button.className = 'game-choice-btn';
+                button.className = 'mobile-choice-btn';
                 button.textContent = choice.name;
                 button.onclick = () => handleMobileChoiceClick(choice, button);
                 grid.appendChild(button);
             });
-            
+
             choicesOverlay.classList.remove('hidden');
         }
 
@@ -1764,7 +1764,7 @@
 
         function handleMobileChoiceClick(selectedChoice, button) {
             // Disable all buttons
-            document.querySelectorAll('.game-choice-btn').forEach(btn => {
+            document.querySelectorAll('.mobile-choice-btn').forEach(btn => {
                 btn.disabled = true;
                 btn.style.pointerEvents = 'none';
             });
@@ -4865,35 +4865,33 @@
                             btn.classList.add('correct');
                         }
                     });
-                    
-                    document.querySelectorAll('.game-choice-btn').forEach(btn => {
+
+                    document.querySelectorAll('.mobile-choice-btn').forEach(btn => {
                         btn.disabled = true;
                         if (btn.textContent === gameState.currentQuestion.name) {
                             btn.classList.add('correct');
                         }
                     });
+
+                    const nextBtn = document.getElementById('next-question');
+                    const mobileNext = document.getElementById('mobile-next');
+                    const pcNext = document.getElementById('game-btn-next');
+                    if (nextBtn) nextBtn.classList.remove('hidden');
+                    if (mobileNext) mobileNext.classList.remove('hidden');
+                    if (pcNext) pcNext.classList.remove('hidden');
+
+                    const showAnswerBtn = document.getElementById('show-answer');
+                    const mobileAnswer = document.getElementById('mobile-answer');
+                    const pcAnswer = document.getElementById('game-btn-answer');
+                    if (showAnswerBtn) showAnswerBtn.classList.add('hidden');
+                    if (mobileAnswer) mobileAnswer.classList.add('hidden');
+                    if (pcAnswer) pcAnswer.classList.add('hidden');
                 } else {
                     showAnswer();
                 }
-                
+
                 updateUI();
                 updateMobileGameStats();
-                
-                const nextBtn = document.getElementById('next-question');
-                const mobileNext = document.getElementById('game-btn-next');
-                if (nextBtn) {
-                    nextBtn.classList.remove('hidden');
-                    nextBtn.disabled = false;
-                }
-                if (mobileNext) {
-                    mobileNext.classList.remove('hidden');
-                    mobileNext.disabled = false;
-                }
-
-                const showAnswerBtn = document.getElementById('show-answer');
-                const mobileAnswer = document.getElementById('game-btn-answer');
-                if (showAnswerBtn) showAnswerBtn.classList.add('hidden');
-                if (mobileAnswer) mobileAnswer.classList.add('hidden');
                 
                 log('Timer expired');
             } catch (error) {
