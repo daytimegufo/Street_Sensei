@@ -5078,6 +5078,10 @@
         function showReverseChallenge() {
             try {
                 const point = gameState.currentQuestion.points[0][0];
+
+                if (gameState.map) {
+                    gameState.map.setView([point.lat, point.lng], 16, { animate: true });
+                }
                 
                 if (gameState.currentQuestion.isEnclosedArea) {
                     const polygon = L.polygon(gameState.currentQuestion.points[0], {
