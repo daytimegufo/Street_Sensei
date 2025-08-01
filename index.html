@@ -2182,7 +2182,13 @@
             },
             {
                 name: "東京ドームシティ",
-                points: [[{ lat: 35.7056, lng: 139.7514 }]],
+                points: [[
+                    { "lat": 35.7060, "lng": 139.7555 },
+                    { "lat": 35.7060, "lng": 139.7490 },
+                    { "lat": 35.7045, "lng": 139.7490 },
+                    { "lat": 35.7045, "lng": 139.7555 },
+                    { "lat": 35.7060, "lng": 139.7555 }
+                ]],
                 isEnclosedArea: true,
                 facilityType: "stadium",
                 category: "entertainment",
@@ -5079,12 +5085,15 @@
             try {
                 const point = gameState.currentQuestion.points[0][0];
 
+                const points = gameState.currentQuestion.points[0];
+                const isPolygon = gameState.currentQuestion.isEnclosedArea && points.length >= 3;
+
                 if (gameState.map) {
                     gameState.map.setView([point.lat, point.lng], 16, { animate: true });
                 }
-                
-                if (gameState.currentQuestion.isEnclosedArea) {
-                    const polygon = L.polygon(gameState.currentQuestion.points[0], {
+
+                if (isPolygon) {
+                    L.polygon(points, {
                         className: 'blinking',
                         color: '#ff6b6b',
                         fillColor: '#ff6b6b',
@@ -5092,12 +5101,13 @@
                         weight: 3
                     }).addTo(gameState.facilityLayer);
                 } else {
-                    const marker = L.marker([point.lat, point.lng], {
-                        icon: L.divIcon({
-                            className: 'blinking',
-                            html: '<div style="background: #ff6b6b; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white;"></div>',
-                            iconSize: [20, 20]
-                        })
+                    L.circleMarker([point.lat, point.lng], {
+                        radius: 18,
+                        color: '#ff6b6b',
+                        fillColor: '#ff6b6b',
+                        fillOpacity: 0.8,
+                        weight: 2,
+                        className: 'blinking'
                     }).addTo(gameState.facilityLayer);
                 }
 
@@ -5117,7 +5127,7 @@
                     });
                 }
 
-                showMobileChoices(choices, false);
+                showMobileChoices(choices);
 
                 const showAnswerBtn = document.getElementById('show-answer');
                 if (showAnswerBtn) {
