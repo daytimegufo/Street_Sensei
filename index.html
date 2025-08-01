@@ -4858,7 +4858,7 @@
 
         function handleTimeout() {
             try {
-                if (gameState.timerExpired) return; // 防止再実行
+                if (gameState.timerExpired) return;
                 gameState.timerExpired = true;
                 if (!gameState.currentQuestion || !gameState.currentQuestion.name) {
                     log('❌ No currentQuestion set on timeout. Skipping handling.');
@@ -4867,38 +4867,31 @@
 
                 stopTimer();
                 gameState.streak = 0;
-                
-                if (gameState.currentMode === 'reverse') {
-                    document.querySelectorAll('.choice-button').forEach(btn => {
-                        btn.disabled = true;
-                        if (btn.textContent === gameState.currentQuestion.name) {
-                            btn.classList.add('correct');
-                        }
-                    });
 
-                    document.querySelectorAll('.mobile-choice-btn').forEach(btn => {
-                        btn.disabled = true;
-                        if (btn.textContent === gameState.currentQuestion.name) {
-                            btn.classList.add('correct');
-                        }
-                    });
+                const correctName = gameState.currentQuestion?.name ?? '';
 
-                    const nextBtn = document.getElementById('next-question');
-                    const mobileNext = document.getElementById('mobile-next');
-                    const pcNext = document.getElementById('game-btn-next');
-                    if (nextBtn) nextBtn.classList.remove('hidden');
-                    if (mobileNext) mobileNext.classList.remove('hidden');
-                    if (pcNext) pcNext.classList.remove('hidden');
+                // Disable and mark choices
+                document.querySelectorAll('.choice-button, .mobile-choice-btn').forEach(btn => {
+                    btn.disabled = true;
+                    btn.style.pointerEvents = 'none';
+                    if (btn.textContent === correctName) {
+                        btn.classList.add('correct');
+                    }
+                });
 
-                    const showAnswerBtn = document.getElementById('show-answer');
-                    const mobileAnswer = document.getElementById('mobile-answer');
-                    const pcAnswer = document.getElementById('game-btn-answer');
-                    if (showAnswerBtn) showAnswerBtn.classList.add('hidden');
-                    if (mobileAnswer) mobileAnswer.classList.add('hidden');
-                    if (pcAnswer) pcAnswer.classList.add('hidden');
-                } else {
-                    showAnswer();
-                }
+                // Show buttons
+                ['next-question', 'mobile-next', 'game-btn-next'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.classList.remove('hidden');
+                        el.disabled = false;
+                    }
+                });
+
+                ['show-answer', 'mobile-answer', 'game-btn-answer'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.classList.add('hidden');
+                });
 
                 updateUI();
                 updateMobileGameStats();
