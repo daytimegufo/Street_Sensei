@@ -5146,7 +5146,8 @@
         function handleReverseAnswer(selectedChoice, button) {
             try {
                 const isCorrect = selectedChoice.name === gameState.currentQuestion.name;
-                
+
+                // ボタンの正解・不正解表示
                 document.querySelectorAll('.choice-button').forEach(btn => {
                     btn.disabled = true;
                     if (btn.textContent === gameState.currentQuestion.name) {
@@ -5156,7 +5157,7 @@
                     }
                 });
 
-                document.querySelectorAll('.game-choice-btn').forEach(btn => {
+                document.querySelectorAll('.mobile-choice-btn').forEach(btn => {
                     btn.disabled = true;
                     if (btn.textContent === gameState.currentQuestion.name) {
                         btn.classList.add('correct');
@@ -5165,12 +5166,13 @@
                     }
                 });
 
+                // スコア処理
                 if (isCorrect) {
                     const timeBonus = Math.max(0, gameState.timer * 2);
                     const baseScore = 100;
                     const streakBonus = gameState.streak * 10;
                     const totalScore = baseScore + timeBonus + streakBonus;
-                    
+
                     gameState.score += totalScore;
                     gameState.streak++;
                     log(`Correct answer! Score: ${totalScore} (base: ${baseScore}, time: ${timeBonus}, streak: ${streakBonus})`);
@@ -5179,25 +5181,39 @@
                     log('Incorrect answer');
                 }
 
+                // タイマー停止・UI更新・ポップアップ表示
                 stopTimer();
                 updateUI();
-                showReverseFeedback(selectedChoice.name, isCorrect, gameState.currentQuestion.name);
                 updateMobileGameStats();
-                
+                showReverseFeedback(selectedChoice.name, isCorrect, gameState.currentQuestion.name);
+
+                // 「次へ」ボタン表示
                 const nextBtn = document.getElementById('next-question');
-                if (nextBtn) nextBtn.classList.remove('hidden');
+                const mobileNext = document.getElementById('mobile-next');
+                if (nextBtn) {
+                    nextBtn.classList.remove('hidden');
+                    nextBtn.disabled = false;
+                }
+                if (mobileNext) {
+                    mobileNext.classList.remove('hidden');
+                    mobileNext.disabled = false;
+                }
 
+                // 「答えを見る」ボタンは隠す
                 const showAnswerBtn = document.getElementById('show-answer');
-                const gameBtnAnswer = document.getElementById('game-btn-answer');
+                const mobileAnswer = document.getElementById('mobile-answer');
                 if (showAnswerBtn) showAnswerBtn.classList.add('hidden');
-                if (gameBtnAnswer) gameBtnAnswer.classList.add('hidden');
+                if (mobileAnswer) mobileAnswer.classList.add('hidden');
 
-                // Hide choices and remove question overlay until next question
-                hideMobileChoices(false);
+                // 選択肢を非表示に（重なり防止）
+                hideMobileChoices();  // ← 重要！
+
             } catch (error) {
                 log('Error handling reverse answer: ' + error.message);
+                console.error(error);
             }
         }
+
 
         function endGame() {
             try {
