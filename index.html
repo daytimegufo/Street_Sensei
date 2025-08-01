@@ -2119,6 +2119,7 @@
             currentQuestion: null,
             timer: 30,
             timerInterval: null,
+            timerExpired: false,
             map: null,
             gameArea: null,
             userMarker: null,
@@ -4108,6 +4109,7 @@
 
         async function nextQuestion() {
             try {
+                gameState.timerExpired = false; // ✅ タイムアウト済みフラグをリセット
                 log('Loading next question...');
                 
                 clearGameElements();
@@ -4855,6 +4857,8 @@
 
         function handleTimeout() {
             try {
+                if (gameState.timerExpired) return; // ✅ 多重実行防止
+                gameState.timerExpired = true;
                 stopTimer();
                 gameState.streak = 0;
                 
@@ -5158,6 +5162,8 @@
         function handleReverseAnswer(selectedChoice, button) {
             try {
                 const isCorrect = selectedChoice.name === gameState.currentQuestion.name;
+                
+                gameState.timerExpired = true; // ✅ 回答済みでタイマー止めておく
 
                 // ボタンの正解・不正解表示
                 document.querySelectorAll('.choice-button').forEach(btn => {
