@@ -1443,6 +1443,10 @@
                     <option value="intersection">Intersection</option>
                     <option value="reverse">Reverse</option>
                     <option value="geotextbook">地理教本施設モード</option>
+                    <option value="geotextbook-area">地理教本施設チャレンジ</option>
+                </select>
+                <select id="geotextbook-area-select" style="display:none;">
+                    <option value="tokyo23">東京23区武三</option>
                 </select>
                 <button id="start-game">Start Game</button>
             </div>
@@ -2145,6 +2149,7 @@
             askedQuestions: [],
             currentLocation: null,
             geotextbookFacilities: [],
+            geotextbookArea: 'tokyo23',
             
             backgroundLoading: false,
             cacheEnabled: true,
@@ -2289,6 +2294,14 @@
                 points: [[{ lat: 35.6759, lng: 139.7447 }]]
             }
         ];
+
+        const GEOTEXTBOOK_AREA_CONFIGS = {
+            'tokyo23': {
+                name: '東京23区武三',
+                file: 'geotextbook_facilities/tokyo23.json',
+                center: { lat: 35.6895, lng: 139.6917 }
+            }
+        };
 
         // Regional bbox configurations for full road network extraction
         const REGIONAL_CONFIGS = {
@@ -2446,6 +2459,11 @@
                 if (modeTab) modeTab.classList.add('active');
                 const modeSelect = document.getElementById('game-mode-select');
                 if (modeSelect) modeSelect.value = gameState.currentMode;
+                const areaSelectInit = document.getElementById('geotextbook-area-select');
+                if (areaSelectInit) {
+                    areaSelectInit.value = gameState.geotextbookArea;
+                    areaSelectInit.style.display = gameState.currentMode === 'geotextbook-area' ? 'block' : 'none';
+                }
                 const rangeEl = document.getElementById('range');
                 if (rangeEl) rangeEl.value = gameState.range;
                 updateRangeDisplay();
@@ -2795,7 +2813,7 @@
                     gameState.gameArea = null;
                 }
 
-                if (gameState.currentMode === 'geotextbook') {
+                if (gameState.currentMode === 'geotextbook' || gameState.currentMode === 'geotextbook-area') {
                     return;
                 }
 
@@ -2831,6 +2849,10 @@
                 loadIntersectionDataFromOverpass();
             } else if (mode === 'geotextbook') {
                 await loadGeotextbookFacilities();
+            } else if (mode === 'geotextbook-area') {
+                const areaSelect = document.getElementById('geotextbook-area-select');
+                gameState.geotextbookArea = areaSelect ? areaSelect.value : gameState.geotextbookArea;
+                await loadGeotextbookAreaFacilities(gameState.geotextbookArea);
             } else if (mode === 'reverse') {
                 loadFacilityDataFromOverpass();
                 loadIntersectionDataFromOverpass();
@@ -2941,6 +2963,10 @@
                 const modeSelect = document.getElementById('game-mode-select');
                 if (modeSelect) {
                     modeSelect.addEventListener('change', (e) => {
+                        const areaSel = document.getElementById('geotextbook-area-select');
+                        if (areaSel) {
+                            areaSel.style.display = e.target.value === 'geotextbook-area' ? 'block' : 'none';
+                        }
                         handleModeChange(e.target.value);
                     });
                 }
@@ -3014,6 +3040,16 @@
                             gameState.center = { lat: centerLat, lng: centerLng };
                             gameState.map.setView([centerLat, centerLng], 9);
                             updateGameArea();
+                        }
+                    });
+                }
+
+                const geoAreaSelect = document.getElementById('geotextbook-area-select');
+                if (geoAreaSelect) {
+                    geoAreaSelect.addEventListener('change', (e) => {
+                        gameState.geotextbookArea = e.target.value;
+                        if (gameState.currentMode === 'geotextbook-area') {
+                            loadGeotextbookAreaFacilities(gameState.geotextbookArea);
                         }
                     });
                 }
@@ -4049,6 +4085,12 @@
                         loadIntersectionDataFromOverpass();
                     }
                 }
+
+                if (gameState.currentMode === 'geotextbook-area') {
+                    const areaSelect = document.getElementById('geotextbook-area-select');
+                    gameState.geotextbookArea = areaSelect ? areaSelect.value : gameState.geotextbookArea;
+                    await loadGeotextbookAreaFacilities(gameState.geotextbookArea);
+                }
                 
                 gameState.isPlaying = true;
                 gameState.score = 0;
@@ -4218,7 +4260,7 @@
 
         async function generateQuestion() {
             try {
-                if (gameState.currentMode === 'geotextbook') {
+                if (gameState.currentMode === 'geotextbook' || gameState.currentMode === 'geotextbook-area') {
                     const candidate = pickRandom(gameState.geotextbookFacilities || []);
                     if (!candidate) {
                         showError('地理教本施設データが未登録です');
@@ -5093,7 +5135,8 @@
                 'facility': '施設',
                 'intersection': '交差点',
                 'reverse': '逆',
-                'geotextbook': '地理教本施設'
+                'geotextbook': '地理教本施設',
+                'geotextbook-area': '地理教本施設チャレンジ'
             };
             return names[mode] || mode;
         }
@@ -5545,6 +5588,32 @@
                 log(`地理教本施設: ${gameState.geotextbookFacilities.length}件ロード`);
             } catch (e) {
                 log('Failed to load geotextbook facilities: ' + e.message);
+                gameState.geotextbookFacilities = [];
+            }
+        }
+
+        async function loadGeotextbookAreaFacilities(areaKey) {
+            try {
+                const config = GEOTEXTBOOK_AREA_CONFIGS[areaKey];
+                if (!config) return;
+                const response = await fetch(config.file);
+                const rawData = await response.json();
+                const valid = rawData.filter(p => p.lat && p.lng);
+                gameState.geotextbookFacilities = valid.map(p => ({
+                    name: p.name,
+                    points: [[{ lat: p.lat, lng: p.lng }]],
+                    description: p.description || '地理教本施設',
+                    importance: p.importance || 50,
+                    category: p.category || '',
+                    source: 'area'
+                }));
+                if (gameState.map && config.center) {
+                    gameState.map.setView([config.center.lat, config.center.lng], 12);
+                    updateGameArea();
+                }
+                log(`Geotextbook area ${config.name}: ${gameState.geotextbookFacilities.length}件ロード`);
+            } catch (e) {
+                log('Failed to load geotextbook area facilities: ' + e.message);
                 gameState.geotextbookFacilities = [];
             }
         }
