@@ -1443,7 +1443,6 @@
                     <option value="intersection">Intersection</option>
                     <option value="reverse">Reverse</option>
                     <option value="geotextbook">地理教本施設モード</option>
-                    <option value="geotextbook-area">地理教本施設チャレンジ</option>
                 </select>
                 <select id="geotextbook-area-select" style="display:none;">
                     <option value="tokyo23">東京23区武三</option>
@@ -2283,23 +2282,12 @@
             }
         ];
 
-        // Geotextbook facilities for simplified mode
-        const geotextbookQuestions = [
-            {
-                name: "日本獣医生命科学大学",
-                points: [[{ lat: 35.6859, lng: 139.6206 }]]
-            },
-            {
-                name: "国会議事堂",
-                points: [[{ lat: 35.6759, lng: 139.7447 }]]
-            }
-        ];
-
         const GEOTEXTBOOK_AREA_CONFIGS = {
             'tokyo23': {
                 name: '東京23区武三',
                 file: 'custom-facilities/東京23区武三.json',
-                center: { lat: 35.6895, lng: 139.6917 }
+                center: { lat: 35.6895, lng: 139.6917 },
+                bbox: '35.5,139.4,35.9,139.9'
             }
         };
 
@@ -2462,13 +2450,14 @@
                 const areaSelectInit = document.getElementById('geotextbook-area-select');
                 if (areaSelectInit) {
                     areaSelectInit.value = gameState.geotextbookArea;
-                    areaSelectInit.style.display = gameState.currentMode === 'geotextbook-area' ? 'block' : 'none';
+                    areaSelectInit.style.display = gameState.currentMode === 'geotextbook' ? 'block' : 'none';
                 }
+
                 const rangeEl = document.getElementById('range');
                 if (rangeEl) rangeEl.value = gameState.range;
                 updateRangeDisplay();
                 loadCustomProblems();
-                await loadGeotextbookFacilities();
+                await loadGeotextbookFacilities(gameState.geotextbookArea);
                 updateRangeDisplay();
                 updateImportanceDisplay();
                 updateAutoDifficultyDisplay();
@@ -2813,7 +2802,6 @@
                     gameState.gameArea = null;
                 }
 
-                if (gameState.currentMode === 'geotextbook' || gameState.currentMode === 'geotextbook-area') {
                     return;
                 }
 
@@ -2847,13 +2835,11 @@
                 loadFacilityDataFromOverpass();
             } else if (mode === 'intersection') {
                 loadIntersectionDataFromOverpass();
-            } else if (mode === 'geotextbook') {
-                await loadGeotextbookFacilities();
-            } else if (mode === 'geotextbook-area') {
-                const areaSelect = document.getElementById('geotextbook-area-select');
+            } else if (mode === "geotextbook") {
+                const areaSelect = document.getElementById("geotextbook-area-select");
                 gameState.geotextbookArea = areaSelect ? areaSelect.value : gameState.geotextbookArea;
-                await loadGeotextbookAreaFacilities(gameState.geotextbookArea);
-            } else if (mode === 'reverse') {
+                await loadGeotextbookFacilities(gameState.geotextbookArea);
+            } else if (mode === "reverse") {
                 loadFacilityDataFromOverpass();
                 loadIntersectionDataFromOverpass();
             }
@@ -2965,7 +2951,7 @@
                     modeSelect.addEventListener('change', (e) => {
                         const areaSel = document.getElementById('geotextbook-area-select');
                         if (areaSel) {
-                            areaSel.style.display = e.target.value === 'geotextbook-area' ? 'block' : 'none';
+                            areaSel.style.display = e.target.value === 'geotextbook' ? 'block' : 'none';
                         }
                         handleModeChange(e.target.value);
                     });
@@ -3048,7 +3034,7 @@
                 if (geoAreaSelect) {
                     geoAreaSelect.addEventListener('change', (e) => {
                         gameState.geotextbookArea = e.target.value;
-                        if (gameState.currentMode === 'geotextbook-area') {
+                        if (gameState.currentMode === 'geotextbook') {
                             loadGeotextbookAreaFacilities(gameState.geotextbookArea);
                         }
                     });
@@ -3392,8 +3378,7 @@
             return arr[Math.floor(Math.random() * arr.length)];
         }
 
-        async function resolveNameToLocation(name) {
-            const bbox = '35.5,139.4,35.9,139.9';
+        async function resolveNameToLocation(name, bbox = '35.5,139.4,35.9,139.9') {
             const query = `
                 [out:json][timeout:10];
                 (
@@ -4086,6 +4071,12 @@
                     }
                 }
 
+                if (gameState.currentMode === 'geotextbook') {
+                    const areaSelect = document.getElementById('geotextbook-area-select');
+                    gameState.geotextbookArea = areaSelect ? areaSelect.value : gameState.geotextbookArea;
+                    await loadGeotextbookFacilities(gameState.geotextbookArea);
+                }
+
                 if (gameState.currentMode === 'geotextbook-area') {
                     const areaSelect = document.getElementById('geotextbook-area-select');
                     gameState.geotextbookArea = areaSelect ? areaSelect.value : gameState.geotextbookArea;
@@ -4260,8 +4251,7 @@
 
         async function generateQuestion() {
             try {
-                if (gameState.currentMode === 'geotextbook' || gameState.currentMode === 'geotextbook-area') {
-                    const candidate = pickRandom(gameState.geotextbookFacilities || []);
+                const candidate = pickRandom(gameState.geotextbookFacilities || []);
                     if (!candidate) {
                         showError('地理教本施設データが未登録です');
                         return;
@@ -5136,7 +5126,6 @@
                 'intersection': '交差点',
                 'reverse': '逆',
                 'geotextbook': '地理教本施設',
-                'geotextbook-area': '地理教本施設チャレンジ'
             };
             return names[mode] || mode;
         }
@@ -5582,10 +5571,42 @@
             }
         }
 
-        async function loadGeotextbookFacilities() {
+        async function loadGeotextbookFacilities(areaKey) {
             try {
-                gameState.geotextbookFacilities = geotextbookQuestions;
-                log(`地理教本施設: ${gameState.geotextbookFacilities.length}件ロード`);
+                const config = GEOTEXTBOOK_AREA_CONFIGS[areaKey];
+                if (!config) return;
+                const response = await fetch(config.file);
+                const rawData = await response.json();
+                const facilities = [];
+                for (const p of rawData) {
+                    let lat = p.lat;
+                    let lng = p.lng;
+                    if ((lat == null || lng == null) && p.name) {
+                        try {
+                            const loc = await resolveNameToLocation(p.name, config.bbox);
+                            lat = loc.lat;
+                            lng = loc.lng;
+                        } catch (err) {
+                            console.warn('Overpass lookup failed for', p.name);
+                        }
+                    }
+                    if (lat != null && lng != null) {
+                        facilities.push({
+                            name: p.name,
+                            points: [[{ lat, lng }]],
+                            description: p.description || '地理教本施設',
+                            importance: p.importance || 50,
+                            category: p.category || '',
+                            source: 'area'
+                        });
+                    }
+                }
+                gameState.geotextbookFacilities = facilities;
+                if (gameState.map && config.center) {
+                    gameState.map.setView([config.center.lat, config.center.lng], 12);
+                    updateGameArea();
+                }
+                log(`Geotextbook area ${config.name}: ${gameState.geotextbookFacilities.length}件ロード`);
             } catch (e) {
                 log('Failed to load geotextbook facilities: ' + e.message);
                 gameState.geotextbookFacilities = [];
