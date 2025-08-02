@@ -2802,6 +2802,7 @@
                     gameState.gameArea = null;
                 }
 
+                if (!gameState.center || !gameState.range || !gameState.map) {
                     return;
                 }
 
@@ -2812,7 +2813,7 @@
                     color: '#4CAF50',
                     weight: 2
                 }).addTo(gameState.map);
-                
+
                 log('Game area updated');
             } catch (error) {
                 log('Error updating game area: ' + error.message);
@@ -4252,11 +4253,7 @@
         async function generateQuestion() {
             try {
                 const candidate = pickRandom(gameState.geotextbookFacilities || []);
-                    if (!candidate) {
-                        showError('地理教本施設データが未登録です');
-                        return;
-                    }
-
+                if (candidate) {
                     gameState.currentQuestion = {
                         name: candidate.name,
                         type: 'facility',
@@ -4280,12 +4277,11 @@
                     log(`Question generated: ${candidate.name} (source: geotextbook)`);
                     return;
                 }
-                let questions;
-                
+
                 // First collect all potential questions based on mode
                 let osmQuestions = [];
                 let customQuestions = [];
-                
+
                 switch (gameState.currentMode) {
                     case 'facility':
                         osmQuestions = facilityQuestions;
@@ -4302,7 +4298,7 @@
                     default: // street
                         osmQuestions = gameState.streetData || [];
                         customQuestions = gameState.customProblems.filter(p => p.type === 'street');
-                        
+
                         if (osmQuestions.length === 0 && customQuestions.length === 0) {
                             showWarning('No street data loaded yet. Please click "Load Regional Roads" to get actual OpenStreetMap data.');
                             return;
@@ -4312,7 +4308,7 @@
                 // Apply difficulty filtering separately to each source
                 const filteredOsmQuestions = filterQuestionsByDifficulty(osmQuestions);
                 const filteredCustomQuestions = filterQuestionsByDifficultyCustom(customQuestions);
-                
+
                 // Determine which source to use based on problemSource setting
                 let sourcePool;
                 if (gameState.problemSource === 'osm-only') {
@@ -4322,7 +4318,7 @@
                 } else { // mixed
                     // Use ratio to determine source
                     const useOsm = Math.random() < gameState.osmCustomRatio;
-                    
+
                     if (useOsm && filteredOsmQuestions.length > 0) {
                         sourcePool = filteredOsmQuestions;
                     } else if (!useOsm && filteredCustomQuestions.length > 0) {
@@ -4332,17 +4328,17 @@
                         sourcePool = filteredOsmQuestions.length > 0 ? filteredOsmQuestions : filteredCustomQuestions;
                     }
                 }
-                
+
                 if (!sourcePool || sourcePool.length === 0) {
                     showWarning('No questions available for the selected difficulty and source. Please adjust your settings.');
                     return;
                 }
-                
+
                 // Filter out already asked questions
-                const availableQuestions = sourcePool.filter(q => 
+                const availableQuestions = sourcePool.filter(q =>
                     !gameState.askedQuestions.some(asked => asked.name === q.name)
                 );
-                
+
                 let selectedQuestion;
                 if (availableQuestions.length > 0) {
                     selectedQuestion = availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
@@ -4351,7 +4347,7 @@
                     gameState.askedQuestions = [];
                     selectedQuestion = sourcePool[Math.floor(Math.random() * sourcePool.length)];
                 }
-                
+
                 gameState.currentQuestion = selectedQuestion;
                 gameState.askedQuestions.push(selectedQuestion);
 
@@ -4376,16 +4372,16 @@
                         selectedQuestion.fullPoints = fullSegments;
                     }
                 }
-                
+
                 const questionText = document.getElementById('question-text');
                 const questionType = document.getElementById('question-type');
-                
+
                 if (questionText) {
-                    questionText.textContent = gameState.currentMode === 'reverse' ? 
-                        `強調表示された場所は何ですか？` : 
+                    questionText.textContent = gameState.currentMode === 'reverse' ?
+                        `強調表示された場所は何ですか？` :
                         `見つけてください: ${gameState.currentQuestion.name}`;
                 }
-                
+
                 if (questionType) {
                     let sourceLabel = ' (OSM)';
                     if (gameState.currentQuestion.source === 'custom') {
@@ -4395,9 +4391,9 @@
                     }
                     questionType.textContent = `${getModeName(gameState.currentMode)}チャレンジ${sourceLabel}`;
                 }
-                
+
                 log(`Question generated: ${gameState.currentQuestion.name} (source: ${gameState.currentQuestion.source || 'osm'})`);
-                
+
             } catch (error) {
                 log('Error generating question: ' + error.message);
                 console.error('Generate question error:', error);
