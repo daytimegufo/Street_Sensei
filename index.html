@@ -4590,6 +4590,71 @@
             }
         }
 
+        function updateSpeedRunUI() {
+            const progressEl = document.getElementById('speedrun-progress');
+            const remainingEl = document.getElementById('speedrun-remaining');
+            if (progressEl) {
+                progressEl.textContent = `${gameState.speedRun.correctCount}/${gameState.speedRun.targetCount}`;
+            }
+            if (remainingEl) {
+                const rem = gameState.speedRun.targetCount - gameState.speedRun.correctCount;
+                remainingEl.textContent = `残り: あと ${rem} 問`;
+            }
+        }
+
+        function updateSpeedRunTimer() {
+            const timerEl = document.getElementById('speedrun-timer');
+            if (!timerEl || !gameState.speedRun.startTime) return;
+            const end = gameState.speedRun.endTime || performance.now();
+            const elapsed = (end - gameState.speedRun.startTime) / 1000;
+            const m = Math.floor(elapsed / 60);
+            const s = Math.floor(elapsed % 60);
+            timerEl.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
+
+        function handleSpeedRunClick(userLatLng) {
+            try {
+                if (!gameState.currentQuestion) return;
+                let distance;
+                if (typeof turf !== 'undefined') {
+                    const userPt = turf.point([userLatLng.lng, userLatLng.lat]);
+                    const targetPt = turf.point([
+                        gameState.currentQuestion.points[0][0].lng,
+                        gameState.currentQuestion.points[0][0].lat
+                    ]);
+                    distance = turf.distance(userPt, targetPt, { units: 'kilometers' }) * 1000;
+                } else {
+                    distance = calculateSimpleDistance(
+                        userLatLng.lat,
+                        userLatLng.lng,
+                        gameState.currentQuestion.points[0][0].lat,
+                        gameState.currentQuestion.points[0][0].lng
+                    ) * 1000;
+                }
+
+                const tolerance = gameState.speedRun.baseToleranceKm *
+                    gameState.speedRun.toleranceMultiplier * 1000;
+                if (distance <= tolerance) {
+                    gameState.speedRun.correctCount++;
+                }
+                updateSpeedRunUI();
+
+                if (gameState.speedRun.correctCount >= gameState.speedRun.targetCount) {
+                    gameState.speedRun.endTime = performance.now();
+                    if (gameState.speedRun.timerInterval) {
+                        clearInterval(gameState.speedRun.timerInterval);
+                        gameState.speedRun.timerInterval = null;
+                    }
+                    updateSpeedRunTimer();
+                    endGame();
+                } else {
+                    nextQuestion();
+                }
+            } catch (err) {
+                console.error('Speedrun click error:', err);
+            }
+        }
+
         function handleMapClick(e) {
             try {
                 const userLatLng = e.latlng;
