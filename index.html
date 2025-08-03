@@ -1467,6 +1467,8 @@
                 <select id="geotextbook-area-select" style="display:none;">
                     <option value="tokyo23">東京23区武三</option>
                 </select>
+                <input type="number" id="speedrun-target" min="1" value="5" style="display:none; width:4rem;" title="連続目標問数">
+                <input type="number" id="speedrun-tolerance" step="0.1" min="1" value="2.0" style="display:none; width:4rem;" title="許容距離倍率">
                 <button id="start-game">Start Game</button>
             </div>
         </div>
@@ -2207,10 +2209,11 @@
                 startTime: null,
                 endTime: null,
                 correctCount: 0,
-                targetCount: 5,
-                toleranceMultiplier: 2.0,
+                targetCount: loadSetting('geotextbook_speedrun_targetCount', 5),
+                toleranceMultiplier: loadSetting('geotextbook_speedrun_toleranceMultiplier', 2.0),
                 baseToleranceKm: 1.5,
-                timerInterval: null
+                timerInterval: null,
+                bestTime: loadSetting('geotextbook_speedrun_bestTime', null)
             }
        };
 
@@ -2998,6 +3001,10 @@
                 }
 
                 const startBtn = document.getElementById('start-game');
+                const speedTargetInput = document.getElementById('speedrun-target');
+                if (speedTargetInput) speedTargetInput.value = gameState.speedRun.targetCount;
+                const speedTolInput = document.getElementById('speedrun-tolerance');
+                if (speedTolInput) speedTolInput.value = gameState.speedRun.toleranceMultiplier;
                 if (startBtn) {
                     startBtn.addEventListener('click', () => {
                         log('Start game clicked');
@@ -3012,6 +3019,10 @@
                         if (areaSel) {
                             areaSel.style.display = e.target.value === 'geotextbook' ? 'block' : 'none';
                         }
+                        const tgt = document.getElementById('speedrun-target');
+                        const tol = document.getElementById('speedrun-tolerance');
+                        if (tgt) tgt.style.display = e.target.value === 'geotextbook' ? 'block' : 'none';
+                        if (tol) tol.style.display = e.target.value === 'geotextbook' ? 'block' : 'none';
                         handleModeChange(e.target.value);
                     });
                 }
@@ -4136,6 +4147,23 @@
                 }
 
                 if (gameState.currentMode === 'geotextbook') {
+                    const targetInput = document.getElementById('speedrun-target');
+                    if (targetInput) {
+                        const val = parseInt(targetInput.value, 10);
+                        if (!isNaN(val) && val > 0) {
+                            gameState.speedRun.targetCount = val;
+                            saveSetting('geotextbook_speedrun_targetCount', val);
+                        }
+                    }
+                    const tolInput = document.getElementById('speedrun-tolerance');
+                    if (tolInput) {
+                        const valTol = parseFloat(tolInput.value);
+                        if (!isNaN(valTol) && valTol > 0) {
+                            gameState.speedRun.toleranceMultiplier = valTol;
+                            saveSetting('geotextbook_speedrun_toleranceMultiplier', valTol);
+                        }
+                    }
+                    gameState.speedRun.bestTime = loadSetting('geotextbook_speedrun_bestTime', null);
                     const areaSelect = document.getElementById('geotextbook-area-select');
                     gameState.geotextbookArea = areaSelect ? areaSelect.value : gameState.geotextbookArea;
                     await loadGeotextbookFacilities(gameState.geotextbookArea);
@@ -4601,15 +4629,19 @@
                 remainingEl.textContent = `残り: あと ${rem} 問`;
             }
         }
+        
+        function formatSpeedRunTime(seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
 
         function updateSpeedRunTimer() {
             const timerEl = document.getElementById('speedrun-timer');
             if (!timerEl || !gameState.speedRun.startTime) return;
             const end = gameState.speedRun.endTime || performance.now();
             const elapsed = (end - gameState.speedRun.startTime) / 1000;
-            const m = Math.floor(elapsed / 60);
-            const s = Math.floor(elapsed % 60);
-            timerEl.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+            timerEl.textContent = formatSpeedRunTime(elapsed);
         }
 
         function handleSpeedRunClick(userLatLng) {
@@ -5427,22 +5459,61 @@
         function endGame() {
             try {
                 log('Ending game...');
-                
+
                 gameState.isPlaying = false;
                 stopTimer();
-                
+
                 hideMobileGameUI();
-                
+
                 // ゲーム終了時に街路名表示を復元
                 if (!gameState.showLabels) {
                     log('Restoring labels display after game end');
                     toggleLabels();
                 }
-                
+
                 const finalScoreEl = document.getElementById('final-score');
                 const finalStatsEl = document.getElementById('final-stats');
                 const resultsOverlay = document.getElementById('results-overlay');
-                
+
+                if (gameState.speedRun.active) {
+                    if (gameState.speedRun.timerInterval) {
+                        clearInterval(gameState.speedRun.timerInterval);
+                        gameState.speedRun.timerInterval = null;
+                    }
+                    const totalSec = gameState.speedRun.startTime && gameState.speedRun.endTime
+                        ? (gameState.speedRun.endTime - gameState.speedRun.startTime) / 1000
+                        : 0;
+                    const avgSec = gameState.speedRun.correctCount > 0
+                        ? totalSec / gameState.speedRun.correctCount
+                        : 0;
+                    let best = loadSetting('geotextbook_speedrun_bestTime', null);
+                    let bestNote = '';
+                    if (gameState.speedRun.correctCount === gameState.speedRun.targetCount) {
+                        if (best === null || totalSec < best) {
+                            saveSetting('geotextbook_speedrun_bestTime', totalSec);
+                            best = totalSec;
+                            bestNote = ' (New!)';
+                        }
+                    }
+                    const bestDisplay = best !== null ? formatSpeedRunTime(best) : '---';
+                    if (finalScoreEl) {
+                        finalScoreEl.textContent = `${gameState.speedRun.targetCount}問中${gameState.speedRun.correctCount}問正解`;
+                    }
+                    if (finalStatsEl) {
+                        finalStatsEl.innerHTML = `
+                            <div>総合タイム: ${formatSpeedRunTime(totalSec)}</div>
+                            <div>平均解答時間: ${avgSec.toFixed(1)}秒</div>
+                            <div>ベスト記録: ${bestDisplay}${bestNote}</div>
+                        `;
+                    }
+                    if (resultsOverlay) {
+                        resultsOverlay.classList.remove('hidden');
+                    }
+                    updateMobileControls();
+                    log('Game ended');
+                    return;
+                }
+
                 if (finalScoreEl) {
                     finalScoreEl.textContent = `Final Score: ${gameState.score}`;
                 }
@@ -5450,12 +5521,12 @@
                 saveSetting('boh_lastScore', gameState.score);
                 saveSetting('boh_highScore', Math.max(gameState.score, loadSetting('boh_highScore', 0)));
                 saveSetting('boh_lastLocation', gameState.center);
-                
+
                 if (finalStatsEl) {
                     const avgScore = gameState.totalQuestions > 0 ? Math.round(gameState.score / gameState.totalQuestions) : 0;
                     const maxStreak = gameState.streak;
                     const accuracy = gameState.totalQuestions > 0 ? Math.round((gameState.score / (gameState.totalQuestions * 150)) * 100) : 0;
-                    
+
                     finalStatsEl.innerHTML = `
                         <div>Questions Answered: ${gameState.totalQuestions}</div>
                         <div>Best Streak: ${maxStreak}</div>
@@ -5466,13 +5537,13 @@
                         <div>Range: ${gameState.range}km</div>
                     `;
                 }
-                
+
                 if (resultsOverlay) {
                     resultsOverlay.classList.remove('hidden');
                 }
-                
+
                 updateMobileControls();
-                
+
                 log('Game ended');
             } catch (error) {
                 log('Error ending game: ' + error.message);
