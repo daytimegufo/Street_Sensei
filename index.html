@@ -4622,8 +4622,10 @@
                         gameState.currentQuestion.points[0][0].lng,
                         gameState.currentQuestion.points[0][0].lat
                     ]);
-                    distance = turf.distance(userPt, targetPt, { units: 'kilometers' }) * 1000;
+                    // distance in meters
+                    distance = turf.distance(userPt, targetPt, { units: 'meters' });
                 } else {
+                    // fallback returns km, convert to meters
                     distance = calculateSimpleDistance(
                         userLatLng.lat,
                         userLatLng.lng,
@@ -4632,14 +4634,27 @@
                     ) * 1000;
                 }
 
+                // tolerance in meters
                 const tolerance = gameState.speedRun.baseToleranceKm *
                     gameState.speedRun.toleranceMultiplier * 1000;
+
                 if (distance <= tolerance) {
                     gameState.speedRun.correctCount++;
-                }
-                updateSpeedRunUI();
+                    updateSpeedRunUI();
+                    showAnswer();
 
-                if (gameState.speedRun.correctCount >= gameState.speedRun.targetCount) {
+                    if (gameState.speedRun.correctCount >= gameState.speedRun.targetCount) {
+                        gameState.speedRun.endTime = performance.now();
+                        if (gameState.speedRun.timerInterval) {
+                            clearInterval(gameState.speedRun.timerInterval);
+                            gameState.speedRun.timerInterval = null;
+                        }
+                        updateSpeedRunTimer();
+                        setTimeout(endGame, 800);
+                    } else {
+                        setTimeout(nextQuestion, 800);
+                    }
+                } else {
                     gameState.speedRun.endTime = performance.now();
                     if (gameState.speedRun.timerInterval) {
                         clearInterval(gameState.speedRun.timerInterval);
@@ -4647,8 +4662,6 @@
                     }
                     updateSpeedRunTimer();
                     endGame();
-                } else {
-                    nextQuestion();
                 }
             } catch (err) {
                 console.error('Speedrun click error:', err);
