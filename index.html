@@ -1179,6 +1179,14 @@
                 <div class="stat-value" id="total-questions">0</div>
                 <div>Questions</div>
             </div>
+            <div class="stat-item" id="speedrun-progress-container" style="display:none;">
+                <div class="stat-value" id="speedrun-progress">0/5</div>
+                <div id="speedrun-remaining">残り: 5 問</div>
+            </div>
+            <div class="stat-item" id="speedrun-timer-container" style="display:none;">
+                <div class="stat-value" id="speedrun-timer">00:00</div>
+                <div>Time</div>
+            </div>
         </div>
     </div>
 
@@ -2193,7 +2201,17 @@
             problemSource: 'mixed', // 'osm-only', 'custom-only', 'mixed'
             osmCustomRatio: 0.7, // Default 70% OSM, 30% custom
             customDifficultyMode: 'auto', // 'auto' or 'manual'
-            initialLocationPrompted: false
+            initialLocationPrompted: false,
+            speedRun: {
+                active: false,
+                startTime: null,
+                endTime: null,
+                correctCount: 0,
+                targetCount: 5,
+                toleranceMultiplier: 2.0,
+                baseToleranceKm: 1.5,
+                timerInterval: null
+            }
        };
 
         // Example facility data with coordinates
@@ -2875,9 +2893,14 @@
                 const areaSelect = document.getElementById("geotextbook-area-select");
                 gameState.geotextbookArea = areaSelect ? areaSelect.value : gameState.geotextbookArea;
                 await loadGeotextbookFacilities(gameState.geotextbookArea);
+                gameState.speedRun.active = true;
             } else if (mode === "reverse") {
                 loadFacilityDataFromOverpass();
                 loadIntersectionDataFromOverpass();
+            }
+
+            if (mode !== 'geotextbook') {
+                gameState.speedRun.active = false;
             }
         }
 
@@ -4129,6 +4152,26 @@
                 gameState.streak = 0;
                 gameState.totalQuestions = 0;
                 gameState.askedQuestions = [];
+
+                if (gameState.speedRun.active) {
+                    if (gameState.speedRun.timerInterval) {
+                        clearInterval(gameState.speedRun.timerInterval);
+                        gameState.speedRun.timerInterval = null;
+                    }
+                    gameState.speedRun.startTime = null;
+                    gameState.speedRun.endTime = null;
+                    gameState.speedRun.correctCount = 0;
+                    const timerContainer = document.getElementById('speedrun-timer-container');
+                    const progressContainer = document.getElementById('speedrun-progress-container');
+                    if (timerContainer) timerContainer.style.display = 'block';
+                    if (progressContainer) progressContainer.style.display = 'block';
+                    updateSpeedRunUI();
+                } else {
+                    const timerContainer = document.getElementById('speedrun-timer-container');
+                    const progressContainer = document.getElementById('speedrun-progress-container');
+                    if (timerContainer) timerContainer.style.display = 'none';
+                    if (progressContainer) progressContainer.style.display = 'none';
+                }
                 
                 const challengeSection = document.getElementById('challenge-section');
                 const startBtn = document.getElementById('start-game');
@@ -4196,10 +4239,21 @@
                     toggleLabels();
                 }
                 
-                gameState.timer = 30;
-                startTimer();
+                if (!gameState.speedRun.active) {
+                    gameState.timer = 30;
+                    startTimer();
+                }
 
                 await generateNextQuestion();
+
+                if (gameState.speedRun.active && !gameState.speedRun.startTime) {
+                    gameState.speedRun.startTime = performance.now();
+                    gameState.speedRun.timerInterval = setInterval(updateSpeedRunTimer, 100);
+                    updateSpeedRunTimer();
+                }
+                if (gameState.speedRun.active) {
+                    updateSpeedRunUI();
+                }
                 
                 const distanceDisplay = document.getElementById('distance-display');
                 const nextBtn = document.getElementById('next-question');
@@ -4555,6 +4609,11 @@
                 
                 if (!isWithinGameArea(userLatLng.lat, userLatLng.lng)) {
                     showWarning('クリック位置がゲームエリア外です。緑の円内をクリックしてください。');
+                    return;
+                }
+
+                if (gameState.speedRun.active) {
+                    handleSpeedRunClick(userLatLng);
                     return;
                 }
 
