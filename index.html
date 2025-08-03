@@ -4494,10 +4494,17 @@
                     }
 
                     const point = question.points[0][0];
-                    const popup = L.popup()
+                    const query = encodeURIComponent(question.name);
+                    const googleUrl = `https://www.google.com/search?q=${query}`;
+                    L.popup()
                         .setLatLng([point.lat, point.lng])
-                        .setContent(`<strong>${question.name}</strong><br>${question.description}`)
-                        .openOn(gameState.map);
+                        .setContent(`
+                            <strong>${question.name}</strong><br>
+                            <a href="${googleUrl}" target="_blank" rel="noopener noreferrer">
+                            Google検索
+                            </a>
+                        `)
+                    .openOn(gameState.map);
 
                 } else if (gameState.currentMode === 'intersection') {
                     const intersectionMarker = L.marker([question.points[0][0].lat, question.points[0][0].lng], {
