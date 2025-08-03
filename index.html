@@ -410,6 +410,12 @@
             transition: all 0.2s;
         }
 
+        /* Disable mode-tab visually when not ready */
+        .mode-tab.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
         @media (max-width: 768px) {
             .mode-tab {
                 padding: 0.75rem 0.5rem;
@@ -1178,6 +1184,12 @@
 
     <div class="game-container">
         <div class="sidebar" id="sidebar">
+            <div class="mode-tabs">
+                <div class="mode-tab disabled" data-mode="street">Street</div>
+                <div class="mode-tab" data-mode="facility">Facility</div>
+                <div class="mode-tab" data-mode="intersection">Intersection</div>
+                <div class="mode-tab" data-mode="reverse">Reverse</div>
+            </div>
             <!-- Game Section (always visible) -->
 
             <div class="setup-section">
@@ -1437,12 +1449,12 @@
             <div class="debug-info" id="debug-info">Loading map...</div>
 
             <div class="start-controls" id="start-controls">
-                <select id="game-mode-select">
-                    <option value="street">Street</option>
-                    <option value="facility">Facility</option>
-                    <option value="intersection">Intersection</option>
-                    <option value="reverse">Reverse</option>
-                    <option value="geotextbook">地理教本施設モード</option>
+                <select id="game-mode-select">␊
+                    <option value="street" disabled>Street</option>
+                    <option value="facility">Facility</option>␊
+                    <option value="intersection">Intersection</option>␊
+                    <option value="reverse">Reverse</option>␊
+                    <option value="geotextbook">地理教本施設モード</option>␊
                 </select>
                 <select id="geotextbook-area-select" style="display:none;">
                     <option value="tokyo23">東京23区武三</option>
@@ -1457,8 +1469,29 @@
     <script>
         // Use a CORS-enabled Overpass mirror for client-side requests
         const OVERPASS_URL = 'https://overpass.openstreetmap.fr/api/interpreter';
+        // Deferred loading for Street mode
+        let roadCache = null;
+        let locationPermissionDenied = false;
         const KML_BASE_URL = "https://raw.githubusercontent.com/daytimegufo/Street_Sensei/New-map/kml_files/";
         const KML_INDEX_URL = "https://api.github.com/repos/daytimegufo/Street_Sensei/contents/kml_files?ref=New-map";
+
+        /** Load Street data on-demand and enable UI when ready */
+        async function prepareStreetMode() {
+            if (roadCache) return;
+            showLoading();
+            try {
+                const region = document.getElementById('region-select') ? document.getElementById('region-select').value : 'south-kanto';
+                const strategy = document.getElementById('loading-strategy') ? document.getElementById('loading-strategy').value : 'immediate';
+                await loadRegionalRoadsOptimized(region, strategy);
+                roadCache = gameState.streetData;
+                const streetTab = document.querySelector('.mode-tab[data-mode="street"]');
+                if (streetTab) streetTab.classList.remove('disabled');
+                const opt = document.querySelector('#game-mode-select option[value="street"]');
+                if (opt) opt.disabled = false;
+            } finally {
+                hideLoading();
+            }
+        }
         function log(message) {
             console.log(message);
             const debugInfo = document.getElementById('debug-info');
@@ -2432,6 +2465,10 @@
 
                 gameState.difficulty = loadSetting('boh_difficulty', 'tourist');
                 gameState.currentMode = loadSetting('boh_mode', 'street');
+                if (gameState.currentMode === 'street') {
+                    gameState.currentMode = 'facility';
+                    saveSetting('boh_mode', gameState.currentMode);
+                }
                 gameState.range = loadSetting('boh_rangeKm', 5);
                 const savedLoc = loadSetting('boh_lastLocation', null);
                 if (savedLoc && savedLoc.lat && savedLoc.lng) {
@@ -2466,6 +2503,8 @@
                 promptInitialLocation();
 
                 log('Game initialization complete');
+                // Start loading Street data in background
+                prepareStreetMode();
             } catch (error) {
                 log('Error initializing game: ' + error.message);
                 console.error('Game initialization error:', error);
@@ -2827,11 +2866,7 @@
             updateGameArea();
 
             if (mode === 'street') {
-                const regionSelect = document.getElementById('region-select');
-                const strategySelect = document.getElementById('loading-strategy');
-                const selectedRegion = regionSelect ? regionSelect.value : 'south-kanto';
-                const selectedStrategy = strategySelect ? strategySelect.value : 'immediate';
-                loadRegionalRoadsOptimized(selectedRegion, selectedStrategy);
+                await prepareStreetMode();
             } else if (mode === 'facility') {
                 loadFacilityDataFromOverpass();
             } else if (mode === 'intersection') {
@@ -3477,6 +3512,7 @@
 
             navigator.geolocation.getCurrentPosition(
                 function(position) {
+                    locationPermissionDenied = false;
                     const lat = position.coords.latitude;
                     const lng = position.coords.longitude;
                     
@@ -3532,11 +3568,12 @@
                         status.textContent = '❌ ' + message;
                     }
                     
+                    locationPermissionDenied = true;
                     log('Geolocation error: ' + message);
                 },
                 options
             );
-       }
+        }
 
         function promptInitialLocation() {
             if (gameState.initialLocationPrompted) return;
@@ -3579,6 +3616,7 @@
                 const cachedData = ROAD_CACHE.load(regionKey, strategyKey);
                 if (cachedData && cachedData.length > 0) {
                     gameState.streetData = cachedData;
+                    roadCache = gameState.streetData;
                     log(`Loaded ${cachedData.length} roads from cache`);
                     showSuccess(`✅ キャッシュから${cachedData.length}道路を読み込み完了！`);
                     updateDataStatus();
@@ -3632,6 +3670,7 @@
                             const roads = processOverpassData(data);
                             if (roads.length > 0) {
                                 gameState.streetData = roads;
+                                roadCache = gameState.streetData;
                                 ROAD_CACHE.save(regionKey, strategyKey, roads);
                                 showSuccess(`✅ ${roads.length} roads loaded from OSM (direct)`);
                                 updateDataStatus();
@@ -3681,6 +3720,7 @@
                                     const roads = processOverpassData(data);
                                     if (roads.length > 0) {
                                         gameState.streetData = roads;
+                                        roadCache = gameState.streetData;
                                         ROAD_CACHE.save(regionKey, strategyKey, roads);
                                         showSuccess(`✅ ${roads.length} roads loaded from OSM (proxy ${i + 1})`);
                                         updateDataStatus();
@@ -4253,7 +4293,11 @@
         async function generateQuestion() {
             try {
                 const candidate = pickRandom(gameState.geotextbookFacilities || []);
-                if (candidate) {
+                if (gameState.currentMode === 'geotextbook') {
+                    if (!candidate || locationPermissionDenied) {
+                        showWarning('地理教本施設データが利用できません。設定または位置情報を確認してください。');
+                        return;
+                    }
                     gameState.currentQuestion = {
                         name: candidate.name,
                         type: 'facility',
