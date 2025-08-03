@@ -4475,7 +4475,8 @@
                     // Adjust view based on street and circle size
                     adjustMapViewByStreetAndCircle(gameState.map, displaySegments, gameState.center, gameState.range);
 
-                } else if (gameState.currentMode === 'facility') {
+                 // 「施設モード」と「地理教本施設モード」は同じ描画処理
+                } else if (gameState.currentMode === 'facility' || gameState.currentMode === 'geotextbook') {
                     if (question.isEnclosedArea) {
                         const facilityArea = L.polygon(question.points[0], {
                             color: '#ff6b6b',
@@ -4491,13 +4492,13 @@
                             })
                         }).addTo(gameState.facilityLayer);
                     }
-                    
+
                     const point = question.points[0][0];
                     const popup = L.popup()
                         .setLatLng([point.lat, point.lng])
                         .setContent(`<strong>${question.name}</strong><br>${question.description}`)
                         .openOn(gameState.map);
-                        
+
                 } else if (gameState.currentMode === 'intersection') {
                     const intersectionMarker = L.marker([question.points[0][0].lat, question.points[0][0].lng], {
                         icon: L.divIcon({

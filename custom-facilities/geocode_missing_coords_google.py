@@ -4,7 +4,7 @@ import requests
 import time
 
 # 🔐 ここにあなたのAPIキーを記入
-GOOGLE_API_KEY = "AIzaSyC2W9TDlRAuqt_qOK_06t-CWOmxsEIzJCA"
+GOOGLE_API_KEY = "APIキー"
 
 def geocode_address_google(address):
     url = "https://maps.googleapis.com/maps/api/geocode/json"
