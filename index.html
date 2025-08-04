@@ -2924,7 +2924,10 @@
                 const areaSelect = document.getElementById("geotextbook-area-select");
                 gameState.geotextbookArea = areaSelect ? areaSelect.value : gameState.geotextbookArea;
                 await loadGeotextbookFacilities(gameState.geotextbookArea);
-                gameState.speedRun.active = true;
+                const orderSelect = document.getElementById('geotextbook-play-order');
+                const order = orderSelect ? orderSelect.value : 'random';
+                gameState.playOrder = order;
+                gameState.speedRun.active = (order === 'random');
             } else if (mode === "reverse") {
                 loadFacilityDataFromOverpass();
                 loadIntersectionDataFromOverpass();
@@ -3167,7 +3170,22 @@
                 if (nextBtn) {
                     nextBtn.addEventListener('click', async () => {
                         log('Next question clicked');
-                        await nextQuestion();
+                        if (gameState.currentMode === 'geotextbook' && gameState.playOrder === 'registration') {
+                            handleRegistrationNext();
+                        } else {
+                            await nextQuestion();
+                        }
+                    });
+                }
+
+                const mobileNext = document.getElementById('mobile-next');
+                if (mobileNext) {
+                    mobileNext.addEventListener('click', async () => {
+                        if (gameState.currentMode === 'geotextbook' && gameState.playOrder === 'registration') {
+                            handleRegistrationNext();
+                        } else {
+                            await nextQuestion();
+                        }
                     });
                 }
 
@@ -3251,7 +3269,11 @@
                 const gameBtnNext = document.getElementById('game-btn-next');
                 if (gameBtnNext) {
                     gameBtnNext.addEventListener('click', () => {
-                        closeModal();
+                        if (gameState.currentMode === 'geotextbook' && gameState.playOrder === 'registration') {
+                            handleRegistrationNext();
+                        } else {
+                            closeModal();
+                        }
                     });
                 }
 
@@ -4201,6 +4223,7 @@
                     const orderSelect = document.getElementById('geotextbook-play-order');
                     gameState.playOrder = orderSelect ? orderSelect.value : 'random';
                     saveSetting('geotextbook_playOrder', gameState.playOrder);
+                    gameState.speedRun.active = (gameState.playOrder === 'random');
                     await loadGeotextbookFacilities(gameState.geotextbookArea);
                     if (gameState.playOrder === 'registration') {
                         const userList = loadUserRegisteredFacilities();
@@ -4856,6 +4879,25 @@
             }
         }
 
+        function handleRegistrationNext() {
+            try {
+                const facility = gameState.registrationList[gameState.registrationIndex];
+                if (!facility) return;
+                showAnswer();
+                if (facility.description) showMessage(facility.description, 'info-message');
+                gameState.registrationIndex++;
+                setTimeout(() => {
+                    if (gameState.registrationIndex < gameState.registrationList.length) {
+                        nextQuestion();
+                    } else {
+                        finishRegistrationMode();
+                    }
+                }, gameState.registrationNextDelayMs);
+            } catch (err) {
+                console.error('Registration next error:', err);
+            }
+        }
+
         function finishRegistrationMode() {
             gameState.isPlaying = false;
             const total = gameState.registrationList.length;
@@ -4901,13 +4943,13 @@
                     return;
                 }
 
-                if (gameState.speedRun.active) {
-                    handleSpeedRunClick(userLatLng);
+                if (gameState.currentMode === 'geotextbook' && gameState.playOrder === 'registration') {
+                    handleRegistrationClick(userLatLng);
                     return;
                 }
 
-                if (gameState.currentMode === 'geotextbook' && gameState.playOrder === 'registration') {
-                    handleRegistrationClick(userLatLng);
+                if (gameState.speedRun.active) {
+                    handleSpeedRunClick(userLatLng);
                     return;
                 }
 
