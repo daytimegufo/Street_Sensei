@@ -314,6 +314,12 @@
             color: #aaa;
         }
 
+        .question-progress {
+            font-size: 0.85rem;
+            color: #4CAF50;
+            margin-top: 0.5rem;
+        }
+
         .timer {
             font-size: 1.75rem;
             font-weight: bold;
@@ -1200,6 +1206,11 @@
             </div>
             <!-- Game Section (always visible) -->
 
+            <div class="setup-section" id="registration-preview" style="display:none;">
+                <h3>登録施設リスト</h3>
+                <div id="registration-list"></div>
+            </div>
+
             <div class="setup-section">
                 <h3>出題範囲</h3>
                 <div class="form-group">
@@ -1373,6 +1384,7 @@
                 <div class="question-display">
                     <div class="question-text" id="question-text">Click on the map to locate:</div>
                     <div class="question-type" id="question-type">Street Challenge</div>
+                    <div class="question-progress" id="question-progress"></div>
                 </div>
 
                 <div class="multiple-choice hidden" id="multiple-choice"></div>
@@ -1466,6 +1478,10 @@
                 </select>
                 <select id="geotextbook-area-select" style="display:none;">
                     <option value="tokyo23">東京23区武三</option>
+                </select>
+                <select id="geotextbook-play-order" style="display:none;">
+                    <option value="random">ランダム</option>
+                    <option value="registration">登録順</option>
                 </select>
                 <input type="number" id="speedrun-target" min="1" value="5" style="display:none; width:4rem;" title="連続目標問数">
                 <input type="number" id="speedrun-tolerance" step="0.1" min="1" value="2.0" style="display:none; width:4rem;" title="許容距離倍率">
@@ -2192,6 +2208,13 @@
             currentLocation: null,
             geotextbookFacilities: [],
             geotextbookArea: 'tokyo23',
+            playOrder: loadSetting('geotextbook_playOrder', 'random'),
+            registrationList: [],
+            registrationIndex: 0,
+            totalRetryCount: 0,
+            retryCountPerQuestion: [],
+            registrationRetryLimit: loadSetting('geotextbook_retry_limit', null),
+            registrationNextDelayMs: loadSetting('geotextbook_next_delay_ms', 0),
             
             backgroundLoading: false,
             cacheEnabled: true,
@@ -2509,6 +2532,11 @@
                 if (areaSelectInit) {
                     areaSelectInit.value = gameState.geotextbookArea;
                     areaSelectInit.style.display = gameState.currentMode === 'geotextbook' ? 'block' : 'none';
+                }
+                const orderSelectInit = document.getElementById('geotextbook-play-order');
+                if (orderSelectInit) {
+                    orderSelectInit.value = gameState.playOrder;
+                    orderSelectInit.style.display = gameState.currentMode === 'geotextbook' ? 'block' : 'none';
                 }
 
                 const rangeEl = document.getElementById('range');
@@ -3018,6 +3046,10 @@
                         const areaSel = document.getElementById('geotextbook-area-select');
                         if (areaSel) {
                             areaSel.style.display = e.target.value === 'geotextbook' ? 'block' : 'none';
+                        }
+                        const orderSel = document.getElementById('geotextbook-play-order');
+                        if (orderSel) {
+                            orderSel.style.display = e.target.value === 'geotextbook' ? 'block' : 'none';
                         }
                         const tgt = document.getElementById('speedrun-target');
                         const tol = document.getElementById('speedrun-tolerance');
@@ -4166,7 +4198,23 @@
                     gameState.speedRun.bestTime = loadSetting('geotextbook_speedrun_bestTime', null);
                     const areaSelect = document.getElementById('geotextbook-area-select');
                     gameState.geotextbookArea = areaSelect ? areaSelect.value : gameState.geotextbookArea;
+                    const orderSelect = document.getElementById('geotextbook-play-order');
+                    gameState.playOrder = orderSelect ? orderSelect.value : 'random';
+                    saveSetting('geotextbook_playOrder', gameState.playOrder);
                     await loadGeotextbookFacilities(gameState.geotextbookArea);
+                    if (gameState.playOrder === 'registration') {
+                        gameState.registrationList = loadUserRegisteredFacilities();
+                        gameState.registrationIndex = 0;
+                        gameState.totalRetryCount = 0;
+                        gameState.retryCountPerQuestion = gameState.registrationList.map(() => 0);
+                        const preview = document.getElementById('registration-preview');
+                        const listEl = document.getElementById('registration-list');
+                        if (listEl) listEl.innerHTML = gameState.registrationList.map((f,i) => `${i+1}. ${f.name}`).join('<br>');
+                        if (preview) preview.style.display = 'block';
+                    } else {
+                        const preview = document.getElementById('registration-preview');
+                        if (preview) preview.style.display = 'none';
+                    }
                 }
 
                 if (gameState.currentMode === 'geotextbook-area') {
@@ -4259,14 +4307,54 @@
                 log('Loading next question...');
                 
                 clearGameElements();
+                const timerEl = document.getElementById('timer');
+                if (timerEl) timerEl.style.display = 'block';
+
+                if (gameState.currentMode === 'geotextbook' && gameState.playOrder === 'registration') {
+                    if (gameState.registrationIndex >= gameState.registrationList.length) {
+                        finishRegistrationMode();
+                        return;
+                    }
+                    const facility = gameState.registrationList[gameState.registrationIndex];
+                    gameState.totalQuestions = gameState.registrationIndex + 1;
+                    gameState.currentQuestion = {
+                        name: facility.name,
+                        type: 'facility',
+                        description: facility.description || '登録施設',
+                        importance: facility.importance || 50,
+                        points: facility.points,
+                        isEnclosedArea: facility.isEnclosedArea || false,
+                        source: 'registration'
+                    };
+                    const questionTextEl = document.getElementById('question-text');
+                    const questionTypeEl = document.getElementById('question-type');
+                    if (questionTextEl) questionTextEl.textContent = `見つけてください: ${facility.name}`;
+                    if (questionTypeEl) questionTypeEl.textContent = '登録順モード';
+                    updateRegistrationProgress();
+                    const showAnswerBtn = document.getElementById('show-answer');
+                    if (showAnswerBtn) showAnswerBtn.classList.add('hidden');
+                    const distanceDisplay = document.getElementById('distance-display');
+                    const nextBtn = document.getElementById('next-question');
+                    const multipleChoice = document.getElementById('multiple-choice');
+                    if (distanceDisplay) distanceDisplay.classList.add('hidden');
+                    if (nextBtn) nextBtn.classList.add('hidden');
+                    if (multipleChoice) multipleChoice.classList.add('hidden');
+                    if (timerEl) {
+                        timerEl.textContent = '-';
+                        timerEl.style.display = 'none';
+                    }
+                    updateMobileQuestion(`🔎: ${facility.name}`, '登録順モード');
+                    return;
+                }
+
                 gameState.totalQuestions++;
-                
+
                 // 次の問題出題時に自動的に街路名非表示（白地図）に切り替え
                 if (gameState.showLabels) {
                     log('Auto-switching to no-labels mode for next question');
                     toggleLabels();
                 }
-                
+
                 if (!gameState.speedRun.active) {
                     gameState.timer = 30;
                     startTimer();
@@ -4700,6 +4788,89 @@
             }
         }
 
+        function loadUserRegisteredFacilities() {
+            return loadSetting('user_registered_facilities', []);
+        }
+
+        function updateRegistrationProgress() {
+            const progressEl = document.getElementById('question-progress');
+            if (progressEl) {
+                const total = gameState.registrationList.length;
+                const current = Math.min(gameState.registrationIndex + 1, total);
+                progressEl.textContent = `問 ${current}／登録済み ${total} 件`;
+            }
+        }
+
+        function handleRegistrationClick(userLatLng) {
+            try {
+                const facility = gameState.registrationList[gameState.registrationIndex];
+                if (!facility) return;
+                const correctPoint = facility.points[0][0];
+                let distance;
+                if (typeof turf !== 'undefined') {
+                    const userPt = turf.point([userLatLng.lng, userLatLng.lat]);
+                    const targetPt = turf.point([correctPoint.lng, correctPoint.lat]);
+                    distance = turf.distance(userPt, targetPt, { units: 'meters' });
+                } else {
+                    distance = calculateSimpleDistance(
+                        userLatLng.lat, userLatLng.lng,
+                        correctPoint.lat, correctPoint.lng
+                    ) * 1000;
+                }
+                const tolerance = 25; // meters
+                if (distance <= tolerance) {
+                    showAnswer();
+                    if (facility.description) showMessage(facility.description, 'info-message');
+                    gameState.registrationIndex++;
+                    setTimeout(() => {
+                        if (gameState.registrationIndex < gameState.registrationList.length) {
+                            nextQuestion();
+                        } else {
+                            finishRegistrationMode();
+                        }
+                    }, gameState.registrationNextDelayMs);
+                } else {
+                    gameState.totalRetryCount++;
+                    gameState.retryCountPerQuestion[gameState.registrationIndex] = (gameState.retryCountPerQuestion[gameState.registrationIndex] || 0) + 1;
+                    showMessage('不正解です。もう一度挑戦してください。', 'warning-message');
+                    if (gameState.registrationRetryLimit !== null && gameState.retryCountPerQuestion[gameState.registrationIndex] >= gameState.registrationRetryLimit) {
+                        gameState.registrationIndex++;
+                        if (gameState.registrationIndex < gameState.registrationList.length) {
+                            showMessage('再挑戦上限に達しました。次の問題に移ります。', 'info-message');
+                            setTimeout(() => nextQuestion(), gameState.registrationNextDelayMs);
+                        } else {
+                            finishRegistrationMode();
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Registration click error:', err);
+            }
+        }
+
+        function finishRegistrationMode() {
+            gameState.isPlaying = false;
+            const total = gameState.registrationList.length;
+            const retries = gameState.totalRetryCount;
+            const avg = total > 0 ? (retries / total).toFixed(2) : 0;
+            const finalScoreEl = document.getElementById('final-score');
+            const finalStatsEl = document.getElementById('final-stats');
+            const resultsOverlay = document.getElementById('results-overlay');
+            if (finalScoreEl) finalScoreEl.textContent = `全 ${total} 問完了！`;
+            if (finalStatsEl) {
+                finalStatsEl.innerHTML = `<div>再挑戦回数: ${retries} 回</div><div>平均再挑戦回数: ${avg} 回</div><div>正答率: 100%</div>`;
+            }
+            if (resultsOverlay) resultsOverlay.classList.remove('hidden');
+            saveRegistrationHistory({ date: Date.now(), retries });
+            updateMobileControls();
+        }
+
+        function saveRegistrationHistory(entry) {
+            const history = loadSetting('registration_history', []);
+            history.push(entry);
+            saveSetting('registration_history', history);
+        }
+
         function handleMapClick(e) {
             try {
                 const userLatLng = e.latlng;
@@ -4724,6 +4895,11 @@
 
                 if (gameState.speedRun.active) {
                     handleSpeedRunClick(userLatLng);
+                    return;
+                }
+
+                if (gameState.currentMode === 'geotextbook' && gameState.playOrder === 'registration') {
+                    handleRegistrationClick(userLatLng);
                     return;
                 }
 
@@ -5573,6 +5749,10 @@
                 if (resultsOverlay) resultsOverlay.classList.add('hidden');
                 if (startBtn) startBtn.style.display = 'block';
                 if (startControls) startControls.style.display = 'flex';
+                const timerEl = document.getElementById('timer');
+                if (timerEl) timerEl.style.display = 'block';
+                const preview = document.getElementById('registration-preview');
+                if (preview) preview.style.display = 'none';
                 
                 // ゲームリセット時に街路名表示を復元
                 if (!gameState.showLabels) {
