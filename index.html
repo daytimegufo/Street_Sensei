@@ -4363,7 +4363,9 @@
                     if (questionTypeEl) questionTypeEl.textContent = '登録順モード';
                     updateRegistrationProgress();
                     const showAnswerBtn = document.getElementById('show-answer');
-                    if (showAnswerBtn) showAnswerBtn.classList.add('hidden');
+                    if (showAnswerBtn) showAnswerBtn.classList.remove('hidden');
+                    const gameBtnAnswer = document.getElementById('game-btn-answer');
+                    if (gameBtnAnswer) gameBtnAnswer.classList.remove('hidden');
                     const distanceDisplay = document.getElementById('distance-display');
                     const nextBtn = document.getElementById('next-question');
                     const multipleChoice = document.getElementById('multiple-choice');
@@ -4375,6 +4377,7 @@
                         timerEl.style.display = 'none';
                     }
                     updateMobileQuestion(`🔎: ${facility.name}`, '登録順モード');
+                    updateMobileControls();
                     return;
                 }
 
