@@ -4850,16 +4850,9 @@
                 }
                 const tolerance = 25; // meters
                 if (distance <= tolerance) {
+                    // Correct: show answer only, progression handled by Next button
                     showAnswer();
                     if (facility.description) showMessage(facility.description, 'info-message');
-                    gameState.registrationIndex++;
-                    setTimeout(() => {
-                        if (gameState.registrationIndex < gameState.registrationList.length) {
-                            nextQuestion();
-                        } else {
-                            finishRegistrationMode();
-                        }
-                    }, gameState.registrationNextDelayMs);
                 } else {
                     gameState.totalRetryCount++;
                     gameState.retryCountPerQuestion[gameState.registrationIndex] = (gameState.retryCountPerQuestion[gameState.registrationIndex] || 0) + 1;
@@ -4881,18 +4874,13 @@
 
         function handleRegistrationNext() {
             try {
-                const facility = gameState.registrationList[gameState.registrationIndex];
-                if (!facility) return;
-                showAnswer();
-                if (facility.description) showMessage(facility.description, 'info-message');
+                // Advance to the next registration question
                 gameState.registrationIndex++;
-                setTimeout(() => {
-                    if (gameState.registrationIndex < gameState.registrationList.length) {
-                        nextQuestion();
-                    } else {
-                        finishRegistrationMode();
-                    }
-                }, gameState.registrationNextDelayMs);
+                if (gameState.registrationIndex < gameState.registrationList.length) {
+                    nextQuestion();
+                } else {
+                    finishRegistrationMode();
+                }
             } catch (err) {
                 console.error('Registration next error:', err);
             }
