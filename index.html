@@ -4854,9 +4854,8 @@
 
                 stopTimer();
                 updateUI();
-                showReverseFeedback(selectedChoice.name, isCorrect, gameState.currentQuestion.name);
                 updateMobileGameStats();
-                
+
                 log(`Answer processed: ${distanceKm}km, ${accuracy.toFixed(1)}% accuracy, ${points} points`);
             } catch (error) {
                 log('Error handling map click: ' + error.message);
