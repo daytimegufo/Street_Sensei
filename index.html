@@ -4203,13 +4203,21 @@
                     saveSetting('geotextbook_playOrder', gameState.playOrder);
                     await loadGeotextbookFacilities(gameState.geotextbookArea);
                     if (gameState.playOrder === 'registration') {
-                        gameState.registrationList = loadUserRegisteredFacilities();
+                        const userList = loadUserRegisteredFacilities();
+                        // 空なら geotextbookFacilities をまるごと使う
+                        gameState.registrationList = userList.length
+                            ? userList
+                            : gameState.geotextbookFacilities.slice();
                         gameState.registrationIndex = 0;
                         gameState.totalRetryCount = 0;
                         gameState.retryCountPerQuestion = gameState.registrationList.map(() => 0);
                         const preview = document.getElementById('registration-preview');
                         const listEl = document.getElementById('registration-list');
-                        if (listEl) listEl.innerHTML = gameState.registrationList.map((f,i) => `${i+1}. ${f.name}`).join('<br>');
+                        if (listEl) {
+                            listEl.innerHTML = gameState.registrationList
+                                .map((f,i) => `${i+1}. ${f.name}`)
+                                .join('<br>');
+                        }
                         if (preview) preview.style.display = 'block';
                     } else {
                         const preview = document.getElementById('registration-preview');
