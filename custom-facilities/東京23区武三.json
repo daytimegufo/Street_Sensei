@@ -2883,8 +2883,8 @@
   },
   {
     "name": "中央区役所",
-    "lat": 33.58927777777778,
-    "lng": 130.39283333333333,
+    "lat": 35.67065884976719,
+    "lng": 139.7719917709832,
     "importance": 50,
     "description": "",
     "category": "",
@@ -4004,14 +4004,14 @@
     "wikidata_description": "healthcare organization in Tokyo, Japan"
   },
   {
-    "name": "国立国際医療研究センター",
-    "lat": 35.702221944444446,
-    "lng": 139.7161111111111,
+    "name": "厚生中央病院",
+    "lat": 35.64153536750425,
+    "lng": 139.71257369215394,
     "importance": 50,
     "description": "",
     "category": "",
-    "wikidata": "Q10855562",
-    "wikidata_label": "National Center for Global Health and Medicine",
+    "wikidata": null,
+    "wikidata_label": null,
     "wikidata_description": null
   },
   {
@@ -4026,15 +4026,15 @@
     "wikidata_description": "hospital in Shibuya, Tokyo"
   },
   {
-    "name": "三井記念病院",
-    "lat": 35.700254,
-    "lng": 139.779348,
+    "name": "聖母病院",
+    "lat": 35.72005106738136,
+    "lng": 139.69430462029524,
     "importance": 50,
     "description": "",
     "category": "",
-    "wikidata": "Q11354313",
-    "wikidata_label": "Mitsui Memorial Hospital",
-    "wikidata_description": "healthcare organization in Tokyo, Japan"
+    "wikidata": null,
+    "wikidata_label": null,
+    "wikidata_description": null
   },
   {
     "name": "聖路加国際病院",
@@ -4082,8 +4082,8 @@
   },
   {
     "name": "東京共済病院",
-    "lat": 35.641667,
-    "lng": 139.703889,
+    "lat": 35.64133422993968,
+    "lng": 139.7038760236348,
     "importance": 50,
     "description": "",
     "category": "",
@@ -4137,8 +4137,8 @@
   },
   {
     "name": "三井記念病院",
-    "lat": 35.700254,
-    "lng": 139.779348,
+    "lat": 35.69988877186931,
+    "lng": 139.7792169699047,
     "importance": 50,
     "description": "",
     "category": "",

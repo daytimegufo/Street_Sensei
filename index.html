@@ -4826,6 +4826,18 @@
             return loadSetting('user_registered_facilities', []);
         }
 
+        function registrationProgressKey() {
+            return `geotextbook_registration_index_${gameState.geotextbookArea}`;
+        }
+
+        function saveRegistrationProgress() {
+            saveSetting(registrationProgressKey(), gameState.registrationIndex);
+        }
+
+        function clearRegistrationProgress() {
+            localStorage.removeItem(registrationProgressKey());
+        }
+
         function updateRegistrationProgress() {
             const progressEl = document.getElementById('question-progress');
             if (progressEl) {
@@ -4862,6 +4874,7 @@
                     showMessage('不正解です。もう一度挑戦してください。', 'warning-message');
                     if (gameState.registrationRetryLimit !== null && gameState.retryCountPerQuestion[gameState.registrationIndex] >= gameState.registrationRetryLimit) {
                         gameState.registrationIndex++;
+                        saveRegistrationProgress();
                         if (gameState.registrationIndex < gameState.registrationList.length) {
                             showMessage('再挑戦上限に達しました。次の問題に移ります。', 'info-message');
                             setTimeout(() => nextQuestion(), gameState.registrationNextDelayMs);
@@ -4879,6 +4892,7 @@
             try {
                 // Advance to the next registration question
                 gameState.registrationIndex++;
+                saveRegistrationProgress();
                 if (gameState.registrationIndex < gameState.registrationList.length) {
                     nextQuestion();
                 } else {
@@ -4903,6 +4917,7 @@
             }
             if (resultsOverlay) resultsOverlay.classList.remove('hidden');
             saveRegistrationHistory({ date: Date.now(), retries });
+            clearRegistrationProgress();
             updateMobileControls();
         }
 
