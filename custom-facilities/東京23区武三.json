@@ -507,8 +507,8 @@
   },
   {
     "name": "鮫洲運転免許試験場",
-    "lat": 35.6051,
-    "lng": 139.7423,
+    "lat": 35.60394513304227,
+    "lng": 139.74631972673015,
     "importance": 50,
     "description": "",
     "category": "",
@@ -531,6 +531,17 @@
     "name": "警視庁遺失物センター",
     "lat": 35.70365015054395,
     "lng": 139.74649531335947,
+    "importance": 50,
+    "description": "",
+    "category": "",
+    "wikidata": null,
+    "wikidata_label": null,
+    "wikidata_description": null
+  },
+  {
+    "name": "第一方面本部（警視庁本部庁舎）",
+    "lat": 35.67718790954189, 
+    "lng": 139.75229993680878,
     "importance": 50,
     "description": "",
     "category": "",
@@ -584,14 +595,14 @@
   },
   {
     "name": "中央警察署",
-    "lat": 33.58925,
-    "lng": 130.4018888888889,
+    "lat": 35.6804012548923, 
+    "lng": 139.77704337960063, 
     "importance": 50,
     "description": "",
     "category": "",
-    "wikidata": "Q12617638",
-    "wikidata_label": "Chūō Police Station",
-    "wikidata_description": "Police station in Tenjin, Chūō-ku, Fukuoka, Japan"
+    "wikidata": null,
+    "wikidata_label": null,
+    "wikidata_description": null
   },
   {
     "name": "久松警察署",
@@ -617,8 +628,8 @@
   },
   {
     "name": "月島警察署",
-    "lat": 35.654722,
-    "lng": 139.771528,
+    "lat": 35.65353898531105, 
+    "lng": 139.77832158887648,
     "importance": 50,
     "description": "",
     "category": "",
@@ -661,8 +672,8 @@
   },
   {
     "name": "麻布警察署",
-    "lat": 35.662306,
-    "lng": 139.730889,
+    "lat": 35.6644724930963, 
+    "lng": 139.73297057653474,
     "importance": 50,
     "description": "",
     "category": "",
@@ -683,8 +694,8 @@
   },
   {
     "name": "東京湾岸警察署",
-    "lat": 35.6185,
-    "lng": 139.775,
+    "lat": 335.61862271069796, 
+    "lng": 139.77467765863756,
     "importance": 50,
     "description": "",
     "category": "",
@@ -1046,8 +1057,8 @@
   },
   {
     "name": "大塚警察署",
-    "lat": 35.716944,
-    "lng": 139.726167,
+    "lat": 35.717149913769454, 
+    "lng": 139.7281356339369,
     "importance": 50,
     "description": "",
     "category": "",
@@ -1409,8 +1420,8 @@
   },
   {
     "name": "赤羽警察署",
-    "lat": 35.774472,
-    "lng": 139.733944,
+    "lat": 335.77435835117074, 
+    "lng": 139.7337388314375,
     "importance": 50,
     "description": "",
     "category": "",
@@ -1782,9 +1793,9 @@
     "wikidata_description": null
   },
   {
-    "name": "新宿消防署",
-    "lat": 35.70677235858426,
-    "lng": 139.69453096232218,
+    "name": "第四消防方面本部",
+    "lat": 35.70833039835499, 
+    "lng": 139.70863451003842,
     "importance": 50,
     "description": "",
     "category": "",
@@ -1807,6 +1818,17 @@
     "name": "牛込消防署",
     "lat": 35.70339519576455,
     "lng": 139.73948507843838,
+    "importance": 50,
+    "description": "",
+    "category": "",
+    "wikidata": null,
+    "wikidata_label": null,
+    "wikidata_description": null
+  },
+  {
+    "name": "新宿消防署",
+    "lat": 35.70677235858426,
+    "lng": 139.69453096232218,
     "importance": 50,
     "description": "",
     "category": "",
@@ -2091,13 +2113,13 @@
   },
   {
     "name": "城東消防署",
-    "lat": 37.553872222222,
-    "lng": 127.03845277778,
+    "lat": 35.696621021382505, 
+    "lng": 139.83200229356444,
     "importance": 50,
     "description": "",
     "category": "",
-    "wikidata": "Q47745791",
-    "wikidata_label": "Seoul Seongdong Fire Station",
+    "wikidata": null,
+    "wikidata_label": null,
     "wikidata_description": null
   },
   {
@@ -2464,6 +2486,17 @@
     "wikidata_description": null
   },
   {
+    "name": "深川郵便局",
+    "lat": 35.6703408092303, 
+    "lng": 139.8179217620743,
+    "importance": 50,
+    "description": "",
+    "category": "",
+    "wikidata": null,
+    "wikidata_label": null,
+    "wikidata_description": null
+  },
+  {
     "name": "本郷郵便局",
     "lat": 35.71225,
     "lng": 139.759028,
@@ -2586,8 +2619,8 @@
   },
   {
     "name": "板橋市場",
-    "lat": 35.793884962389434,
-    "lng": 139.65137150623121,
+    "lat": 35.793180211325634, 
+    "lng": 139.65266975766468,
     "importance": 50,
     "description": "",
     "category": "",
@@ -2761,6 +2794,17 @@
     "wikidata_description": null
   },
   {
+    "name": "江東区総合区民センター",
+    "lat": 35.689082171554794, 
+    "lng": 139.82695336178188,
+    "importance": 50,
+    "description": "",
+    "category": "",
+    "wikidata": null,
+    "wikidata_label": null,
+    "wikidata_description": null
+  },
+  {
     "name": "品川区役所",
     "lat": 35.609167,
     "lng": 139.730139,
@@ -2806,8 +2850,8 @@
   },
   {
     "name": "墨田区役所",
-    "lat": 35.710278,
-    "lng": 139.801389,
+    "lat": 35.71073916834459, 
+    "lng": 139.80167995942526,
     "importance": 50,
     "description": "",
     "category": "",
@@ -3092,8 +3136,8 @@
   },
   {
     "name": "カナダ大使館",
-    "lat": 35.6728685,
-    "lng": 139.7290605,
+    "lat": 35.673877003570674,
+    "lng": 139.72825528001093,
     "importance": 50,
     "description": "",
     "category": "",
@@ -3103,8 +3147,8 @@
   },
   {
     "name": "スペイン大使館",
-    "lat": 35.6652039,
-    "lng": 139.7414147,
+    "lat": 35.6652172391119,
+    "lng": 139.74160413390894,
     "importance": 50,
     "description": "",
     "category": "",
@@ -3114,8 +3158,8 @@
   },
   {
     "name": "中華人民共和国大使館",
-    "lat": 35.6563411,
-    "lng": 139.7273199,
+    "lat": 35.656520516769376, 
+    "lng": 139.7271321512595,
     "importance": 50,
     "description": "",
     "category": "",
@@ -3158,8 +3202,8 @@
   },
   {
     "name": "フランス大使館",
-    "lat": 35.647773,
-    "lng": 139.7253713,
+    "lat": 35.64719959752261,
+    "lng": 139.72550732043777,
     "importance": 50,
     "description": "",
     "category": "",
@@ -3191,8 +3235,8 @@
   },
   {
     "name": "ロシア連邦大使館",
-    "lat": 35.65980555555556,
-    "lng": 139.74072222222222,
+    "lat": 35.65960893388556,
+    "lng": 139.74106802071782,
     "importance": 50,
     "description": "",
     "category": "",
@@ -3245,73 +3289,51 @@
     "wikidata_description": "private university in Shibuya, Tokyo, Japan"
   },
   {
-    "name": "共立女子大学",
-    "lat": 35.69352778,
-    "lng": 139.758,
+    "name": "亜細亜大学",
+    "lat": 35.70582402007662,
+    "lng": 139.53358971103023,
     "importance": 50,
     "description": "",
     "category": "",
-    "wikidata": "Q6452072",
-    "wikidata_label": "Kyoritsu Women's University",
-    "wikidata_description": "Japanese private women's university"
+    "wikidata": null,
+    "wikidata_label": null,
+    "wikidata_description": null
   },
   {
-    "name": "実践女子大学",
-    "lat": 35.67138889,
-    "lng": 139.38991667,
+    "name": "学習院大学",
+    "lat": 35.720054531341965,
+    "lng": 139.70974061881924,
     "importance": 50,
     "description": "",
     "category": "",
-    "wikidata": "Q6203214",
-    "wikidata_label": "Jissen Women's University",
-    "wikidata_description": "Japanese women's university"
+    "wikidata": null,
+    "wikidata_label": null,
+    "wikidata_description": null
   },
   {
-    "name": "上智大学",
-    "lat": 35.684166666667,
-    "lng": 139.73194444444,
+    "name": "慶応義塾大学三田キャンパス",
+    "lat": 35.6483522718127,
+    "lng": 139.742746316345,
     "importance": 50,
     "description": "",
     "category": "",
-    "wikidata": "Q1153094",
-    "wikidata_label": "Sophia University",
-    "wikidata_description": "private university in Tokyo, Japan"
+    "wikidata": null,
+    "wikidata_label": null,
+    "wikidata_description": null
   },
   {
-    "name": "昭和女子大学",
-    "lat": 35.64372222,
-    "lng": 139.67563889,
+    "name": "國學院大学渋谷キャンパス",
+    "lat": 35.65517295733787,
+    "lng": 139.71186069065996,
     "importance": 50,
     "description": "",
     "category": "",
-    "wikidata": "Q861948",
-    "wikidata_label": "Showa Women's University",
-    "wikidata_description": "university"
+    "wikidata": null,
+    "wikidata_label": null,
+    "wikidata_description": null
   },
   {
-    "name": "女子栄養大学",
-    "lat": 35.952417,
-    "lng": 139.411167,
-    "importance": 50,
-    "description": "",
-    "category": "",
-    "wikidata": "Q6346396",
-    "wikidata_label": "Kagawa Nutrition University",
-    "wikidata_description": "private university in Japan with campuses in Saitama Prefecture and Tokyo"
-  },
-  {
-    "name": "成城大学",
-    "lat": 35.642227,
-    "lng": 139.60097,
-    "importance": 50,
-    "description": "",
-    "category": "",
-    "wikidata": "Q587503",
-    "wikidata_label": "Seijo University",
-    "wikidata_description": "private university in Seijo, Setagaya-ku, Tokyo, Japan"
-  },
-  {
-    "name": "国士舘大学",
+    "name": "国士舘大学世田谷キャンパス",
     "lat": 35.6482942,
     "lng": 139.6533897,
     "importance": 50,
@@ -3334,8 +3356,8 @@
   },
   {
     "name": "順天堂大学",
-    "lat": 35.702222,
-    "lng": 139.759722,
+    "lat": 35.702395964072835,
+    "lng": 139.76066597591205,
     "importance": 50,
     "description": "",
     "category": "",
@@ -3344,9 +3366,9 @@
     "wikidata_description": "higher education institution in Chiba Prefecture, Japan"
   },
   {
-    "name": "昭和大学",
-    "lat": 35.60961111,
-    "lng": 139.702,
+    "name": "昭和大学旗の台キャンパス",
+    "lat": 35.6094991110107,
+    "lng": 139.70234769774095,
     "importance": 50,
     "description": "",
     "category": "",
@@ -3421,7 +3443,18 @@
     "wikidata_description": "university"
   },
   {
-    "name": "拓殖大学",
+    "name": "大東文化大学板橋キャンパス",
+    "lat": 35.78187476462276,
+    "lng": 139.66844701146474,
+    "importance": 50,
+    "description": "",
+    "category": "",
+    "wikidata": null,
+    "wikidata_label": null,
+    "wikidata_description": null
+  },
+  {
+    "name": "拓殖大学文京キャンパス",
     "lat": 35.715333,
     "lng": 139.736218,
     "importance": 50,
@@ -3432,9 +3465,9 @@
     "wikidata_description": "Japanese private university"
   },
   {
-    "name": "多摩美術大学",
-    "lat": 35.611933666075636,
-    "lng": 139.35045408465814,
+    "name": "多摩美術大学上野毛キャンパス",
+    "lat": 35.61423758903845,
+    "lng": 139.63668358787086,
     "importance": 50,
     "description": "",
     "category": "",
@@ -3443,9 +3476,9 @@
     "wikidata_description": "university"
   },
   {
-    "name": "帝京大学",
-    "lat": 35.76007222,
-    "lng": 139.71441667,
+    "name": "帝京大学板橋キャンパス",
+    "lat": 35.75923378919262,
+    "lng": 139.71360068197083,
     "importance": 50,
     "description": "",
     "category": "",
@@ -3454,15 +3487,15 @@
     "wikidata_description": "Japanese private university headquartered in Tokyo"
   },
   {
-    "name": "東海大学",
-    "lat": 35.66447778,
-    "lng": 139.6848,
+    "name": "東京医科大学",
+    "lat": 35.693525366657234,
+    "lng": 139.71226850771072,
     "importance": 50,
     "description": "",
     "category": "",
-    "wikidata": "Q963709",
-    "wikidata_label": "Tokai University",
-    "wikidata_description": "private university in Tokyo, Japan"
+    "wikidata": null,
+    "wikidata_label": null,
+    "wikidata_description": null
   },
   {
     "name": "東京音楽大学",
@@ -3488,8 +3521,8 @@
   },
   {
     "name": "東京電機大学",
-    "lat": 35.7483,
-    "lng": 139.806,
+    "lat": 35.748598120510884,
+    "lng": 139.80645312531897,
     "importance": 50,
     "description": "",
     "category": "",
@@ -3509,7 +3542,18 @@
     "wikidata_description": "private university in Tokyo, Japan"
   },
   {
-    "name": "東洋大学",
+    "name": "東邦大学大森キャンパス",
+    "lat": 35.57080269393186,
+    "lng": 139.72471387413316,
+    "importance": 50,
+    "description": "",
+    "category": "",
+    "wikidata": null,
+    "wikidata_label": null,
+    "wikidata_description": null
+  },
+  {
+    "name": "東洋大学白山キャンパス",
     "lat": 35.72324,
     "lng": 139.75044,
     "importance": 50,
@@ -3520,9 +3564,9 @@
     "wikidata_description": "Japanese university"
   },
   {
-    "name": "二松学舎大学",
-    "lat": 35.852,
-    "lng": 140.012,
+    "name": "二松学舎大学九段キャンパス",
+    "lat": 35.69216637075732,
+    "lng": 139.74568393053116,
     "importance": 50,
     "description": "",
     "category": "",
@@ -3543,8 +3587,8 @@
   },
   {
     "name": "日本歯科大学",
-    "lat": 37.91,
-    "lng": 139.01,
+    "lat": 35.69795120415167,
+    "lng": 139.74591212447518,
     "importance": 50,
     "description": "",
     "category": "",
@@ -3553,7 +3597,18 @@
     "wikidata_description": "private university in Japan"
   },
   {
-    "name": "日本体育大学",
+    "name": "日本女子大学目白キャンパス",
+    "lat": 35.71658870529857,
+    "lng": 139.72040794492094,
+    "importance": 50,
+    "description": "",
+    "category": "",
+    "wikidata": null,
+    "wikidata_label": null,
+    "wikidata_description": null
+  },
+  {
+    "name": "日本体育大学世田谷キャンパス",
     "lat": 35.6213029,
     "lng": 139.6503742,
     "importance": 50,
@@ -3576,8 +3631,8 @@
   },
   {
     "name": "星薬科大学",
-    "lat": 35.6,
-    "lng": 139.73333333,
+    "lat": 35.618755917844226,
+    "lng": 139.71224062234648,
     "importance": 50,
     "description": "",
     "category": "",
@@ -3628,6 +3683,17 @@
     "wikidata": "Q1143235",
     "wikidata_label": "Rikkyo University",
     "wikidata_description": "private university in Tokyo, Japan"
+  },
+  {
+    "name": "立正大学",
+    "lat": 35.620875531115786,
+    "lng": 139.72376223714002,
+    "importance": 50,
+    "description": "",
+    "category": "",
+    "wikidata": null,
+    "wikidata_label": null,
+    "wikidata_description": null
   },
   {
     "name": "早稲田大学(早稲田キャンパス)",
@@ -3828,20 +3894,9 @@
     "wikidata_description": "hospital in Japan"
   },
   {
-    "name": "昭和大学病院附属東病院",
-    "lat": 35.609722,
-    "lng": 139.705556,
-    "importance": 50,
-    "description": "",
-    "category": "",
-    "wikidata": "Q11514048",
-    "wikidata_label": "Showa University East Hospital",
-    "wikidata_description": "hospital in Japan"
-  },
-  {
     "name": "帝京大学医学部附属病院",
-    "lat": 35.759167,
-    "lng": 139.714722,
+    "lat": 35.75929088613658,
+    "lng": 139.71351673889353,
     "importance": 50,
     "description": "",
     "category": "",
@@ -3850,9 +3905,9 @@
     "wikidata_description": "hospital in Japan"
   },
   {
-    "name": "東京医科大学付属病院",
-    "lat": 35.6940092,
-    "lng": 139.6922477,
+    "name": "日本医科大学付属病院",
+    "lat": 35.72114298650232,
+    "lng": 139.758861754073,
     "importance": 50,
     "description": "",
     "category": "",
