@@ -4147,20 +4147,20 @@
     "wikidata_description": "healthcare organization in Tokyo, Japan"
   },
   {
-    "name": "永寿総合病院",
-    "lat": 35.70975,
-    "lng": 139.77963,
+    "name": "浴風会病院",
+    "lat": 35.680583951383426,
+    "lng": 139.609672264786,
     "importance": 50,
     "description": "",
     "category": "",
-    "wikidata": "Q11346511",
-    "wikidata_label": "Eiju General Hospital",
-    "wikidata_description": "healthcare organization in Tokyo, Japan"
+    "wikidata": null,
+    "wikidata_label": null,
+    "wikidata_description": null
   },
   {
     "name": "東京国際空港(第1旅客ターミナルビル)",
-    "lat": 35.5593859,
-    "lng": 139.7863782,
+    "lat": 35.54900255327408,
+    "lng": 139.78446327198392,
     "importance": 50,
     "description": "",
     "category": "",
@@ -4181,8 +4181,8 @@
   },
   {
     "name": "東京国際空港(第3旅客ターミナルビル)",
-    "lat": 35.5489774,
-    "lng": 139.7707505,
+    "lat": 35.54464115192475,
+    "lng": 139.76828232525102,
     "importance": 50,
     "description": "",
     "category": "",
@@ -4222,7 +4222,7 @@
     "wikidata": "Q11575035",
     "wikidata_label": "Sankei Shimbun Co.",
     "wikidata_description": "Japanese company"
-  },
+  }, 
   {
     "name": "日本経済新聞社",
     "lat": 35.6887304,
@@ -4233,6 +4233,17 @@
     "wikidata": "Q11508838",
     "wikidata_label": "Nikkei Inc.",
     "wikidata_description": "Japanese holding company"
+  },
+  {
+    "name": "報知新聞社",
+    "lat": 35.69775988436906,
+    "lng": 139.79299087249868,
+    "importance": 50,
+    "description": "",
+    "category": "",
+    "wikidata": null,
+    "wikidata_label": null,
+    "wikidata_description": null
   },
   {
     "name": "毎日新聞社",
@@ -4255,28 +4266,6 @@
     "wikidata": "Q11631629",
     "wikidata_label": "Yomiuri Shimbun Company",
     "wikidata_description": null
-  },
-  {
-    "name": "時事通信社(パレスサイドビル)",
-    "lat": 35.6898953,
-    "lng": 139.7604411,
-    "importance": 50,
-    "description": "",
-    "category": "",
-    "wikidata": null,
-    "wikidata_label": null,
-    "wikidata_description": null
-  },
-  {
-    "name": "共同通信社",
-    "lat": 35.6634736,
-    "lng": 139.7596242,
-    "importance": 50,
-    "description": "",
-    "category": "",
-    "wikidata": "Q779730",
-    "wikidata_label": "Kyodo News",
-    "wikidata_description": "news agency"
   },
   {
     "name": "NHK放送センター(NHK)",
@@ -4357,8 +4346,8 @@
   },
   {
     "name": "エフエム東京",
-    "lat": 35.6833668,
-    "lng": 139.7430066,
+    "lat": 35.683553243411104,
+    "lng": 139.74353259541445,
     "importance": 50,
     "description": "",
     "category": "",
@@ -4379,14 +4368,14 @@
   },
   {
     "name": "愛宕神社",
-    "lat": 35.05994444,
-    "lng": 135.63444722,
+    "lat": 35.66455676996465,
+    "lng": 139.74889986938916,
     "importance": 50,
     "description": "",
     "category": "",
-    "wikidata": "Q713021",
-    "wikidata_label": "Atago Shrine",
-    "wikidata_description": "Shinto shrine in Kyoto Prefecture, Japan"
+    "wikidata": null,
+    "wikidata_label": null,
+    "wikidata_description": null
   },
   {
     "name": "井草八幡宮",
@@ -4401,14 +4390,14 @@
   },
   {
     "name": "大鳥神社",
-    "lat": 34.536898,
-    "lng": 135.460765,
+    "lat": 35.632163730855794,
+    "lng": 139.70815864910142,
     "importance": 50,
     "description": "",
     "category": "",
-    "wikidata": "Q705151",
-    "wikidata_label": "Ōtori Taisha",
-    "wikidata_description": "Shinto shrines in Nishi-ku, Sakai, Osaka Prefecture, Japan"
+    "wikidata": null,
+    "wikidata_label": null,
+    "wikidata_description": null
   },
   {
     "name": "大宮八幡宮",

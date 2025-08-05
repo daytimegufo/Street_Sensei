@@ -2191,6 +2191,7 @@
             lastGuess: null,
             center: { lat: 35.6762, lng: 139.6503 },
             range: 5,
+            savedRange: 5,
             showLabels: true,
             baseLayers: {},
             streetData: null,
@@ -2514,6 +2515,7 @@
                     saveSetting('boh_mode', gameState.currentMode);
                 }
                 gameState.range = loadSetting('boh_rangeKm', 5);
+                gameState.savedRange = gameState.range;
                 const savedLoc = loadSetting('boh_lastLocation', null);
                 if (savedLoc && savedLoc.lat && savedLoc.lng) {
                     gameState.center = savedLoc;
@@ -2540,7 +2542,19 @@
                 }
 
                 const rangeEl = document.getElementById('range');
-                if (rangeEl) rangeEl.value = gameState.range;
+                if (gameState.currentMode === 'geotextbook') {
+                    gameState.range = Infinity;
+                    if (rangeEl) {
+                        rangeEl.disabled = true;
+                        rangeEl.style.display = 'none';
+                    }
+                } else {
+                    if (rangeEl) {
+                        rangeEl.disabled = false;
+                        rangeEl.style.display = 'block';
+                        rangeEl.value = gameState.range;
+                    }
+                }
                 updateRangeDisplay();
                 loadCustomProblems();
                 await loadGeotextbookFacilities(gameState.geotextbookArea);
@@ -2890,7 +2904,7 @@
                     gameState.gameArea = null;
                 }
 
-                if (!gameState.center || !gameState.range || !gameState.map) {
+                if (!gameState.center || !gameState.map || !isFinite(gameState.range) || gameState.currentMode === 'geotextbook') {
                     return;
                 }
 
@@ -2908,10 +2922,30 @@
             }
         }
 
-        async function handleModeChange(mode) {
+       async function handleModeChange(mode) {
             gameState.currentMode = mode;
             saveSetting('boh_mode', gameState.currentMode);
             log('Mode changed to: ' + gameState.currentMode);
+
+            const rangeEl = document.getElementById('range');
+            if (mode === 'geotextbook') {
+                if (isFinite(gameState.range)) gameState.savedRange = gameState.range;
+                gameState.range = Infinity;
+                if (rangeEl) {
+                    rangeEl.disabled = true;
+                    rangeEl.style.display = 'none';
+                }
+            } else {
+                if (rangeEl) {
+                    rangeEl.disabled = false;
+                    rangeEl.style.display = 'block';
+                }
+                if (!isFinite(gameState.range)) {
+                    gameState.range = gameState.savedRange || 5;
+                    if (rangeEl) rangeEl.value = gameState.range;
+                }
+            }
+            updateRangeDisplay();
             updateGameArea();
 
             if (mode === 'street') {
