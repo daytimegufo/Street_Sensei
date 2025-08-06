@@ -4566,8 +4566,8 @@
   },
   {
     "name": "高岩寺(とげぬき地蔵尊)",
-    "lat": 35.7355402,
-    "lng": 139.7352952,
+    "lat": 35.73582141229269,
+    "lng": 139.73553195498866,
     "importance": 50,
     "description": "",
     "category": "",
@@ -4775,8 +4775,8 @@
   },
   {
     "name": "日比谷公会堂(休館中)",
-    "lat": 35.6718864,
-    "lng": 139.7562286,
+    "lat": 35.671798618356654,
+    "lng": 139.7557268227099,
     "importance": 50,
     "description": "",
     "category": "",
@@ -4862,15 +4862,15 @@
     "wikidata_description": "type of museum; museum of police memorabilia and history"
   },
   {
-    "name": "江戸東京博物館",
-    "lat": 35.696389,
-    "lng": 139.796083,
+    "name": "古賀政男音楽博物館",
+    "lat": 35.66803814001402,
+    "lng": 139.6798322945307,
     "importance": 50,
     "description": "",
     "category": "",
-    "wikidata": "Q1191042",
-    "wikidata_label": "Edo-Tokyo Museum",
-    "wikidata_description": "museum"
+    "wikidata": null,
+    "wikidata_label": null,
+    "wikidata_description": null
   },
   {
     "name": "国立科学博物館",
@@ -4907,8 +4907,8 @@
   },
   {
     "name": "五島美術館",
-    "lat": 35.612195,
-    "lng": 139.635294,
+    "lat": 35.612327699487395,
+    "lng": 139.63567956405035,
     "importance": 50,
     "description": "",
     "category": "",
@@ -4918,8 +4918,8 @@
   },
   {
     "name": "サントリー美術館(東京ミッドタウン内)",
-    "lat": 35.6662189,
-    "lng": 139.730226,
+    "lat": 35.666441031297644,
+    "lng": 139.73041947669088,
     "importance": 50,
     "description": "",
     "category": "",
@@ -4973,8 +4973,8 @@
   },
   {
     "name": "東京都江戸東京博物館(休館中)",
-    "lat": 35.6966803,
-    "lng": 139.794926,
+    "lat": 35.69646340870029,
+    "lng": 139.79645036076795,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5061,8 +5061,8 @@
   },
   {
     "name": "恵比寿ガーデンプレイス",
-    "lat": 35.641,
-    "lng": 139.715,
+    "lat": 35.642515622779875,
+    "lng": 139.71384375413882,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5071,9 +5071,9 @@
     "wikidata_description": "building in Tokyo, Japan"
   },
   {
-    "name": "グラントウキョウサウスタワー",
-    "lat": 35.68169444,
-    "lng": 139.76897222,
+    "name": "グラントウキョウノースタワー",
+    "lat": 35.68161966924126,
+    "lng": 139.76897225477333,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5083,8 +5083,8 @@
   },
   {
     "name": "サンシャイン60(サンシャインシティ)",
-    "lat": 35.7284164,
-    "lng": 139.7206588,
+    "lat": 35.72939142041653,
+    "lng": 139.71816229659035,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5094,8 +5094,8 @@
   },
   {
     "name": "世界貿易センター",
-    "lat": 22.303391666667,
-    "lng": 114.16016944444,
+    "lat": 35.655171577877894,
+    "lng": 139.75633967980517,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5127,8 +5127,8 @@
   },
   {
     "name": "東京オペラシティ",
-    "lat": 35.68309,
-    "lng": 139.68707,
+    "lat": 35.682880591159076,
+    "lng": 139.68678172700348,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5215,8 +5215,8 @@
   },
   {
     "name": "晴海トリトンスクエア",
-    "lat": 35.65751,
-    "lng": 139.78377,
+    "lat": 35.6573885526101,
+    "lng": 139.78277631325176,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5226,8 +5226,8 @@
   },
   {
     "name": "しながわ水族館(品川区民公園内)",
-    "lat": 35.5891561,
-    "lng": 139.7375077,
+    "lat": 35.58877884381093,
+    "lng": 139.73711461342484,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5248,8 +5248,8 @@
   },
   {
     "name": "小石川植物園",
-    "lat": 35.719183,
-    "lng": 139.745376,
+    "lat": 35.71984171475137,
+    "lng": 139.74454913835012,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5347,8 +5347,8 @@
   },
   {
     "name": "善福寺公園(池)",
-    "lat": 35.7162202,
-    "lng": 139.5899793,
+    "lat": 35.71483777956027,
+    "lng": 139.5912346434574,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5366,6 +5366,17 @@
     "wikidata": "Q9087421",
     "wikidata_label": "Tetsugaku-dō Park",
     "wikidata_description": "park in Tokyo"
+  },
+  {
+    "name": "浜離宮恩賜庭園",
+    "lat": 35.659647155476634,
+    "lng": 139.76340909601961,
+    "importance": 50,
+    "description": "",
+    "category": "",
+    "wikidata": null,
+    "wikidata_label": null,
+    "wikidata_description": null
   },
   {
     "name": "馬事公苑(休園中)",
@@ -5435,8 +5446,8 @@
   },
   {
     "name": "オーチャードホール（東急文化村）",
-    "lat": 35.66076109999999,
-    "lng": 139.6956746,
+    "lat": 35.66066355538535,
+    "lng": 139.69513699099448,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5456,26 +5467,37 @@
     "wikidata_description": null
   },
   {
-    "name": "科学技術館",
-    "lat": 35.691568,
-    "lng": 139.7530888,
+    "name": "国会記者会館",
+    "lat": 35.67365304792102,
+    "lng": 139.74486921793155,
     "importance": 50,
     "description": "",
     "category": "",
-    "wikidata": "Q2398990",
-    "wikidata_label": "technology museum",
-    "wikidata_description": "museum devoted to applied science and technological developments"
+    "wikidata": null,
+    "wikidata_label": null,
+    "wikidata_description": null
   },
   {
     "name": "国際文化会館",
-    "lat": 35.658227,
-    "lng": 139.7334976,
+    "lat": 35.658524134099096,
+    "lng": 139.73343714366064,
     "importance": 50,
     "description": "",
     "category": "",
     "wikidata": "Q11422449",
     "wikidata_label": "International House of Japan",
     "wikidata_description": "building in Japan"
+  },
+    {
+    "name": "サントリーホール",
+    "lat": 35.666984313343136,
+    "lng": 139.7408589638885,
+    "importance": 50,
+    "description": "",
+    "category": "",
+    "wikidata": null,
+    "wikidata_label": null,
+    "wikidata_description": null
   },
   {
     "name": "砂防会館",
@@ -5500,9 +5522,9 @@
     "wikidata_description": "building in Tokyo, Hibiya Public Hall is a part of the same building"
   },
   {
-    "name": "自動会館",
-    "lat": 35.6751597,
-    "lng": 139.7397226,
+    "name": "自動車会館",
+    "lat": 35.69051741925042,
+    "lng": 139.73684685491912,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5523,8 +5545,19 @@
   },
   {
     "name": "全国町村会館",
-    "lat": 35.6792395,
-    "lng": 139.7406281,
+    "lat": 35.678830186833466,
+    "lng": 139.7418894737044,
+    "importance": 50,
+    "description": "",
+    "category": "",
+    "wikidata": null,
+    "wikidata_label": null,
+    "wikidata_description": null
+  },
+    {
+    "name": "全国都市会館",
+    "lat": 35.681480149949834,
+    "lng": 139.7385465689831,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5534,8 +5567,8 @@
   },
   {
     "name": "全国婦人会館",
-    "lat": 35.6861004,
-    "lng": 139.6954514,
+    "lat": 35.66113567011138,
+    "lng": 139.70337961957085,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5555,9 +5588,9 @@
     "wikidata_description": null
   },
   {
-    "name": "東宝会館",
-    "lat": 35.672606,
-    "lng": 139.7596674,
+    "name": "東京会館",
+    "lat": 35.677470202934366,
+    "lng": 139.76108606718438,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5567,8 +5600,8 @@
   },
   {
     "name": "東京ガーデンパレス（湯島会館）",
-    "lat": 35.7029968,
-    "lng": 139.7649085,
+    "lat": 35.702764919289415,
+    "lng": 139.76483946848526,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5578,8 +5611,8 @@
   },
   {
     "name": "東京国際フォーラム",
-    "lat": 35.676944444444445,
-    "lng": 139.76416666666665,
+    "lat": 35.67675897318154,
+    "lng": 139.76373902745712,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5588,9 +5621,9 @@
     "wikidata_description": "Exhibition center in Chiyoda, Tokyo, Japan"
   },
   {
-    "name": "東京商工会議所（ビッグサイト）",
-    "lat": 35.6309674,
-    "lng": 139.7862168,
+    "name": "東京国際展示場（ビッグサイト）",
+    "lat": 35.629147058453185,
+    "lng": 139.7947332973422,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5599,9 +5632,9 @@
     "wikidata_description": null
   },
   {
-    "name": "東京商工会議所（丸の内三橋ビル）",
-    "lat": 35.6780968,
-    "lng": 139.7611527,
+    "name": "東京商工会議所（丸の内二重橋ビル）",
+    "lat": 35.677751299796114,
+    "lng": 139.76175611472834,
     "importance": 50,
     "description": "",
     "category": "",
