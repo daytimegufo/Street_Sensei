@@ -5654,20 +5654,9 @@
     "wikidata_description": "hall in Tokyo, Japan"
   },
   {
-    "name": "東陽文化会館",
-    "lat": 35.67036240000001,
-    "lng": 139.818853,
-    "importance": 50,
-    "description": "",
-    "category": "",
-    "wikidata": null,
-    "wikidata_label": null,
-    "wikidata_description": null
-  },
-  {
-    "name": "東洋会館",
-    "lat": 35.7097251,
-    "lng": 139.7329826,
+    "name": "東郷記念館",
+    "lat": 35.671634058540064,
+    "lng": 139.7062395666118,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5677,8 +5666,8 @@
   },
   {
     "name": "トッパンホール",
-    "lat": 35.7093079,
-    "lng": 139.7412024,
+    "lat": 35.709268064419994,
+    "lng": 139.7415419547719,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5698,20 +5687,9 @@
     "wikidata_description": null
   },
   {
-    "name": "ニッショーホール（ヤクルト本社ビル）",
-    "lat": 35.6660557,
-    "lng": 139.7604078,
-    "importance": 50,
-    "description": "",
-    "category": "",
-    "wikidata": null,
-    "wikidata_label": null,
-    "wikidata_description": null
-  },
-  {
-    "name": "日本石油会館",
-    "lat": 35.6691103,
-    "lng": 139.7545185,
+    "name": "ニッショーホール",
+    "lat": 35.66819392209957,
+    "lng": 139.74629061247873,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5721,8 +5699,8 @@
   },
   {
     "name": "日本青年館",
-    "lat": 35.67613889,
-    "lng": 139.715,
+    "lat": 35.67427417405957,
+    "lng": 139.71540979806727,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5753,9 +5731,9 @@
     "wikidata_description": "Japanese garden located in Tokyo"
   },
   {
-    "name": "浜松町会館",
-    "lat": 35.6582132,
-    "lng": 139.7588792,
+    "name": "法曹会館",
+    "lat": 35.67694179488192,
+    "lng": 139.75468030651143,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5776,8 +5754,8 @@
   },
   {
     "name": "ホテル雅叙園東京",
-    "lat": 35.63065,
-    "lng": 139.71423,
+    "lat": 35.63178972798026,
+    "lng": 139.71379246690162,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5786,9 +5764,9 @@
     "wikidata_description": "building in Meguro-ku, Tokyo, Japan"
   },
   {
-    "name": "目黒会館",
-    "lat": 35.6311609,
-    "lng": 139.7107435,
+    "name": "明治記念館",
+    "lat": 35.67814113011486,
+    "lng": 139.72164369609743,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5797,9 +5775,9 @@
     "wikidata_description": null
   },
   {
-    "name": "湯島会館",
-    "lat": 35.7070465,
-    "lng": 139.768882,
+    "name": "茗渓会館",
+    "lat": 35.71843024507868,
+    "lng": 139.73519613089002,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5808,9 +5786,9 @@
     "wikidata_description": null
   },
   {
-    "name": "洋協ホール",
-    "lat": 35.6797009,
-    "lng": 139.7403013,
+    "name": "連合会館",
+    "lat": 35.69582387258453,
+    "lng": 139.76532469600616,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5842,8 +5820,8 @@
   },
   {
     "name": "テレビ朝日",
-    "lat": 35.6596353,
-    "lng": 139.7309863,
+    "lat": 35.65987247000573,
+    "lng": 139.731171110686,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5886,8 +5864,8 @@
   },
   {
     "name": "味の素ナショナルトレーニングセンター",
-    "lat": 35.767278,
-    "lng": 139.708111,
+    "lat": 35.767920792121934,
+    "lng": 139.70801230940637,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5907,6 +5885,17 @@
     "wikidata_description": "sporting arena"
   },
   {
+    "name": "講道館",
+    "lat": 35.70763028769815,
+    "lng": 139.75340125171394,
+    "importance": 50,
+    "description": "",
+    "category": "",
+    "wikidata": null,
+    "wikidata_label": null,
+    "wikidata_description": null
+  },
+  {
     "name": "東京ドーム",
     "lat": 35.705658333333,
     "lng": 139.75191388889,
@@ -5919,8 +5908,8 @@
   },
   {
     "name": "国技館（日本相撲協会）",
-    "lat": 35.6961682,
-    "lng": 139.7936475,
+    "lat": 35.69681069342759,
+    "lng": 139.79267266298734,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5929,9 +5918,9 @@
     "wikidata_description": null
   },
   {
-    "name": "江戸川競技場",
-    "lat": 35.6759423,
-    "lng": 139.7142394,
+    "name": "国立競技場",
+    "lat": 35.67789428945962,
+    "lng": 139.7145201495198,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5941,8 +5930,8 @@
   },
   {
     "name": "国立秩父宮ラグビー場",
-    "lat": 35.6717445,
-    "lng": 139.7179929,
+    "lat": 35.67265839358061,
+    "lng": 139.71834274512153,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5984,9 +5973,9 @@
     "wikidata_description": "Kabuki theatre in Tokyo"
   },
   {
-    "name": "国立劇場・国立劇場演芸場",
-    "lat": 35.6812434,
-    "lng": 139.7426472,
+    "name": "国立劇場・国立劇場演芸場（閉場中）",
+    "lat": 35.68079048919701,
+    "lng": 139.7426541436815,
     "importance": 50,
     "description": "",
     "category": "",
@@ -5995,37 +5984,37 @@
     "wikidata_description": null
   },
   {
-    "name": "新宿文化センター",
-    "lat": 35.695472222222,
-    "lng": 139.70941666667,
+    "name": "新国立劇場",
+    "lat": 35.68243465796315,
+    "lng": 139.68588556047354,
     "importance": 50,
     "description": "",
     "category": "",
-    "wikidata": "Q11501846",
-    "wikidata_label": "Shinjuku Bunka Center",
+    "wikidata": null,
+    "wikidata_label": null,
     "wikidata_description": null
   },
   {
-    "name": "新宿厚生年金会館",
-    "lat": 35.692,
-    "lng": 139.711,
+    "name": "新橋演舞場",
+    "lat": 35.66696168976742,
+    "lng": 139.76693242654994,
     "importance": 50,
     "description": "",
     "category": "",
-    "wikidata": "Q7813925",
-    "wikidata_label": "Tokyo Kōsei Nenkin Kaikan",
-    "wikidata_description": "concert hall in Shinjuku, Tokyo"
+    "wikidata": null,
+    "wikidata_label": null,
+    "wikidata_description": null
   },
   {
-    "name": "宝塚劇場",
-    "lat": 35.6732967,
-    "lng": 139.7582615,
+    "name": "帝国劇場",
+    "lat": 35.67657854691052,
+    "lng": 139.76090319219728,
     "importance": 50,
     "description": "",
     "category": "",
-    "wikidata": "Q11452377",
-    "wikidata_label": "宝塚劇場",
-    "wikidata_description": "Wikimedia disambiguation page"
+    "wikidata": null,
+    "wikidata_label": null,
+    "wikidata_description": null
   },
   {
     "name": "東京芸術劇場",
@@ -6073,8 +6062,8 @@
   },
   {
     "name": "鈴本演芸場",
-    "lat": 35.709222,
-    "lng": 139.772972,
+    "lat": 35.70923637797124,
+    "lng": 139.77305451157008,
     "importance": 50,
     "description": "",
     "category": "",
@@ -6084,8 +6073,8 @@
   },
   {
     "name": "梅若能楽堂（梅若能楽学院会館）",
-    "lat": 35.7016877,
-    "lng": 139.6818009,
+    "lat": 35.70155804944566,
+    "lng": 139.68189811429818,
     "importance": 50,
     "description": "",
     "category": "",
@@ -6094,15 +6083,15 @@
     "wikidata_description": null
   },
   {
-    "name": "観世能楽堂",
-    "lat": 35.66947222,
-    "lng": 139.76411111,
+    "name": "国立能楽堂",
+    "lat": 35.680695992097924,
+    "lng": 139.70790781104955,
     "importance": 50,
     "description": "",
     "category": "",
-    "wikidata": "Q55529604",
-    "wikidata_label": "Kanze Noh Theater",
-    "wikidata_description": "Theatre building in Japan"
+    "wikidata": null,
+    "wikidata_label": null,
+    "wikidata_description": null
   },
   {
     "name": "矢来能楽堂",
@@ -6128,8 +6117,8 @@
   },
   {
     "name": "伊勢丹新宿店",
-    "lat": 35.6930599,
-    "lng": 139.702903,
+    "lat": 35.691542055224616,
+    "lng": 139.70455439549568,
     "importance": 50,
     "description": "",
     "category": "",
@@ -6139,8 +6128,8 @@
   },
   {
     "name": "高島屋東京店（日本橋店）",
-    "lat": 35.6824607,
-    "lng": 139.7738942,
+    "lat": 35.680587283106156,
+    "lng": 139.77391250576704,
     "importance": 50,
     "description": "",
     "category": "",
@@ -6150,8 +6139,8 @@
   },
   {
     "name": "松屋浅草店",
-    "lat": 35.7120825,
-    "lng": 139.7987566,
+    "lat": 35.71203978224322,
+    "lng": 139.79847384737582,
     "importance": 50,
     "description": "",
     "category": "",
@@ -6171,17 +6160,6 @@
     "wikidata_description": null
   },
   {
-    "name": "赤坂エクセルホテル東急",
-    "lat": 35.67725,
-    "lng": 139.737472,
-    "importance": 50,
-    "description": "",
-    "category": "",
-    "wikidata": "Q11635386",
-    "wikidata_label": "Akasaka Excel Hotel Tokyu",
-    "wikidata_description": "hotel in Tokyo, Japan"
-  },
-  {
     "name": "浅草ビューホテル",
     "lat": 35.715444,
     "lng": 139.791944,
@@ -6194,8 +6172,8 @@
   },
   {
     "name": "ウェスティンホテル東京",
-    "lat": 35.6415,
-    "lng": 139.715361,
+    "lat": 35.64164276241641,
+    "lng": 139.71541186394072,
     "importance": 50,
     "description": "",
     "category": "",
@@ -6249,8 +6227,8 @@
   },
   {
     "name": "KKRホテル東京（竹橋合同ビル）",
-    "lat": 35.6894489,
-    "lng": 139.7604012,
+    "lat": 35.69047036081558,
+    "lng": 139.76052212172743,
     "importance": 50,
     "description": "",
     "category": "",
@@ -6260,8 +6238,8 @@
   },
   {
     "name": "ザ・プリンスギャラリー東京紀尾井町（東京ガーデンテラス内）",
-    "lat": 35.6794453,
-    "lng": 139.737261,
+    "lat": 35.679649888860645,
+    "lng": 139.73710900063034,
     "importance": 50,
     "description": "",
     "category": "",
@@ -6271,8 +6249,8 @@
   },
   {
     "name": "ザ・ペニンシュラ東京",
-    "lat": 35.6747,
-    "lng": 139.761,
+    "lat": 35.674762180542146,
+    "lng": 139.76047358468463,
     "importance": 50,
     "description": "",
     "category": "",
@@ -6282,8 +6260,8 @@
   },
   {
     "name": "ザ・リッツ・カールトン東京（東京ミッドタウン内）",
-    "lat": 35.6674235,
-    "lng": 139.7301366,
+    "lat": 35.66630637489765,
+    "lng": 139.73127424644753,
     "importance": 50,
     "description": "",
     "category": "",
@@ -6304,8 +6282,8 @@
   },
   {
     "name": "ジ　オークラ東京",
-    "lat": 35.6671778,
-    "lng": 139.7455938,
+    "lat": 35.66717989045352,
+    "lng": 139.74385622638184,
     "importance": 50,
     "description": "",
     "category": "",
@@ -6315,8 +6293,8 @@
   },
   {
     "name": "シャングリ・ラ　ホテル東京（丸の内トラストタワー本館）",
-    "lat": 35.6823799,
-    "lng": 139.7694411,
+    "lat": 35.6824307301287,
+    "lng": 139.76938057711018,
     "importance": 50,
     "description": "",
     "category": "",
@@ -6348,8 +6326,8 @@
   },
   {
     "name": "第一ホテル東京",
-    "lat": 35.668543,
-    "lng": 139.75796,
+    "lat": 35.66881098995685,
+    "lng": 139.75738814768437,
     "importance": 50,
     "description": "",
     "category": "",
@@ -6370,8 +6348,8 @@
   },
   {
     "name": "東京ガーデンパレス（湯島会館）",
-    "lat": 35.7029968,
-    "lng": 139.7649085,
+    "lat": 35.70276478768931,
+    "lng": 139.76483862617278,
     "importance": 50,
     "description": "",
     "category": "",
@@ -6456,10 +6434,21 @@
     "wikidata_label": "Meguro Gajoen",
     "wikidata_description": "building in Meguro-ku, Tokyo, Japan"
   },
+    {
+    "name": "ホテルグランドヒル市ヶ谷（市谷会館）",
+    "lat": 35.69174128619754,
+    "lng": 139.7331027316031,
+    "importance": 50,
+    "description": "",
+    "category": "",
+    "wikidata": null,
+    "wikidata_label": null,
+    "wikidata_description": null
+  },
   {
-    "name": "ホテル椿山荘東京（椿山荘本町町）",
-    "lat": 35.7119594,
-    "lng": 139.7260859,
+    "name": "ホテル椿山荘東京",
+    "lat": 35.713147739712255,
+    "lng": 139.72559486753832,
     "importance": 50,
     "description": "",
     "category": "",
@@ -6491,8 +6480,8 @@
   },
   {
     "name": "マンダリンオリエンタル東京（日本橋三井タワー内）",
-    "lat": 35.686372,
-    "lng": 139.7731296,
+    "lat": 35.68704890647788,
+    "lng": 139.77306163777473,
     "importance": 50,
     "description": "",
     "category": "",
@@ -6524,8 +6513,8 @@
   },
   {
     "name": "豊島5丁目団地",
-    "lat": 35.7660764,
-    "lng": 139.7523523,
+    "lat": 35.76604771660984,
+    "lng": 139.75246462750982,
     "importance": 50,
     "description": "",
     "category": "",
@@ -6535,8 +6524,8 @@
   },
   {
     "name": "光が丘団地",
-    "lat": 35.762025,
-    "lng": 139.62853055555556,
+    "lat": 35.76160132958117,
+    "lng": 139.62675592360978,
     "importance": 50,
     "description": "",
     "category": "",
@@ -6590,8 +6579,8 @@
   },
   {
     "name": "カシオ計算機（株）",
-    "lat": 35.6828095,
-    "lng": 139.6831498,
+    "lat": 35.680774452597895,
+    "lng": 139.68484860268717,
     "importance": 50,
     "description": "",
     "category": "",
@@ -6623,8 +6612,8 @@
   },
   {
     "name": "住友商事（株）東京本社（大手町プレイスイーストタワー）",
-    "lat": 35.6870382,
-    "lng": 139.7678779,
+    "lat": 35.68711527651942,
+    "lng": 139.7679388313339,
     "importance": 50,
     "description": "",
     "category": "",
@@ -6634,8 +6623,8 @@
   },
   {
     "name": "住友重機械工業（株）（シンクパークタワー）",
-    "lat": 35.6182069,
-    "lng": 139.7276822,
+    "lat": 35.61845382192903,
+    "lng": 139.7276444122402,
     "importance": 50,
     "description": "",
     "category": "",
@@ -6656,8 +6645,8 @@
   },
   {
     "name": "ソニー（株）本社",
-    "lat": 35.6312119,
-    "lng": 139.7436477,
+    "lat": 35.63117587365037,
+    "lng": 139.74360592818854,
     "importance": 50,
     "description": "",
     "category": "",
@@ -6733,8 +6722,8 @@
   },
   {
     "name": "本田技研工業（株）本社",
-    "lat": 35.6724123,
-    "lng": 139.7237877,
+    "lat": 35.66903965547315,
+    "lng": 139.74615839739593,
     "importance": 50,
     "description": "",
     "category": "",
@@ -6776,9 +6765,9 @@
     "wikidata_description": null
   },
   {
-    "name": "ヤマトホールディングス（株）本社（西新宿1丁目ビル）",
-    "lat": 35.6684357,
-    "lng": 139.7513516,
+    "name": "ヤマトホールディングス（株）本社",
+    "lat": 35.670670796999445,
+    "lng": 139.77054057978862,
     "importance": 50,
     "description": "",
     "category": "",
@@ -6788,8 +6777,8 @@
   },
   {
     "name": "ライオン（株）本社",
-    "lat": 35.7013266,
-    "lng": 139.7909707,
+    "lat": 35.70119915405276,
+    "lng": 139.79066783159632,
     "importance": 50,
     "description": "",
     "category": "",
@@ -6799,8 +6788,8 @@
   },
   {
     "name": "（株）リコー",
-    "lat": 35.5977728,
-    "lng": 139.7059967,
+    "lat": 35.597760498062264,
+    "lng": 139.7059803376357,
     "importance": 50,
     "description": "",
     "category": "",
