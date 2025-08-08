@@ -1,0 +1,14 @@
+[
+  {
+    "name": "渋谷スクランブル交差点",
+    "points": [[{"lat": 35.6598, "lng": 139.7006}]],
+    "importance": 90,
+    "description": "世界的に有名な交差点"
+  },
+  {
+    "name": "赤坂見附交差点",
+    "points": [[{"lat": 35.6764, "lng": 139.7376}]],
+    "importance": 70,
+    "description": ""
+  }
+]

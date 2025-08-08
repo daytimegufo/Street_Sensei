@@ -1469,16 +1469,20 @@
             <div class="debug-info" id="debug-info">Loading map...</div>
 
             <div class="start-controls" id="start-controls">
-                <select id="game-mode-select">␊
+               <select id="game-mode-select">␊
                     <option value="street" disabled>Street</option>
                     <option value="facility">Facility</option>␊
                     <option value="intersection">Intersection</option>␊
                     <option value="reverse">Reverse</option>␊
                     <option value="geotextbook">地理教本施設モード</option>␊
+                    <!-- NEW: curated intersections mode -->
+                    <option value="geotextbook-intersection">地理教本交差点</option>␊
                 </select>
+                <!-- CHANGED: 施設/交差点どちらの地理教本でも共用 -->
                 <select id="geotextbook-area-select" style="display:none;">
                     <option value="tokyo23">東京23区武三</option>
                 </select>
+                <!-- CHANGED: 施設/交差点どちらの地理教本でも共用 -->
                 <select id="geotextbook-play-order" style="display:none;">
                     <option value="random">ランダム</option>
                     <option value="registration">登録順</option>
@@ -2208,6 +2212,8 @@
             askedQuestions: [],
             currentLocation: null,
             geotextbookFacilities: [],
+            // NEW: curated intersections (地理教本交差点)
+            geotextbookIntersections: [],
             geotextbookArea: 'tokyo23',
             playOrder: loadSetting('geotextbook_playOrder', 'random'),
             registrationList: [],
@@ -2364,10 +2370,38 @@
             'tokyo23': {
                 name: '東京23区武三',
                 file: 'custom-facilities/東京23区武三.json',
+                // NEW: intersections file alongside facilities
+                intersectionsFile: 'custom-intersections/東京23区武三.json',
                 center: { lat: 35.6895, lng: 139.6917 },
                 bbox: '35.5,139.4,35.9,139.9'
             }
         };
+
+        // NEW: loader for curated intersections
+        async function loadGeotextbookIntersections(areaKey) {
+            try {
+                const cfg = GEOTEXTBOOK_AREA_CONFIGS[areaKey] || GEOTEXTBOOK_AREA_CONFIGS['tokyo23'];
+                if (!cfg?.intersectionsFile) {
+                    gameState.geotextbookIntersections = [];
+                    return;
+                }
+                const res = await fetch(cfg.intersectionsFile);
+                const data = await res.json();
+                // 正規化: 施設と同じスキーマに寄せる
+                gameState.geotextbookIntersections = (data || []).map(it => ({
+                    name: it.name,
+                    type: 'intersection',
+                    description: it.description || '地理教本交差点',
+                    importance: it.importance ?? 70,
+                    points: it.points,
+                    isEnclosedArea: false,
+                    source: 'preset'
+                }));
+            } catch (e) {
+                console.warn('loadGeotextbookIntersections failed:', e);
+                gameState.geotextbookIntersections = [];
+            }
+        }
 
         // Regional bbox configurations for full road network extraction
         const REGIONAL_CONFIGS = {
@@ -2533,16 +2567,16 @@
                 const areaSelectInit = document.getElementById('geotextbook-area-select');
                 if (areaSelectInit) {
                     areaSelectInit.value = gameState.geotextbookArea;
-                    areaSelectInit.style.display = gameState.currentMode === 'geotextbook' ? 'block' : 'none';
+                    areaSelectInit.style.display = (gameState.currentMode === 'geotextbook' || gameState.currentMode === 'geotextbook-intersection') ? 'block' : 'none';
                 }
                 const orderSelectInit = document.getElementById('geotextbook-play-order');
                 if (orderSelectInit) {
                     orderSelectInit.value = gameState.playOrder;
-                    orderSelectInit.style.display = gameState.currentMode === 'geotextbook' ? 'block' : 'none';
+                    orderSelectInit.style.display = (gameState.currentMode === 'geotextbook' || gameState.currentMode === 'geotextbook-intersection') ? 'block' : 'none';
                 }
 
                 const rangeEl = document.getElementById('range');
-                if (gameState.currentMode === 'geotextbook') {
+                if (gameState.currentMode === 'geotextbook' || gameState.currentMode === 'geotextbook-intersection') {
                     gameState.range = Infinity;
                     if (rangeEl) {
                         rangeEl.disabled = true;
@@ -2558,6 +2592,7 @@
                 updateRangeDisplay();
                 loadCustomProblems();
                 await loadGeotextbookFacilities(gameState.geotextbookArea);
+                await loadGeotextbookIntersections(gameState.geotextbookArea);
                 updateRangeDisplay();
                 updateImportanceDisplay();
                 updateAutoDifficultyDisplay();
@@ -2904,7 +2939,9 @@
                     gameState.gameArea = null;
                 }
 
-                if (!gameState.center || !gameState.map || !isFinite(gameState.range) || gameState.currentMode === 'geotextbook') {
+                if (!gameState.center || !gameState.map || !isFinite(gameState.range)
+                    || gameState.currentMode === 'geotextbook'
+                    || gameState.currentMode === 'geotextbook-intersection') {
                     return;
                 }
 
@@ -2928,7 +2965,7 @@
             log('Mode changed to: ' + gameState.currentMode);
 
             const rangeEl = document.getElementById('range');
-            if (mode === 'geotextbook') {
+            if (mode === 'geotextbook' || mode === 'geotextbook-intersection') {
                 if (isFinite(gameState.range)) gameState.savedRange = gameState.range;
                 gameState.range = Infinity;
                 if (rangeEl) {
@@ -2962,12 +2999,20 @@
                 const order = orderSelect ? orderSelect.value : 'random';
                 gameState.playOrder = order;
                 gameState.speedRun.active = (order === 'random');
+            } else if (mode === "geotextbook-intersection") {
+                const areaSelect = document.getElementById("geotextbook-area-select");
+                gameState.geotextbookArea = areaSelect ? areaSelect.value : gameState.geotextbookArea;
+                await loadGeotextbookIntersections(gameState.geotextbookArea);
+                const orderSelect = document.getElementById('geotextbook-play-order');
+                const order = orderSelect ? orderSelect.value : 'random';
+                gameState.playOrder = order;
+                gameState.speedRun.active = (order === 'random');
             } else if (mode === "reverse") {
                 loadFacilityDataFromOverpass();
                 loadIntersectionDataFromOverpass();
             }
 
-            if (mode !== 'geotextbook') {
+            if (mode !== 'geotextbook' && mode !== 'geotextbook-intersection') {
                 gameState.speedRun.active = false;
             }
         }
@@ -3082,16 +3127,16 @@
                     modeSelect.addEventListener('change', (e) => {
                         const areaSel = document.getElementById('geotextbook-area-select');
                         if (areaSel) {
-                            areaSel.style.display = e.target.value === 'geotextbook' ? 'block' : 'none';
+                            areaSel.style.display = (e.target.value === 'geotextbook' || e.target.value === 'geotextbook-intersection') ? 'block' : 'none';
                         }
                         const orderSel = document.getElementById('geotextbook-play-order');
                         if (orderSel) {
-                            orderSel.style.display = e.target.value === 'geotextbook' ? 'block' : 'none';
+                            orderSel.style.display = (e.target.value === 'geotextbook' || e.target.value === 'geotextbook-intersection') ? 'block' : 'none';
                         }
                         const tgt = document.getElementById('speedrun-target');
                         const tol = document.getElementById('speedrun-tolerance');
-                        if (tgt) tgt.style.display = e.target.value === 'geotextbook' ? 'block' : 'none';
-                        if (tol) tol.style.display = e.target.value === 'geotextbook' ? 'block' : 'none';
+                        if (tgt) tgt.style.display = (e.target.value === 'geotextbook' || e.target.value === 'geotextbook-intersection') ? 'block' : 'none';
+                        if (tol) tol.style.display = (e.target.value === 'geotextbook' || e.target.value === 'geotextbook-intersection') ? 'block' : 'none';
                         handleModeChange(e.target.value);
                     });
                 }
@@ -3175,6 +3220,8 @@
                         gameState.geotextbookArea = e.target.value;
                         if (gameState.currentMode === 'geotextbook') {
                             loadGeotextbookAreaFacilities(gameState.geotextbookArea);
+                        } else if (gameState.currentMode === 'geotextbook-intersection') {
+                            loadGeotextbookIntersections(gameState.geotextbookArea);
                         }
                     });
                 }
@@ -3204,7 +3251,7 @@
                 if (nextBtn) {
                     nextBtn.addEventListener('click', async () => {
                         log('Next question clicked');
-                        if (gameState.currentMode === 'geotextbook' && gameState.playOrder === 'registration') {
+                        if ((gameState.currentMode === 'geotextbook' || gameState.currentMode === 'geotextbook-intersection') && gameState.playOrder === 'registration') {
                             handleRegistrationNext();
                         } else {
                             await nextQuestion();
@@ -3215,7 +3262,7 @@
                 const mobileNext = document.getElementById('mobile-next');
                 if (mobileNext) {
                     mobileNext.addEventListener('click', async () => {
-                        if (gameState.currentMode === 'geotextbook' && gameState.playOrder === 'registration') {
+                        if ((gameState.currentMode === 'geotextbook' || gameState.currentMode === 'geotextbook-intersection') && gameState.playOrder === 'registration') {
                             handleRegistrationNext();
                         } else {
                             await nextQuestion();
@@ -3303,7 +3350,7 @@
                 const gameBtnNext = document.getElementById('game-btn-next');
                 if (gameBtnNext) {
                     gameBtnNext.addEventListener('click', () => {
-                        if (gameState.currentMode === 'geotextbook' && gameState.playOrder === 'registration') {
+                        if ((gameState.currentMode === 'geotextbook' || gameState.currentMode === 'geotextbook-intersection') && gameState.playOrder === 'registration') {
                             handleRegistrationNext();
                         } else {
                             closeModal();
@@ -4234,7 +4281,7 @@
                     }
                 }
 
-                if (gameState.currentMode === 'geotextbook') {
+                if (gameState.currentMode === 'geotextbook' || gameState.currentMode === 'geotextbook-intersection') {
                     const targetInput = document.getElementById('speedrun-target');
                     if (targetInput) {
                         const val = parseInt(targetInput.value, 10);
@@ -4258,13 +4305,23 @@
                     gameState.playOrder = orderSelect ? orderSelect.value : 'random';
                     saveSetting('geotextbook_playOrder', gameState.playOrder);
                     gameState.speedRun.active = (gameState.playOrder === 'random');
-                    await loadGeotextbookFacilities(gameState.geotextbookArea);
+                    if (gameState.currentMode === 'geotextbook') {
+                        await loadGeotextbookFacilities(gameState.geotextbookArea);
+                    } else {
+                        await loadGeotextbookIntersections(gameState.geotextbookArea);
+                    }
                     if (gameState.playOrder === 'registration') {
-                        const userList = loadUserRegisteredFacilities();
-                        // 空なら geotextbookFacilities をまるごと使う
+                        // 施設/交差点で別々の登録リストを想定しているなら切替する
+                        const userList = (gameState.currentMode === 'geotextbook')
+                            ? loadUserRegisteredFacilities()
+                            : (window.loadUserRegisteredIntersections ? loadUserRegisteredIntersections() : []);
+                        // 空なら geotextbook* をまるごと使う
+                        const preset = (gameState.currentMode === 'geotextbook')
+                            ? gameState.geotextbookFacilities
+                            : gameState.geotextbookIntersections;
                         gameState.registrationList = userList.length
                             ? userList
-                            : gameState.geotextbookFacilities.slice();
+                            : preset.slice();
                         gameState.registrationIndex = 0;
                         gameState.totalRetryCount = 0;
                         gameState.retryCountPerQuestion = gameState.registrationList.map(() => 0);
@@ -4375,7 +4432,7 @@
                 const timerEl = document.getElementById('timer');
                 if (timerEl) timerEl.style.display = 'block';
 
-                if (gameState.currentMode === 'geotextbook' && gameState.playOrder === 'registration') {
+                if ((gameState.currentMode === 'geotextbook' || gameState.currentMode === 'geotextbook-intersection') && gameState.playOrder === 'registration') {
                     if (gameState.registrationIndex >= gameState.registrationList.length) {
                         finishRegistrationMode();
                         return;
@@ -4384,7 +4441,7 @@
                     gameState.totalQuestions = gameState.registrationIndex + 1;
                     gameState.currentQuestion = {
                         name: facility.name,
-                        type: 'facility',
+                        type: (gameState.currentMode === 'geotextbook') ? 'facility' : 'intersection',
                         description: facility.description || '登録施設',
                         importance: facility.importance || 50,
                         points: facility.points,
@@ -4530,16 +4587,20 @@
 
         async function generateQuestion() {
             try {
-                const candidate = pickRandom(gameState.geotextbookFacilities || []);
-                if (gameState.currentMode === 'geotextbook') {
+                // 地理教本（施設/交差点）: まずここで処理して即 return
+                if (gameState.currentMode === 'geotextbook' || gameState.currentMode === 'geotextbook-intersection') {
+                    const pool = (gameState.currentMode === 'geotextbook')
+                        ? (gameState.geotextbookFacilities || [])
+                        : (gameState.geotextbookIntersections || []);
+                    const candidate = pickRandom(pool);
                     if (!candidate || locationPermissionDenied) {
-                        showWarning('地理教本施設データが利用できません。設定または位置情報を確認してください。');
+                        showWarning('地理教本データが利用できません。設定または位置情報を確認してください。');
                         return;
                     }
                     gameState.currentQuestion = {
                         name: candidate.name,
-                        type: 'facility',
-                        description: '地理教本施設',
+                        type: (gameState.currentMode === 'geotextbook') ? 'facility' : 'intersection',
+                        description: (gameState.currentMode === 'geotextbook') ? '地理教本施設' : '地理教本交差点',
                         importance: 90,
                         points: candidate.points,
                         isEnclosedArea: false,
@@ -4556,7 +4617,7 @@
                         questionType.textContent = `${getModeName(gameState.currentMode)}チャレンジ`;
                     }
 
-                    log(`Question generated: ${candidate.name} (source: geotextbook)`);
+                    log(`Question generated: ${candidate.name} (source: ${gameState.currentMode})`);
                     return;
                 }
 
@@ -4744,7 +4805,7 @@
                         `)
                     .openOn(gameState.map);
 
-                } else if (gameState.currentMode === 'intersection') {
+                } else if (gameState.currentMode === 'intersection' || gameState.currentMode === 'geotextbook-intersection') {
                     const intersectionMarker = L.marker([question.points[0][0].lat, question.points[0][0].lng], {
                         icon: L.divIcon({
                             html: '<div style="background: #ff6b6b; width: 25px; height: 25px; border-radius: 50%; border: 3px solid white;"></div>',
@@ -4983,7 +5044,7 @@
                     return;
                 }
 
-                if (gameState.currentMode === 'geotextbook' && gameState.playOrder === 'registration') {
+                if ((gameState.currentMode === 'geotextbook' || gameState.currentMode === 'geotextbook-intersection') && gameState.playOrder === 'registration') {
                     handleRegistrationClick(userLatLng);
                     return;
                 }
@@ -5608,6 +5669,7 @@
                 'intersection': '交差点',
                 'reverse': '逆',
                 'geotextbook': '地理教本施設',
+                'geotextbook-intersection': '地理教本交差点',
             };
             return names[mode] || mode;
         }
