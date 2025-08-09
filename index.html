@@ -1469,14 +1469,14 @@
             <div class="debug-info" id="debug-info">Loading map...</div>
 
             <div class="start-controls" id="start-controls">
-               <select id="game-mode-select">␊
+               <select id="game-mode-select">
                     <option value="street" disabled>Street</option>
-                    <option value="facility">Facility</option>␊
-                    <option value="intersection">Intersection</option>␊
-                    <option value="reverse">Reverse</option>␊
-                    <option value="geotextbook">地理教本施設モード</option>␊
+                    <option value="facility">Facility</option>
+                    <option value="intersection">Intersection</option>
+                    <option value="reverse">Reverse</option>
+                    <option value="geotextbook">地理教本施設モード</option>
                     <!-- NEW: curated intersections mode -->
-                    <option value="geotextbook-intersection">地理教本交差点</option>␊
+                    <option value="geotextbook-intersection">地理教本交差点</option>
                 </select>
                 <!-- CHANGED: 施設/交差点どちらの地理教本でも共用 -->
                 <select id="geotextbook-area-select" style="display:none;">
@@ -2192,6 +2192,7 @@
             correctMarker: null,
             streetLayer: null,
             facilityLayer: null,
+            highlightLayer: null,
             lastGuess: null,
             center: { lat: 35.6762, lng: 139.6503 },
             range: 5,
@@ -4743,6 +4744,73 @@
             }
         }
 
+        // === 答え合わせ処理の交差点対応追加 ===
+        async function showIntersectionAnswer(q) {
+            // 既存の交差点マーカー表示
+            const marker = L.marker([q.points[0][0].lat, q.points[0][0].lng], { title: q.name }).addTo(gameState.facilityLayer);
+            marker.bindPopup(`<b>${q.name}</b>`).openPopup();
+
+            // Google検索リンク & 交差道路取得
+            const googleLink = `<a href="https://www.google.com/search?q=${encodeURIComponent(q.name)}" target="_blank">🔍 検索</a>`;
+
+            // Overpass APIで交差する道路を取得
+            let roadNames = [];
+            let roadGeoms = [];
+            try {
+                // 最初のノードIDを取得
+                const nodeId = q.osmNodeId || null;
+                if (nodeId) {
+                    const query = `
+                [out:json][timeout:25];
+                node(${nodeId})->.n;
+                way(bn.n)["highway"]["name"];
+                out geom;
+            `;
+                    const res = await fetch(OVERPASS_URL, {
+                        method: "POST",
+                        body: query,
+                        headers: { "Content-Type": "application/x-www-form-urlencoded" }
+                    });
+                    const data = await res.json();
+                    const seen = new Set();
+                    data.elements.forEach(el => {
+                        if (el.type === "way" && el.tags?.name) {
+                            if (!seen.has(el.tags.name)) {
+                                roadNames.push(el.tags.name);
+                                seen.add(el.tags.name);
+                            }
+                            // ジオメトリ保存
+                            if (el.geometry) {
+                                const coords = el.geometry.map(p => [p.lat, p.lon]);
+                                roadGeoms.push(coords);
+                            }
+                        }
+                    });
+                }
+            } catch (err) {
+                console.warn("交差道路取得失敗:", err);
+            }
+
+            // 交差道路を地図上に強調表示
+            if (!gameState.highlightLayer) {
+                gameState.highlightLayer = L.layerGroup().addTo(gameState.map);
+            }
+            gameState.highlightLayer.clearLayers();
+            roadGeoms.forEach(coords => {
+                L.polyline(coords, { color: '#FF5722', weight: 6, opacity: 0.8 }).addTo(gameState.highlightLayer);
+            });
+
+            // ポップアップ内容
+            const popupHtml = `
+        <div class="intersection-answer-popup">
+            <h3>${q.name}</h3>
+            ${googleLink}
+            <p class="roads">交差する道路: ${roadNames.join('、') || '（取得できませんでした）'}</p>
+        </div>
+    `;
+            marker.setPopupContent(popupHtml).openPopup();
+        }
+
         function showAnswer() {
             try {
                 if (!gameState.currentQuestion) return;
@@ -4806,17 +4874,7 @@
                     .openOn(gameState.map);
 
                 } else if (gameState.currentMode === 'intersection' || gameState.currentMode === 'geotextbook-intersection') {
-                    const intersectionMarker = L.marker([question.points[0][0].lat, question.points[0][0].lng], {
-                        icon: L.divIcon({
-                            html: '<div style="background: #ff6b6b; width: 25px; height: 25px; border-radius: 50%; border: 3px solid white;"></div>',
-                            iconSize: [25, 25]
-                        })
-                    }).addTo(gameState.facilityLayer);
-                    
-                    const popup = L.popup()
-                        .setLatLng([question.points[0][0].lat, question.points[0][0].lng])
-                        .setContent(`<strong>${question.name}</strong><br>${question.description}`)
-                        .openOn(gameState.map);
+                    showIntersectionAnswer(question);
                 }
 
                 const showAnswerBtn = document.getElementById('show-answer');
@@ -5384,6 +5442,7 @@
                 clearUserMarkers();
                 if (gameState.streetLayer) gameState.streetLayer.clearLayers();
                 if (gameState.facilityLayer) gameState.facilityLayer.clearLayers();
+                if (gameState.highlightLayer) gameState.highlightLayer.clearLayers();
                 if (gameState.map) gameState.map.closePopup();
                 hideMobileDistance();
                 hideMobileChoices();
