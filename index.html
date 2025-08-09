@@ -4007,18 +4007,32 @@
             })
             .then(res => res.json())
             .then(data => {
+                // ✅「名前がある交差点」のみを採用（= '交差点（ID）'を除外）
                 const intersections = data.elements
-                    .filter(el => el.type === 'node')
+                    .filter(el =>
+                        el.type === 'node' &&
+                        el.tags &&
+                        typeof el.tags.name === 'string' &&
+                        el.tags.name.trim() !== ''
+                    )
                     .map(el => ({
-                        name: el.tags.name || `交差点 (${el.id})`,
+                        name: el.tags.name, // ← ここでIDフォールバックはしない
                         type: 'intersection',
                         description: el.tags.highway || el.tags.junction || '交差点',
                         importance: 65,
                         points: [[{ lat: el.lat, lng: el.lon }]],
                         source: 'overpass'
                     }));
+
+                // 既に積まれている「交差点（ID）」形式を掃除（安全策）
+                for (let i = intersectionQuestions.length - 1; i >= 0; i--) {
+                    if (/^交差点\s*\(\d+\)$/.test(intersectionQuestions[i].name)) {
+                        intersectionQuestions.splice(i, 1);
+                    }
+                }
+
                 intersectionQuestions.push(...intersections);
-                showSuccess(`${intersections.length} 件の交差点データを取得しました`);
+                showSuccess(`${intersections.length} 件の交差点データを取得しました（名称ありのみ）`);
             })
             .catch(err => {
                 showError('交差点データ取得失敗: ' + err.message);
@@ -4796,7 +4810,7 @@
                 log(`Retrieved ${data.elements?.length || 0} ways from Overpass`);
                 
                 // 交差点を通る道路を判定
-                const threshold = 30; // 交差点から30m以内を通る道路を対象
+                const threshold = 60; // 交差点から60m以内を通る道路を対象
                 const seenRoads = new Set();
                 
                 data.elements?.forEach(el => {
