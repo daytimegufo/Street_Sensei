@@ -4746,67 +4746,158 @@
 
         // === 答え合わせ処理の交差点対応追加 ===
         async function showIntersectionAnswer(q) {
-            // 既存の交差点マーカー表示
-            const marker = L.marker([q.points[0][0].lat, q.points[0][0].lng], { title: q.name }).addTo(gameState.facilityLayer);
-            marker.bindPopup(`<b>${q.name}</b>`).openPopup();
+            // 交差点マーカー表示（大きめの赤い円）
+            const intersectionMarker = L.circleMarker([q.points[0][0].lat, q.points[0][0].lng], {
+                radius: 12,
+                color: '#ff0000',
+                fillColor: '#ff6b6b',
+                fillOpacity: 0.8,
+                weight: 3
+            }).addTo(gameState.facilityLayer);
 
-            // Google検索リンク & 交差道路取得
-            const googleLink = `<a href="https://www.google.com/search?q=${encodeURIComponent(q.name)}" target="_blank">🔍 検索</a>`;
+            // Google検索リンク
+            const googleLink = `<a href="https://www.google.com/search?q=${encodeURIComponent(q.name)}" target="_blank">🔍 Google検索</a>`;
 
-            // Overpass APIで交差する道路を取得
-            let roadNames = [];
-            let roadGeoms = [];
-            try {
-                const lat = q.points[0][0].lat;
-                const lng = q.points[0][0].lng;
-                const query = `
-        [out:json][timeout:25];
-        node(${lat},${lng});
-        way(around:100)["highway"]["name"];
-        out geom;
-    `;
-                const res = await fetch(OVERPASS_URL, {
-                    method: "POST",
-                    body: query,
-                    headers: { "Content-Type": "application/x-www-form-urlencoded" }
-                });
-                const data = await res.json();
-                const seen = new Set();
-                data.elements.forEach(el => {
-                    if (el.type === "way" && el.tags?.name) {
-                        if (!seen.has(el.tags.name)) {
-                            roadNames.push(el.tags.name);
-                            seen.add(el.tags.name);
-                        }
-                        // ジオメトリ保存
-                        if (el.geometry) {
-                            const coords = el.geometry.map(p => [p.lat, p.lon]);
-                            roadGeoms.push(coords);
-                        }
-                    }
-                });
-            } catch (err) {
-                console.warn("交差道路取得失敗:", err);
-            }
-
-            // 交差道路を地図上に強調表示
+            // ハイライトレイヤーの初期化
             if (!gameState.highlightLayer) {
                 gameState.highlightLayer = L.layerGroup().addTo(gameState.map);
             }
             gameState.highlightLayer.clearLayers();
-            roadGeoms.forEach(coords => {
-                L.polyline(coords, { color: '#FF5722', weight: 6, opacity: 0.8 }).addTo(gameState.highlightLayer);
-            });
 
-            // ポップアップ内容
+            // 交差する道路を取得
+            let roadNames = [];
+            let roadInfo = [];
+            const intersectionPoint = { lat: q.points[0][0].lat, lng: q.points[0][0].lng };
+            
+            try {
+                // より広範囲で道路を検索（半径150m）
+                const radius = 150;
+                const query = `
+                    [out:json][timeout:30];
+                    (
+                        way["highway"]["name"](around:${radius},${intersectionPoint.lat},${intersectionPoint.lng});
+                    );
+                    out body geom;
+                `;
+                
+                log(`Fetching roads around intersection: ${q.name} at ${intersectionPoint.lat}, ${intersectionPoint.lng}`);
+                
+                const res = await fetch(OVERPASS_URL, {
+                    method: "POST",
+                    body: `data=${encodeURIComponent(query)}`,
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" }
+                });
+                
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                }
+                
+                const data = await res.json();
+                log(`Retrieved ${data.elements?.length || 0} ways from Overpass`);
+                
+                // 交差点を通る道路を判定
+                const threshold = 30; // 交差点から30m以内を通る道路を対象
+                const seenRoads = new Set();
+                
+                data.elements?.forEach(el => {
+                    if (el.type === "way" && el.tags?.name && el.geometry) {
+                        const roadName = el.tags.name;
+                        const highwayType = el.tags.highway;
+                        
+                        // 道路の重要度を判定
+                        const importance = ROAD_TYPE_SCORES[highwayType] || 40;
+                        
+                        // 道路が交差点に近いかチェック
+                        let minDistance = Infinity;
+                        const coords = el.geometry.map(p => ({ lat: p.lat, lng: p.lon }));
+                        
+                        for (let i = 0; i < coords.length; i++) {
+                            const distance = calculateSimpleDistance(
+                                intersectionPoint.lat, intersectionPoint.lng,
+                                coords[i].lat, coords[i].lng
+                            ) * 1000; // メートルに変換
+                            
+                            if (distance < minDistance) {
+                                minDistance = distance;
+                            }
+                        }
+                        
+                        // 交差点に近い道路のみを対象
+                        if (minDistance <= threshold && !seenRoads.has(roadName)) {
+                            seenRoads.add(roadName);
+                            roadInfo.push({
+                                name: roadName,
+                                type: highwayType,
+                                importance: importance,
+                                distance: minDistance,
+                                coords: coords.map(p => [p.lat, p.lng])
+                            });
+                        }
+                    }
+                });
+                
+                // 重要度順にソート（主要道路を優先）
+                roadInfo.sort((a, b) => b.importance - a.importance);
+                
+                // 上位の主要道路を取得（最大5本）
+                const mainRoads = roadInfo.slice(0, 5);
+                roadNames = mainRoads.map(r => r.name);
+                
+                log(`Found ${roadInfo.length} roads near intersection, showing ${mainRoads.length} main roads`);
+                
+                // 道路を地図上に色分けして表示
+                mainRoads.forEach((road, index) => {
+                    const colors = ['#FF5722', '#2196F3', '#4CAF50', '#FFC107', '#9C27B0'];
+                    const color = colors[index % colors.length];
+                    
+                    L.polyline(road.coords, {
+                        color: color,
+                        weight: 6,
+                        opacity: 0.7,
+                        className: 'intersection-road'
+                    }).addTo(gameState.highlightLayer);
+                });
+                
+                // 交差点を中心にズーム
+                gameState.map.setView([intersectionPoint.lat, intersectionPoint.lng], 16);
+                
+            } catch (err) {
+                console.error("交差道路取得エラー:", err);
+                log(`Error fetching intersection roads: ${err.message}`);
+                
+                // フォールバック：エラー時は交差点名から推測
+                if (q.name && q.name.includes('交差点')) {
+                    const parts = q.name.replace('交差点', '').split(/[・×]/);
+                    if (parts.length > 1) {
+                        roadNames = parts.map(p => p.trim()).filter(p => p);
+                        log(`Fallback: extracted road names from intersection name: ${roadNames.join(', ')}`);
+                    }
+                }
+            }
+
+            // ポップアップ内容（詳細情報）
+            const roadListHtml = roadNames.length > 0 
+                ? `<ul style="margin: 0.5rem 0; padding-left: 1.5rem; text-align: left;">
+                    ${roadNames.map(name => `<li>${name}</li>`).join('')}
+                   </ul>`
+                : '<p style="color: #999;">道路情報を取得できませんでした</p>';
+            
             const popupHtml = `
-        <div class="intersection-answer-popup">
-            <h3>${q.name}</h3>
-            ${googleLink}
-            <p class="roads">交差する道路: ${roadNames.join('、') || '（取得できませんでした）'}</p>
-        </div>
-    `;
-            marker.setPopupContent(popupHtml).openPopup();
+                <div class="intersection-answer-popup" style="min-width: 250px;">
+                    <h3 style="margin: 0.5rem 0; color: #ff6b6b;">${q.name}</h3>
+                    <div style="margin: 0.5rem 0;">${googleLink}</div>
+                    <div style="border-top: 1px solid #ddd; margin-top: 0.5rem; padding-top: 0.5rem;">
+                        <strong>交差する主要道路:</strong>
+                        ${roadListHtml}
+                    </div>
+                    ${q.description ? `<div style="margin-top: 0.5rem; font-size: 0.9em; color: #666;">${q.description}</div>` : ''}
+                </div>
+            `;
+            
+            intersectionMarker.bindPopup(popupHtml, {
+                maxWidth: 350,
+                className: 'intersection-popup'
+            }).openPopup();
         }
 
         function showAnswer() {
