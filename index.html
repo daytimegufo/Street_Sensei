@@ -16,6 +16,7 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/fireworks-js@2.10.8/dist/index.umd.min.js"></script>
     <style>
+        /* ========== Base Styles ========== */
         * {
             margin: 0;
             padding: 0;
@@ -34,6 +35,7 @@
             -ms-user-select: none;
         }
 
+        /* ========== Header ========== */
         .header {
             background: #2d2d2d;
             padding: 0.75rem 1rem;
@@ -45,37 +47,16 @@
             position: relative;
         }
 
-        @media (max-width: 768px) {
-            .header {
-                height: 60px;
-                padding: 0.5rem;
-            }
-        }
-
         .title {
             font-size: 1.25rem;
             font-weight: bold;
             color: #4CAF50;
         }
 
-        @media (max-width: 768px) {
-            .title {
-                font-size: 1rem;
-            }
-        }
-
         .stats {
             display: flex;
             gap: 1.5rem;
             font-size: 0.85rem;
-        }
-
-        @media (max-width: 768px) {
-            .stats {
-                gap: 0.75rem;
-                font-size: 0.75rem;
-                flex-wrap: wrap;
-            }
         }
 
         .stat-item {
@@ -91,14 +72,32 @@
             color: #4CAF50;
         }
 
-        @media (max-width: 768px) {
-            .stat-value {
-                font-size: 0.95rem;
-            }
+        /* Unified Timer Display */
+        .timer-display {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #4CAF50;
+            margin: 0 1rem;
+            min-width: 50px;
+            text-align: center;
         }
 
-.menu-toggle {
-            display: none;
+        .timer-display.warning {
+            color: #ff9800;
+        }
+
+        .timer-display.danger {
+            color: #ff6b6b;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+
+        /* ========== Layout ========== */
+        .menu-toggle {
             background: #4CAF50;
             border: none;
             color: white;
@@ -109,29 +108,9 @@
             width: 2.5rem;
         }
 
-        @media (max-width: 768px) {
-            .menu-toggle {
-                display: block;
-                font-size: 1.2rem;
-            }
-        }
-
-        @media (min-width: 769px) {
-            .menu-toggle {
-                display: block;
-            }
-        }
-
         .game-container {
             display: flex;
             height: calc(100vh - 70px);
-        }
-
-        @media (max-width: 768px) {
-            .game-container {
-                height: calc(100vh - 60px - 60px);
-                flex-direction: column;
-            }
         }
 
         .sidebar {
@@ -143,27 +122,8 @@
             transition: transform 0.3s ease;
         }
 
-        @media (max-width: 768px) {
-            .sidebar {
-                position: fixed;
-                top: 60px;
-                left: 0;
-                width: 100vw;
-                height: calc(100vh - 60px - 60px);
-                z-index: 1000;
-                transform: translateX(-100%);
-                padding: 1rem;
-            }
-
-            .sidebar.open {
-                transform: translateX(0);
-            }
-        }
-
-        @media (min-width: 769px) {
-            .sidebar.closed {
-                display: none;
-            }
+        .sidebar.closed {
+            display: none;
         }
 
         .map-container {
@@ -178,7 +138,7 @@
             touch-action: manipulation;
         }
 
-        /* Leaflet tile layer optimization */
+        /* ========== Leaflet Optimizations ========== */
         .leaflet-tile-container {
             image-rendering: -webkit-optimize-contrast;
             image-rendering: crisp-edges;
@@ -201,22 +161,7 @@
             opacity: 0.5 !important;
         }
 
-        /* Hide broken tiles */
-        .leaflet-tile[src=""], 
-        .leaflet-tile[src*="data:image/gif"] {
-            display: none !important;
-            visibility: hidden !important;
-        }
-
-        /* Prevent tile flickering */
-        .leaflet-fade-anim .leaflet-tile {
-            transition: opacity 0.3s ease !important;
-        }
-
-        .leaflet-zoom-anim .leaflet-tile {
-            transition: none !important;
-        }
-
+        /* ========== Setup Sections ========== */
         .setup-section {
             margin-bottom: 1.5rem;
         }
@@ -252,14 +197,6 @@
             transition: border-color 0.2s;
         }
 
-        @media (max-width: 768px) {
-            select, input, button, textarea {
-                padding: 1rem;
-                font-size: 16px; /* Prevents zoom on iOS */
-                min-height: 48px; /* Touch-friendly size */
-            }
-        }
-
         button {
             background: #4CAF50;
             color: white;
@@ -285,10 +222,7 @@
             opacity: 0.7;
         }
 
-        button.loading {
-            pointer-events: none;
-        }
-
+        /* ========== Game UI ========== */
         .challenge-section {
             margin-top: 1.5rem;
             padding-top: 1.5rem;
@@ -320,641 +254,7 @@
             margin-top: 0.5rem;
         }
 
-        .timer {
-            font-size: 1.75rem;
-            font-weight: bold;
-            color: #ff6b6b;
-            text-align: center;
-            margin-bottom: 1rem;
-        }
-
-        .distance-display {
-            background: #3d3d3d;
-            padding: 1rem;
-            border-radius: 6px;
-            margin-bottom: 1rem;
-            text-align: center;
-        }
-
-        .results-overlay {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(45, 45, 45, 0.95);
-            padding: 2rem;
-            border-radius: 12px;
-            text-align: center;
-            z-index: 1000;
-            min-width: 300px;
-            backdrop-filter: blur(10px);
-            max-width: 90vw;
-        }
-
-        .score-display {
-            font-size: 1.75rem;
-            font-weight: bold;
-            color: #4CAF50;
-            margin-bottom: 1rem;
-        }
-
-        .multiple-choice {
-            display: grid;
-            gap: 0.5rem;
-            margin-top: 1rem;
-        }
-
-        .choice-button {
-            padding: 1rem;
-            background: #3d3d3d;
-            border: 1px solid #555;
-            border-radius: 6px;
-            color: #fff;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        @media (max-width: 768px) {
-            .choice-button {
-                padding: 1.25rem;
-                font-size: 1rem;
-                min-height: 48px;
-            }
-        }
-
-        .choice-button:hover {
-            background: #4d4d4d;
-            border-color: #4CAF50;
-        }
-
-        .choice-button.correct {
-            background: #4CAF50;
-            border-color: #4CAF50;
-        }
-
-        .choice-button.incorrect {
-            background: #f44336;
-            border-color: #f44336;
-        }
-
-        .mode-tabs {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr 1fr;
-            margin-bottom: 1rem;
-            gap: 0.25rem;
-        }
-
-        .mode-tab {
-            padding: 0.5rem;
-            background: #3d3d3d;
-            border: 1px solid #555;
-            color: #aaa;
-            cursor: pointer;
-            font-size: 0.8rem;
-            text-align: center;
-            border-radius: 4px;
-            transition: all 0.2s;
-        }
-
-        /* Disable mode-tab visually when not ready */
-        .mode-tab.disabled {
-            opacity: 0.5;
-            pointer-events: none;
-        }
-
-        @media (max-width: 768px) {
-            .mode-tab {
-                padding: 0.75rem 0.5rem;
-                font-size: 0.75rem;
-                min-height: 48px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-        }
-
-        .mode-tab.active {
-            background: #4CAF50;
-            color: white;
-            border-color: #4CAF50;
-        }
-
-        .blinking {
-            animation: blink 1s infinite;
-        }
-
-        @keyframes blink {
-            0%, 50% { opacity: 1; }
-            51%, 100% { opacity: 0.3; }
-        }
-
-        .hidden {
-            display: none !important;
-        }
-
-        .map-controls {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-
-        .map-control-btn {
-            width: 44px;
-            height: 44px;
-            background: rgba(45, 45, 45, 0.9);
-            border: 2px solid #4CAF50;
-            color: #4CAF50;
-            border-radius: 6px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            font-size: 1.2rem;
-            touch-action: manipulation;
-            transition: all 0.2s;
-        }
-
-        @media (max-width: 768px) {
-            .map-control-btn {
-                width: 50px;
-                height: 50px;
-                font-size: 1.4rem;
-            }
-            .map-controls {
-                display: none;
-            }
-        }
-
-        .map-control-btn:hover {
-            background: #4CAF50;
-            color: white;
-        }
-
-        .layer-toggle {
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            z-index: 1000;
-            background: rgba(45, 45, 45, 0.9);
-            border: 2px solid #4CAF50;
-            color: #4CAF50;
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            touch-action: manipulation;
-            transition: all 0.2s;
-        }
-
-        @media (max-width: 768px) {
-            .layer-toggle {
-                bottom: 70px;
-                font-size: 0.75rem;
-                padding: 1rem;
-                min-height: 48px;
-            }
-        }
-
-        .layer-toggle:hover {
-            background: #4CAF50;
-            color: white;
-        }
-
-        .start-controls {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(254, 252, 252, 0.95);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 0.2rem;
-            padding: 0.2rem;
-            z-index: 950;
-            width: 30rem;
-            margin: 0 auto;
-        }
-
-        .start-controls select,
-        .start-controls button {
-            padding: 0.5rem 1rem;
-            font-size: 0.9rem;
-            width: 15rem;
-        }
-
-        @media (max-width: 768px) {
-            .start-controls {
-                width: 100%;
-                height: 60px;
-                padding: 0.5rem;
-            }
-
-            .start-controls select,
-            .start-controls button {
-                font-size: 1rem;
-                width: 48%;
-            }
-        }
-
-        .debug-info {
-            position: absolute;
-            top: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.8);
-            color: white;
-            padding: 0.5rem;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            z-index: 1000;
-            max-width: 90vw;
-            display: none !important;
-        }
-
-        .loading {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #4CAF50;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            vertical-align: middle;
-            margin-right: 0.5rem;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .error-message, .warning-message, .success-message, .info-message {
-            padding: 1rem;
-            border-radius: 6px;
-            margin-bottom: 1rem;
-            font-size: 0.9rem;
-        }
-
-        .error-message {
-            background: #f44336;
-            color: white;
-        }
-
-        .warning-message {
-            background: #ff9800;
-            color: white;
-        }
-
-        .success-message {
-            background: #4CAF50;
-            color: white;
-        }
-
-        .info-message {
-            background: #2196F3;
-            color: white;
-        }
-
-        /* Advanced Settings Panel */
-        .advanced-settings {
-            margin-top: 1rem;
-            padding: 1rem;
-            background: #333;
-            border-radius: 8px;
-            border: 1px solid #555;
-        }
-
-        .advanced-settings h3 {
-            color: #ff9800;
-            margin-bottom: 1rem;
-            font-size: 1rem;
-            border-bottom: 1px solid #555;
-            padding-bottom: 0.5rem;
-        }
-
-        .advanced-settings h4 {
-            color: #4CAF50;
-            margin: 1rem 0 0.5rem 0;
-            font-size: 0.9rem;
-            border-bottom: 1px solid #444;
-            padding-bottom: 0.25rem;
-        }
-
-        .editor-section {
-            margin-bottom: 1.5rem;
-        }
-
-        .point-list {
-            max-height: 150px;
-            overflow-y: auto;
-            background: #2d2d2d;
-            border: 1px solid #555;
-            border-radius: 4px;
-            padding: 0.5rem;
-            margin-top: 0.5rem;
-        }
-
-        .point-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.25rem;
-            margin: 0.25rem 0;
-            background: #4d4d4d;
-            border-radius: 4px;
-        }
-
-        .point-coords {
-            font-size: 0.8rem;
-            color: #ccc;
-        }
-
-        .point-remove {
-            background: #f44336;
-            color: white;
-            border: none;
-            padding: 0.25rem 0.5rem;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 0.7rem;
-        }
-
-        .file-input-wrapper {
-            position: relative;
-            overflow: hidden;
-            display: inline-block;
-            width: 100%;
-        }
-
-        .file-input {
-            position: absolute;
-            left: -9999px;
-        }
-
-        .file-input-label {
-            display: block;
-            width: 100%;
-            padding: 0.75rem;
-            background: #2196F3;
-            color: white;
-            border-radius: 6px;
-            text-align: center;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        .file-input-label:hover {
-            background: #1976D2;
-        }
-
-        .problem-list {
-            max-height: 200px;
-            overflow-y: auto;
-            background: #2d2d2d;
-            border: 1px solid #555;
-            border-radius: 4px;
-            padding: 0.5rem;
-            margin-top: 0.5rem;
-        }
-
-        .problem-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.5rem;
-            margin: 0.25rem 0;
-            background: #4d4d4d;
-            border-radius: 4px;
-        }
-
-        .problem-name {
-            font-weight: bold;
-            color: #4CAF50;
-        }
-
-        .problem-info {
-            font-size: 0.8rem;
-            color: #ccc;
-        }
-
-        .problem-actions {
-            display: flex;
-            gap: 0.25rem;
-        }
-
-        .btn-small {
-            padding: 0.25rem 0.5rem;
-            font-size: 0.7rem;
-            border-radius: 3px;
-        }
-
-        .btn-edit {
-            background: #ff9800;
-        }
-
-        .btn-delete {
-            background: #f44336;
-        }
-
-        .current-location-btn {
-            background: #2196F3;
-            margin-top: 0.5rem;
-        }
-
-        .current-location-btn:hover {
-            background: #1976D2;
-        }
-
-        /* Location Services */
-        .location-status {
-            padding: 0.5rem;
-            border-radius: 4px;
-            margin-top: 0.5rem;
-            font-size: 0.8rem;
-            text-align: center;
-        }
-
-        .location-status.success {
-            background: #4CAF50;
-            color: white;
-        }
-
-        .location-status.error {
-            background: #f44336;
-            color: white;
-        }
-
-        .location-status.pending {
-            background: #ff9800;
-            color: white;
-        }
-
-        /* Hide advanced settings on mobile */
-        @media (max-width: 768px) {
-            .advanced-settings {
-                display: none !important;
-            }
-            
-            /* Hide advanced tools button on mobile */
-            #toggle-settings {
-                display: none;
-            }
-        }
-
-        /* Touch optimization */
-        @media (hover: none) and (pointer: coarse) {
-            .choice-button:hover,
-            .mode-tab:hover,
-            .map-control-btn:hover,
-            .layer-toggle:hover {
-                background: inherit;
-                color: inherit;
-                border-color: inherit;
-                transform: none;
-            }
-        }
-
-        /* タイマー表示を統一（サイドバー内から移動） */
-        .timer-display {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #4CAF50;
-            margin: 0 1rem;
-            min-width: 50px;
-            text-align: center;
-        }
-
-        .timer-display.warning {
-            color: #ff9800;
-        }
-
-        .timer-display.danger {
-            color: #ff6b6b;
-            animation: blink 1s infinite;
-        }
-
-        /* モバイルでの調整 */
-        @media (max-width: 768px) {
-            .timer-display {
-                font-size: 1.2rem;
-                margin: 0 0.5rem;
-            }
-        }
-
-        /* Mobile Game Overlay - ゲーム中の地図上表示 */
-        .mobile-game-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            z-index: 900;
-            pointer-events: none;
-        }
-
-        @media (max-width: 768px) {
-            .mobile-game-overlay.active {
-                display: block;
-            }
-        }
-
-        /* タイマーとスコア - 地図右上 */
-        .mobile-game-stats {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: rgba(45, 45, 45, 0.9);
-            border-radius: 8px;
-            padding: 0.5rem;
-            pointer-events: auto;
-            min-width: 80px;
-            text-align: center;
-        }
-
-        .mobile-timer {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #4CAF50;
-            margin-bottom: 0.25rem;
-        }
-
-        .mobile-timer.warning {
-            color: #ff9800;
-        }
-
-        .mobile-timer.danger {
-            color: #ff6b6b;
-            animation: pulse 1s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-
-        .mobile-score {
-            font-size: 0.6rem;
-            color: #ccc;
-        }
-    
-        /* ゲーム中はサイドバーを完全に隠す */
-        .game-playing .sidebar {
-            transform: translateX(-100%) !important;
-        }
-
-        /* ゲーム中のヘッダー簡素化 */
-        @media (max-width: 768px) {
-            .game-playing .header {
-                height: 60px;
-                padding: 0.5rem;
-            }
-
-            .game-playing .header .title {
-                display: none;
-            }
-
-            .game-playing .game-container {
-                height: calc(100vh - 60px);
-            }
-
-            .game-playing .mobile-controls {
-                display: none;
-            }
-        }
-
-        /* PC用ゲーム中のUI */
-        @media (min-width: 769px) {
-            .game-playing .sidebar {
-                display: none;
-            }
-
-            .game-playing .game-container {
-                height: calc(100vh - 70px);
-            }
-        }
-
-        /* 距離表示 - 地図左下 */
-        .mobile-distance-overlay {
-            position: absolute;
-            bottom: 80px;
-            left: 10px;
-            background: rgba(45, 45, 45, 0.9);
-            color: #fff;
-            padding: 0.75rem;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            pointer-events: auto;
-            max-width: 200px;
-        }
-
-        /* 統一された問題表示 - 地図左下 */
+        /* Unified Question Overlay */
         .game-question-overlay {
             position: absolute;
             bottom: 20px;
@@ -1014,7 +314,7 @@
             color: white;
         }
 
-        /* 5択選択肢 - 地図左下（Reverseモード用） */
+        /* Unified Choices Overlay */
         .game-choices-overlay {
             position: absolute;
             bottom: 20px;
@@ -1035,7 +335,7 @@
             gap: 0.5rem;
         }
 
-        .mobile-choice-btn {
+        .choice-btn {
             background: rgba(61, 61, 61, 0.9);
             color: #fff;
             border: 1px solid #555;
@@ -1047,42 +347,131 @@
             transition: all 0.2s;
         }
 
-        .mobile-choice-btn:hover {
+        .choice-btn:hover {
             background: rgba(77, 77, 77, 0.9);
             border-color: #4CAF50;
         }
 
-        .mobile-choice-btn.correct {
+        .choice-btn.correct {
             background: rgba(76, 175, 80, 0.9);
             border-color: #4CAF50;
         }
 
-        .mobile-choice-btn.incorrect {
+        .choice-btn.incorrect {
             background: rgba(244, 67, 54, 0.9);
             border-color: #f44336;
         }
 
-        /* --- Answer reveal animations --- */
-        .glow-line {
-            opacity: 0;
-            transition: opacity 0.8s;
-            filter: drop-shadow(0 0 10px #0f0);
+        /* ========== Mode Tabs ========== */
+        .mode-tabs {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            margin-bottom: 1rem;
+            gap: 0.25rem;
         }
 
-        .pulse-red {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #f44336;
-            border: 2px solid white;
-            animation: pulse-scale 1s infinite;
+        .mode-tab {
+            padding: 0.5rem;
+            background: #3d3d3d;
+            border: 1px solid #555;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 0.8rem;
+            text-align: center;
+            border-radius: 4px;
+            transition: all 0.2s;
         }
 
-        @keyframes pulse-scale {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.3); opacity: 0.7; }
+        .mode-tab.disabled {
+            opacity: 0.5;
+            pointer-events: none;
         }
-        /* --- Result modal --- */
+
+        .mode-tab.active {
+            background: #4CAF50;
+            color: white;
+            border-color: #4CAF50;
+        }
+
+        /* ========== Map Controls ========== */
+        .map-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .map-control-btn {
+            width: 44px;
+            height: 44px;
+            background: rgba(45, 45, 45, 0.9);
+            border: 2px solid #4CAF50;
+            color: #4CAF50;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            touch-action: manipulation;
+            transition: all 0.2s;
+        }
+
+        .map-control-btn:hover {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .layer-toggle {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: rgba(45, 45, 45, 0.9);
+            border: 2px solid #4CAF50;
+            color: #4CAF50;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            touch-action: manipulation;
+            transition: all 0.2s;
+        }
+
+        .layer-toggle:hover {
+            background: #4CAF50;
+            color: white;
+        }
+
+        /* ========== Start Controls ========== */
+        .start-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(254, 252, 252, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.2rem;
+            padding: 0.2rem;
+            z-index: 950;
+            width: 30rem;
+            margin: 0 auto;
+        }
+
+        .start-controls select,
+        .start-controls button {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+            width: 15rem;
+        }
+
+        /* ========== Results & Modals ========== */
         #result-modal {
             position: absolute;
             top: 10px;
@@ -1096,11 +485,13 @@
             backdrop-filter: blur(10px);
             min-width: 130px;
         }
+
         .score-circle {
             width: 60px;
             height: 60px;
             margin: 0 auto 0.5rem;
         }
+
         .score-circle circle {
             fill: none;
             stroke-width: 10;
@@ -1109,11 +500,34 @@
             stroke-dashoffset: 282.6;
             transition: stroke-dashoffset 1s ease;
         }
+
         .score-circle.green circle { stroke: #0a0; }
         .score-circle.orange circle { stroke: #f80; }
         .score-circle.red circle { stroke: #a00; }
 
-        /* Loading overlay */
+        .results-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(45, 45, 45, 0.95);
+            padding: 2rem;
+            border-radius: 12px;
+            text-align: center;
+            z-index: 1000;
+            min-width: 300px;
+            backdrop-filter: blur(10px);
+            max-width: 90vw;
+        }
+
+        .score-display {
+            font-size: 1.75rem;
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 1rem;
+        }
+
+        /* ========== Loading Overlay ========== */
         #loading-overlay {
             position: absolute;
             top: 0;
@@ -1143,13 +557,231 @@
             margin: 0 auto 16px;
         }
 
-        .loader-content .message {
-            font-size: 1.2em;
-            line-height: 1.4;
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
-        #reverse-feedback-popup {
-            animation: fadein 0.5s;
+        /* ========== Advanced Settings (PC Only) ========== */
+        .advanced-settings {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #333;
+            border-radius: 8px;
+            border: 1px solid #555;
+        }
+
+        .advanced-settings h3 {
+            color: #ff9800;
+            margin-bottom: 1rem;
+            font-size: 1rem;
+            border-bottom: 1px solid #555;
+            padding-bottom: 0.5rem;
+        }
+
+        .advanced-settings h4 {
+            color: #4CAF50;
+            margin: 1rem 0 0.5rem 0;
+            font-size: 0.9rem;
+            border-bottom: 1px solid #444;
+            padding-bottom: 0.25rem;
+        }
+
+        .point-list, .problem-list {
+            max-height: 150px;
+            overflow-y: auto;
+            background: #2d2d2d;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .point-item, .problem-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.25rem;
+            margin: 0.25rem 0;
+            background: #4d4d4d;
+            border-radius: 4px;
+        }
+
+        /* ========== Utility Classes ========== */
+        .hidden {
+            display: none !important;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            vertical-align: middle;
+            margin-right: 0.5rem;
+        }
+
+        .error-message, .warning-message, .success-message, .info-message {
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .error-message {
+            background: #f44336;
+            color: white;
+        }
+
+        .warning-message {
+            background: #ff9800;
+            color: white;
+        }
+
+        .success-message {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .info-message {
+            background: #2196F3;
+            color: white;
+        }
+
+        /* ========== Mobile Responsive ========== */
+        @media (max-width: 768px) {
+            .header {
+                height: 60px;
+                padding: 0.5rem;
+            }
+
+            .title {
+                font-size: 1rem;
+            }
+
+            .stats {
+                gap: 0.75rem;
+                font-size: 0.75rem;
+                flex-wrap: wrap;
+            }
+
+            .stat-value {
+                font-size: 0.95rem;
+            }
+
+            .timer-display {
+                font-size: 1.2rem;
+                margin: 0 0.5rem;
+            }
+
+            .game-container {
+                height: calc(100vh - 60px - 60px);
+                flex-direction: column;
+            }
+
+            .sidebar {
+                position: fixed;
+                top: 60px;
+                left: 0;
+                width: 100vw;
+                height: calc(100vh - 60px - 60px);
+                z-index: 1000;
+                transform: translateX(-100%);
+                padding: 1rem;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .menu-toggle {
+                display: block;
+                font-size: 1.2rem;
+            }
+
+            select, input, button, textarea {
+                padding: 1rem;
+                font-size: 16px; /* Prevents zoom on iOS */
+                min-height: 48px; /* Touch-friendly size */
+            }
+
+            .mode-tab {
+                padding: 0.75rem 0.5rem;
+                font-size: 0.75rem;
+                min-height: 48px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .map-controls {
+                display: none;
+            }
+
+            .layer-toggle {
+                bottom: 70px;
+                font-size: 0.75rem;
+                padding: 1rem;
+                min-height: 48px;
+            }
+
+            .start-controls {
+                width: 100%;
+                height: 60px;
+                padding: 0.5rem;
+            }
+
+            .start-controls select,
+            .start-controls button {
+                font-size: 1rem;
+                width: 48%;
+            }
+
+            /* Hide advanced settings on mobile */
+            .advanced-settings {
+                display: none !important;
+            }
+            
+            #toggle-settings {
+                display: none;
+            }
+
+            /* Game playing state */
+            .game-playing .sidebar {
+                transform: translateX(-100%) !important;
+            }
+
+            .game-playing .header .title {
+                display: none;
+            }
+
+            .game-playing .game-container {
+                height: calc(100vh - 60px);
+            }
+        }
+
+        /* ========== Animations ========== */
+        .glow-line {
+            opacity: 0;
+            transition: opacity 0.8s;
+            filter: drop-shadow(0 0 10px #0f0);
+        }
+
+        .pulse-red {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #f44336;
+            border: 2px solid white;
+            animation: pulse-scale 1s infinite;
+        }
+
+        @keyframes pulse-scale {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.7; }
         }
 
         @keyframes fadein {
@@ -1157,13 +789,20 @@
             to { opacity: 1; transform: translate(-50%, -50%); }
         }
 
-        #reverse-feedback-popup {
-            animation: fadein 0.5s;
-        }
-
-        @keyframes fadein {
-            from { opacity: 0; transform: translate(-50%, -60%); }
-            to { opacity: 1; transform: translate(-50%, -50%); }
+        /* ========== Debug Info ========== */
+        .debug-info {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            z-index: 1000;
+            max-width: 90vw;
+            display: none !important;
         }
     </style>
 </head>
@@ -1204,7 +843,6 @@
                 <div class="mode-tab" data-mode="intersection">Intersection</div>
                 <div class="mode-tab" data-mode="reverse">Reverse</div>
             </div>
-            <!-- Game Section (always visible) -->
 
             <div class="setup-section" id="registration-preview" style="display:none;">
                 <h3>登録施設リスト</h3>
@@ -1217,7 +855,7 @@
                     <label for="location">Center Location</label>
                     <input type="text" id="location" placeholder="Enter city or coordinates" value="Tokyo, Japan">
                     <button id="update-location">Update Location</button>
-                    <button id="get-current-location" class="current-location-btn">📍 Use Current Location</button>
+                    <button id="get-current-location" class="current-location-btn" style="background: #2196F3; margin-top: 0.5rem;">📍 Use Current Location</button>
                     <div id="location-status" class="location-status hidden"></div>
                 </div>
                 <div class="form-group">
@@ -1286,110 +924,104 @@
                 </div>
             </div>
 
-            <!-- Advanced Settings Panel (Hidden by default) -->
+            <!-- Advanced Settings Panel (PC Only) -->
             <div class="advanced-settings hidden" id="advanced-settings">
-                <div class="setup-section">
-                    <h3>🔧 Advanced Tools (PC Only)</h3>
-                    
-                    <!-- Problem Editor -->
-                    <div class="editor-section">
-                        <h4>Problem Editor</h4>
-                        <div class="form-group">
-                            <label for="problem-name">Problem Name</label>
-                            <input type="text" id="problem-name" placeholder="Enter street/facility name">
-                        </div>
-                        <div class="form-group">
-                            <label for="problem-type">Problem Type</label>
-                            <select id="problem-type">
-                                <option value="street">Street</option>
-                                <option value="facility">Facility</option>
-                                <option value="intersection">Intersection</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="problem-description">Description</label>
-                            <textarea id="problem-description" placeholder="Brief description of the location" rows="2"></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label for="problem-importance">Importance (1-100)</label>
-                            <input type="range" id="problem-importance" min="1" max="100" value="70">
-                            <span id="importance-display">70</span>
-                        </div>
-                        <div class="form-group">
-                            <label for="problem-difficulty">難易度設定</label>
-                            <select id="problem-difficulty-mode">
-                                <option value="auto">自動判定 (Importanceから)</option>
-                                <option value="manual">手動設定</option>
-                            </select>
-                            <select id="problem-difficulty" style="margin-top: 0.5rem; display: none;">
-                                <option value="tourist">Tourist (Easy)</option>
-                                <option value="resident">Resident (Medium)</option>
-                                <option value="taxi-driver">Taxi Driver (Hard)</option>
-                            </select>
-                            <div id="auto-difficulty-display" style="margin-top: 0.5rem; font-size: 0.8rem; color: #4CAF50;">
-                                自動判定: Resident (Medium)
-                            </div>
-                        </div>
-                        
-                        <h4>Location Points</h4>
-                        <p style="font-size: 0.8rem; color: #aaa; margin-bottom: 0.5rem;">
-                            Click on the map to add points for this problem
-                        </p>
-                        <div id="current-points" class="point-list">
-                            <div style="text-align: center; color: #666;">No points added yet</div>
-                        </div>
-                        <button id="clear-points" style="background: #f44336; margin-top: 0.5rem;">Clear All Points</button>
-                        
-                        <div style="margin-top: 0.5rem;">
-                            <button id="save-problem" style="background: #4CAF50;">Save Problem</button>
-                            <button id="cancel-edit" style="background: #666; margin-top: 0.25rem;">Cancel</button>
-                        </div>
-                        
-                        <h4>Custom Problems</h4>
-                        <div id="custom-problems" class="problem-list">
-                            <div style="text-align: center; color: #666;">No custom problems yet</div>
+                <h3>🔧 Advanced Tools (PC Only)</h3>
+                
+                <!-- Problem Editor -->
+                <div class="editor-section">
+                    <h4>Problem Editor</h4>
+                    <div class="form-group">
+                        <label for="problem-name">Problem Name</label>
+                        <input type="text" id="problem-name" placeholder="Enter street/facility name">
+                    </div>
+                    <div class="form-group">
+                        <label for="problem-type">Problem Type</label>
+                        <select id="problem-type">
+                            <option value="street">Street</option>
+                            <option value="facility">Facility</option>
+                            <option value="intersection">Intersection</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="problem-description">Description</label>
+                        <textarea id="problem-description" placeholder="Brief description of the location" rows="2"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="problem-importance">Importance (1-100)</label>
+                        <input type="range" id="problem-importance" min="1" max="100" value="70">
+                        <span id="importance-display">70</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="problem-difficulty-mode">難易度設定</label>
+                        <select id="problem-difficulty-mode">
+                            <option value="auto">自動判定 (Importanceから)</option>
+                            <option value="manual">手動設定</option>
+                        </select>
+                        <select id="problem-difficulty" style="margin-top: 0.5rem; display: none;">
+                            <option value="tourist">Tourist (Easy)</option>
+                            <option value="resident">Resident (Medium)</option>
+                            <option value="taxi-driver">Taxi Driver (Hard)</option>
+                        </select>
+                        <div id="auto-difficulty-display" style="margin-top: 0.5rem; font-size: 0.8rem; color: #4CAF50;">
+                            自動判定: Resident (Medium)
                         </div>
                     </div>
+                    
+                    <h4>Location Points</h4>
+                    <p style="font-size: 0.8rem; color: #aaa; margin-bottom: 0.5rem;">
+                        Click on the map to add points for this problem
+                    </p>
+                    <div id="current-points" class="point-list">
+                        <div style="text-align: center; color: #666;">No points added yet</div>
+                    </div>
+                    <button id="clear-points" style="background: #f44336; margin-top: 0.5rem;">Clear All Points</button>
+                    
+                    <div style="margin-top: 0.5rem;">
+                        <button id="save-problem" style="background: #4CAF50;">Save Problem</button>
+                        <button id="cancel-edit" style="background: #666; margin-top: 0.25rem;">Cancel</button>
+                    </div>
+                    
+                    <h4>Custom Problems</h4>
+                    <div id="custom-problems" class="problem-list">
+                        <div style="text-align: center; color: #666;">No custom problems yet</div>
+                    </div>
+                </div>
 
-                    <!-- KML Import -->
-                    <div class="editor-section">
-                        <h4>Import KML Data</h4>
-                        <div class="form-group">
-                            <div class="file-input-wrapper">
-                                <input type="file" id="kml-file" class="file-input" accept=".kml,.kmz">
-                                <label for="kml-file" class="file-input-label">📁 Choose KML File</label>
-                            </div>
+                <!-- KML Import -->
+                <div class="editor-section">
+                    <h4>Import KML Data</h4>
+                    <div class="form-group">
+                        <div class="file-input-wrapper">
+                            <input type="file" id="kml-file" class="file-input" accept=".kml,.kmz" style="position: absolute; left: -9999px;">
+                            <label for="kml-file" class="file-input-label" style="display: block; width: 100%; padding: 0.75rem; background: #2196F3; color: white; border-radius: 6px; text-align: center; cursor: pointer;">📁 Choose KML File</label>
                         </div>
-                        <div id="import-status" class="hidden"></div>
-                        
-                        <h4>Import Instructions</h4>
-                        <div style="font-size: 0.8rem; color: #ccc; line-height: 1.4;">
-                            <p><strong>Supported formats:</strong> KML files with LineString or Point geometries</p>
-                            <p><strong>Required fields:</strong> Name (required), Description (optional)</p>
-                            <p><strong>How to create KML:</strong></p>
-                            <ul style="margin-left: 1rem; margin-top: 0.5rem;">
-                                <li>Use Google My Maps to create custom maps</li>
-                                <li>Draw lines for streets or place markers for facilities</li>
-                                <li>Export as KML file</li>
-                                <li>Import here to use in the game</li>
-                            </ul>
-                        </div>
+                    </div>
+                    <div id="import-status" class="hidden"></div>
+                    
+                    <h4>Import Instructions</h4>
+                    <div style="font-size: 0.8rem; color: #ccc; line-height: 1.4;">
+                        <p><strong>Supported formats:</strong> KML files with LineString or Point geometries</p>
+                        <p><strong>Required fields:</strong> Name (required), Description (optional)</p>
+                        <p><strong>How to create KML:</strong></p>
+                        <ul style="margin-left: 1rem; margin-top: 0.5rem;">
+                            <li>Use Google My Maps to create custom maps</li>
+                            <li>Draw lines for streets or place markers for facilities</li>
+                            <li>Export as KML file</li>
+                            <li>Import here to use in the game</li>
+                        </ul>
                     </div>
                 </div>
             </div>
 
             <div class="challenge-section hidden" id="challenge-section">
-                <div class="timer" id="timer">30</div>
-                
                 <div class="question-display">
                     <div class="question-text" id="question-text">Click on the map to locate:</div>
                     <div class="question-type" id="question-type">Street Challenge</div>
                     <div class="question-progress" id="question-progress"></div>
                 </div>
 
-                <div class="multiple-choice hidden" id="multiple-choice"></div>
-
-                <div class="distance-display hidden" id="distance-display">
+                <div class="distance-display hidden" id="distance-display" style="background: #3d3d3d; padding: 1rem; border-radius: 6px; margin-bottom: 1rem; text-align: center;">
                     <div>Distance: <span id="distance">-</span></div>
                     <div>Accuracy: <span id="accuracy">-</span></div>
                 </div>
@@ -1402,12 +1034,14 @@
 
         <div class="map-container">
             <div id="map"></div>
-            <div id="loading-overlay" style="display:none;">
-              <div class="loader-content">
-                <div class="spinner"></div>
-                <div class="message">データを読み込み中です…<br>しばらくお待ちください</div>
-              </div>
+            
+            <div id="loading-overlay">
+                <div class="loader-content">
+                    <div class="spinner"></div>
+                    <div class="message">データを読み込み中です…<br>しばらくお待ちください</div>
+                </div>
             </div>
+            
             <div id="result-modal" class="hidden">
                 <div class="score-circle" id="score-circle">
                     <svg width="60" height="60">
@@ -1418,34 +1052,18 @@
                 <p id="dist-text">距離: <span>0</span>m</p>
             </div>
 
-            <!-- Mobile Game Overlay - モバイルゲーム用オーバーレイ -->
-            <div class="mobile-game-overlay" id="mobile-game-overlay">
-                <!-- 5択選択肢 -->
-                <div class="mobile-choices-overlay hidden" id="mobile-choices-overlay">
-                    <div class="mobile-choices-grid" id="mobile-choices-grid">
-                        <!-- 動的に生成される -->
-                    </div>
-                </div>
-
-                <!-- 結果表示 -->
-                <div class="mobile-distance-overlay hidden" id="mobile-distance-overlay">
-                    <div>距離: <span id="mobile-distance">-</span></div>
-                    <div>精度: <span id="mobile-accuracy">-</span></div>
-                </div>
-            </div>
-
-            <!-- 統一された問題表示エリア（PC向け） -->
+            <!-- Unified Question Overlay -->
             <div class="game-question-overlay hidden" id="game-question-overlay">
                 <div class="game-question-type" id="game-question-type">Streetチャレンジ</div>
                 <div class="game-question-text" id="game-question-text">地図をタップして場所を特定してください</div>
                 <div class="game-question-actions">
                     <button class="btn-answer" id="game-btn-answer">Show Answer</button>
-                    <button class="btn-next" id="game-btn-next">Next</button>
+                    <button class="btn-next hidden" id="game-btn-next">Next</button>
                     <button class="btn-end" id="game-btn-end">End</button>
                 </div>
             </div>
 
-            <!-- Reverseモード用選択肢エリア（PC向け） -->
+            <!-- Unified Choices Overlay (for Reverse mode) -->
             <div class="game-choices-overlay hidden" id="game-choices-overlay">
                 <div class="game-choices-grid" id="game-choices-grid"></div>
             </div>
@@ -1469,20 +1087,17 @@
             <div class="debug-info" id="debug-info">Loading map...</div>
 
             <div class="start-controls" id="start-controls">
-               <select id="game-mode-select">
+                <select id="game-mode-select">
                     <option value="street" disabled>Street</option>
                     <option value="facility">Facility</option>
                     <option value="intersection">Intersection</option>
                     <option value="reverse">Reverse</option>
                     <option value="geotextbook">地理教本施設モード</option>
-                    <!-- NEW: curated intersections mode -->
                     <option value="geotextbook-intersection">地理教本交差点</option>
                 </select>
-                <!-- CHANGED: 施設/交差点どちらの地理教本でも共用 -->
                 <select id="geotextbook-area-select" style="display:none;">
                     <option value="tokyo23">東京23区武三</option>
                 </select>
-                <!-- CHANGED: 施設/交差点どちらの地理教本でも共用 -->
                 <select id="geotextbook-play-order" style="display:none;">
                     <option value="random">ランダム</option>
                     <option value="registration">登録順</option>
@@ -1496,7 +1111,7 @@
 
     <script src="libs/leaflet.js" defer></script>
     <script src="libs/turf.min.js" defer></script>
-    <script>
+    <script> 
         // Use a CORS-enabled Overpass mirror for client-side requests
         const OVERPASS_URL = 'https://overpass.openstreetmap.fr/api/interpreter';
         // Deferred loading for Street mode
@@ -1505,23 +1120,6 @@
         const KML_BASE_URL = "https://raw.githubusercontent.com/daytimegufo/Street_Sensei/New-map/kml_files/";
         const KML_INDEX_URL = "https://api.github.com/repos/daytimegufo/Street_Sensei/contents/kml_files?ref=New-map";
 
-        /** Load Street data on-demand and enable UI when ready */
-        async function prepareStreetMode() {
-            if (roadCache) return;
-            showLoading();
-            try {
-                const region = document.getElementById('region-select') ? document.getElementById('region-select').value : 'south-kanto';
-                const strategy = document.getElementById('loading-strategy') ? document.getElementById('loading-strategy').value : 'immediate';
-                await loadRegionalRoadsOptimized(region, strategy);
-                roadCache = gameState.streetData;
-                const streetTab = document.querySelector('.mode-tab[data-mode="street"]');
-                if (streetTab) streetTab.classList.remove('disabled');
-                const opt = document.querySelector('#game-mode-select option[value="street"]');
-                if (opt) opt.disabled = false;
-            } finally {
-                hideLoading();
-            }
-        }
         function log(message) {
             console.log(message);
             const debugInfo = document.getElementById('debug-info');
@@ -1698,17 +1296,12 @@
             log('Mobile game UI initialized with unified interface');
         }
 
-        function showMobileGameUI() {
-            log('Showing mobile game UI...');
+        function showGameUI() {
+            log('Showing game UI...');
             
-            const overlay = document.getElementById('mobile-game-overlay');
-            const body = document.body;
             const questionOverlay = document.getElementById('game-question-overlay');
             const headerTimer = document.getElementById('header-timer');
-            
-            if (overlay) {
-                overlay.classList.add('active');
-            }
+            const body = document.body;
             
             if (questionOverlay) {
                 questionOverlay.classList.remove('hidden');
@@ -1718,22 +1311,16 @@
                 headerTimer.classList.remove('hidden');
             }
             
-            // Add game-playing class to body for CSS targeting
             body.classList.add('game-playing');
             
-            updateMobileGameStats();
+            updateGameStats();
         }
 
-        function hideMobileGameUI() {
-            const overlay = document.getElementById('mobile-game-overlay');
-            const body = document.body;
+        function hideGameUI() {
             const questionOverlay = document.getElementById('game-question-overlay');
             const choicesOverlay = document.getElementById('game-choices-overlay');
             const headerTimer = document.getElementById('header-timer');
-            
-            if (overlay) {
-                overlay.classList.remove('active');
-            }
+            const body = document.body;
             
             if (questionOverlay) {
                 questionOverlay.classList.add('hidden');
@@ -1773,7 +1360,7 @@
             }
         }
 
-        function updateMobileQuestion(questionText, questionType) {
+        function updateQuestion(questionText, questionType) {
             const gameQuestionText = document.getElementById('game-question-text');
             const gameQuestionType = document.getElementById('game-question-type');
             
@@ -1785,14 +1372,14 @@
             }
         }
 
-        function showMobileChoices(choices, hideQuestion = true) {
+        function showChoices(choices) {
             const questionOverlay = document.getElementById('game-question-overlay');
             const choicesOverlay = document.getElementById('game-choices-overlay');
             const grid = document.getElementById('game-choices-grid');
             
             if (!choicesOverlay || !grid) return;
 
-            if (questionOverlay && hideQuestion) {
+            if (questionOverlay) {
                 questionOverlay.classList.add('hidden');
             }
             
@@ -1802,16 +1389,16 @@
             // Create choice buttons
             choices.forEach((choice, index) => {
                 const button = document.createElement('button');
-                button.className = 'mobile-choice-btn';
+                button.className = 'choice-btn';
                 button.textContent = choice.name;
-                button.onclick = () => handleMobileChoiceClick(choice, button);
+                button.onclick = () => handleChoiceClick(choice, button);
                 grid.appendChild(button);
             });
 
             choicesOverlay.classList.remove('hidden');
         }
 
-        function hideMobileChoices(showQuestion = true) {
+        function hideChoices() {
             const choicesOverlay = document.getElementById('game-choices-overlay');
             const questionOverlay = document.getElementById('game-question-overlay');
 
@@ -1819,12 +1406,8 @@
                 choicesOverlay.classList.add('hidden');
             }
 
-            if (questionOverlay) {
-                if (showQuestion && gameState.isPlaying) {
-                    questionOverlay.classList.remove('hidden');
-                } else {
-                    questionOverlay.classList.add('hidden');
-                }
+            if (questionOverlay && gameState.isPlaying) {
+                questionOverlay.classList.remove('hidden');
             }
         }
 
@@ -4390,7 +3973,7 @@
                 }
                 
                 // モバイルゲームUIを表示
-                showMobileGameUI();
+                showGameUI();
 
                 await nextQuestion();
                 updateUI();
@@ -4447,7 +4030,7 @@
                         timerEl.textContent = '-';
                         timerEl.style.display = 'none';
                     }
-                    updateMobileQuestion(`🔎: ${facility.name}`, '登録順モード');
+                    updateQuestion(`🔎: ${facility.name}`, '登録順モード');
                     updateMobileControls();
                     return;
                 }
@@ -4498,7 +4081,7 @@
                     `強調表示された場所は何ですか？` : 
                     `🔎: ${gameState.currentQuestion?.name || ''}`;
                 const questionType = `${getModeName(gameState.currentMode)}チャレンジ`;
-                updateMobileQuestion(questionText, questionType);
+                updateQuestion(questionText, questionType);
                 
                 log('Next question loaded');
             } catch (error) {
@@ -5513,7 +5096,7 @@
                 if (gameState.highlightLayer) gameState.highlightLayer.clearLayers();
                 if (gameState.map) gameState.map.closePopup();
                 hideMobileDistance();
-                hideMobileChoices();
+                hideChoices();
             } catch (error) {
                 log('Error clearing game elements: ' + error.message);
             }
@@ -5615,19 +5198,13 @@
             });
 
             showReverseFeedback(selectedName || '', !!isCorrect, correctName);
-            hideMobileChoices();
+            hideChoices();
             updateUI();
             updateMobileGameStats();
         }
 
         function updateTimer() {
-            const timerEl = document.getElementById('timer');
             const headerTimer = document.getElementById('header-timer');
-            const mobileTimer = document.getElementById('mobile-timer');
-            
-            if (timerEl) {
-                timerEl.textContent = gameState.timer;
-            }
             
             if (headerTimer) {
                 headerTimer.textContent = gameState.timer;
@@ -5635,19 +5212,10 @@
                 
                 if (gameState.timer <= 5) {
                     headerTimer.classList.add('danger');
-                    timerEl.style.color = '#ff6b6b';
-                    timerEl.classList.add('blinking');
                 } else if (gameState.timer <= 10) {
                     headerTimer.classList.add('warning');
-                    timerEl.style.color = '#ff9800';
-                    timerEl.classList.remove('blinking');
-                } else {
-                    timerEl.style.color = '#4CAF50';
-                    timerEl.classList.remove('blinking');
                 }
             }
-            
-            updateMobileGameStats();
         }
 
         function updateUI() {
@@ -5850,7 +5418,7 @@
                     });
                 }
 
-                showMobileChoices(choices);
+                showChoices(choices);
 
                 const showAnswerBtn = document.getElementById('show-answer');
                 if (showAnswerBtn) {
@@ -5917,7 +5485,7 @@
                 gameState.isPlaying = false;
                 stopTimer();
 
-                hideMobileGameUI();
+                hideGameUI();
 
                 // ゲーム終了時に街路名表示を復元
                 if (!gameState.showLabels) {
@@ -6017,7 +5585,7 @@
                 
                 clearGameElements();
                 stopTimer();
-                hideMobileGameUI();
+                hideGameUI();
                 
                 const challengeSection = document.getElementById('challenge-section');
                 const resultsOverlay = document.getElementById('results-overlay');
@@ -6461,6 +6029,24 @@
             }
             
             return coordinates;
+        }
+
+        /** Load Street data on-demand and enable UI when ready */
+        async function prepareStreetMode() {
+            if (roadCache) return;
+            showLoading();
+            try {
+                const region = document.getElementById('region-select') ? document.getElementById('region-select').value : 'south-kanto';
+                const strategy = document.getElementById('loading-strategy') ? document.getElementById('loading-strategy').value : 'immediate';
+                await loadRegionalRoadsOptimized(region, strategy);
+                roadCache = gameState.streetData;
+                const streetTab = document.querySelector('.mode-tab[data-mode="street"]');
+                if (streetTab) streetTab.classList.remove('disabled');
+                const opt = document.querySelector('#game-mode-select option[value="street"]');
+                if (opt) opt.disabled = false;
+            } finally {
+                hideLoading();
+            }
         }
 
         // Background loading for remaining roads
