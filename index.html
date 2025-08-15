@@ -1391,7 +1391,8 @@
                 const button = document.createElement('button');
                 button.className = 'choice-btn';
                 button.textContent = choice.name;
-                button.onclick = () => handleChoiceClick(choice, button);
+                // handleChoiceClick を handleReverseAnswer に変更
+                button.onclick = () => handleReverseAnswer(choice, button);
                 grid.appendChild(button);
             });
 
@@ -5857,6 +5858,17 @@
             try {
                 const config = GEOTEXTBOOK_AREA_CONFIGS[areaKey];
                 if (!config) return;
+
+                // HTTPサーバー経由でアクセスしているかチェック
+                const isLocalFile = window.location.protocol === 'file:';
+                
+                if (isLocalFile) {
+                    console.warn('ローカルファイルから実行中。HTTPサーバーの使用を推奨します。');
+                    // フォールバックデータを使用
+                    gameState.geotextbookFacilities = [];
+                    return;
+                }
+                
                 const response = await fetch(config.file);
                 const rawData = await response.json();
                 const facilities = [];
@@ -5890,7 +5902,7 @@
                 }
                 log(`Geotextbook area ${config.name}: ${gameState.geotextbookFacilities.length}件ロード`);
             } catch (e) {
-                log('Failed to load geotextbook facilities: ' + e.message);
+                console.warn('Failed to load facilities, using fallback data');
                 gameState.geotextbookFacilities = [];
             }
         }
