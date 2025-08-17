@@ -3674,26 +3674,26 @@
             }
         }
 
-        function loadRegionalRoadsOptimized(regionKey = 'south-kanto', strategyKey = 'immediate', progressCallback = null) {
+        async function loadRegionalRoadsOptimized(regionKey = 'south-kanto', strategyKey = 'immediate', progressCallback = null) {
             return new Promise(async (resolve, reject) => {
                 if (gameState.isLoadingData) {
                     log('Already loading data...');
                     resolve(false);
                     return;
                 }
-
+        
                 const config = REGIONAL_CONFIGS[regionKey];
                 const strategy = LOADING_STRATEGIES[strategyKey];
-
+                
                 if (!config || !strategy) {
                     reject(new Error('Invalid configuration'));
                     return;
                 }
-
+                
                 currentRegionalConfig = config;
                 currentLoadingStrategy = strategy;
-
-                // キャッシュチェック（非同期）
+                
+                // キャッシュチェック
                 const cachedData = await ROAD_CACHE.load(regionKey, strategyKey);
                 if (cachedData && cachedData.length > 0) {
                     gameState.streetData = cachedData;
@@ -3704,170 +3704,337 @@
                     resolve(true);
                     return;
                 }
-
+                
                 gameState.isLoadingData = true;
-
-                const loadBtn = document.getElementById('load-street-data');
-                if (loadBtn) {
-                    loadBtn.textContent = 'Loading Roads...';
-                    loadBtn.disabled = true;
-                    loadBtn.classList.add('loading');
-                }
-
                 showLoading();
-
-                log(`Loading roads with ${strategy.name} strategy for ${config.name}...`);
-
-                if (progressCallback) progressCallback(10);
-
-                // Multiple API endpoints with fallback
-                const corsProxies = [
-                    'https://corsproxy.io/?',
-                    'https://api.allorigins.win/raw?url=',
-                    'https://cors-anywhere.herokuapp.com/'
+                
+                // 複数のOverpass APIエンドポイントを試行
+                const overpassEndpoints = [
+                    'https://overpass-api.de/api/interpreter',
+                    'https://overpass.kumi.systems/api/interpreter',
+                    'https://overpass.openstreetmap.fr/api/interpreter',
+                    'https://overpass.openstreetmap.ru/api/interpreter'
                 ];
-
+                
+                // より多くのCORSプロキシを追加
+                const corsProxies = [
+                    { 
+                        url: 'https://api.codetabs.com/v1/proxy?quest=',
+                        type: 'codetabs'
+                    },
+                    {
+                        url: 'https://thingproxy.freeboard.io/fetch/',
+                        type: 'thingproxy'
+                    },
+                    {
+                        url: 'https://cors-proxy.htmldriven.com/?url=',
+                        type: 'htmldriven'
+                    },
+                    {
+                        url: 'https://yacdn.org/proxy/',
+                        type: 'yacdn'
+                    },
+                    {
+                        url: 'https://cors.bridged.cc/',
+                        type: 'bridged'
+                    }
+                ];
+        
+                const { south, west, north, east } = config.bbox;
+                const query = `
+                    [out:json][timeout:90];
+                    (
+                        way["highway"]["name"](${south},${west},${north},${east});
+                    );
+                    out geom;
+                `;
+                
                 let lastError = null;
-                let success = false;
-
-                try {
-                    const { south, west, north, east } = config.bbox;
-                    const query = `
-            [out:json][timeout:60];
-            (
-                way["highway"]["name"](${south},${west},${north},${east});
-            );
-            out geom;
-            `;
-
-                    // Method 1: Try direct access first
+                
+                // 各エンドポイントを試行
+                for (let endpointIndex = 0; endpointIndex < overpassEndpoints.length; endpointIndex++) {
+                    const endpoint = overpassEndpoints[endpointIndex];
+                    log(`Trying Overpass endpoint ${endpointIndex + 1}/${overpassEndpoints.length}: ${endpoint}`);
+                    
+                    if (progressCallback) {
+                        progressCallback(10 + (endpointIndex * 10));
+                    }
+                    
+                    // 1. 直接アクセスを試行
                     try {
-                        log('Attempting direct API access...');
-                        const response = await fetch(OVERPASS_URL, {
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30秒タイムアウト
+                        
+                        const response = await fetch(endpoint, {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                            body: `data=${encodeURIComponent(query)}`
+                            headers: { 
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                                'Accept': 'application/json'
+                            },
+                            body: `data=${encodeURIComponent(query)}`,
+                            signal: controller.signal
                         });
-
-                        if (progressCallback) progressCallback(50);
-
+                        
+                        clearTimeout(timeoutId);
+                        
                         if (response.ok) {
                             const data = await response.json();
                             const roads = processOverpassData(data);
-
-                            if (progressCallback) progressCallback(80);
-
+                            
                             if (roads.length > 0) {
                                 gameState.streetData = roads;
                                 roadCache = gameState.streetData;
-
                                 await ROAD_CACHE.save(regionKey, strategyKey, roads);
-
+                                
                                 if (progressCallback) progressCallback(100);
-
-                                showSuccess(`✅ ${roads.length} roads loaded and cached`);
+                                showSuccess(`✅ ${roads.length} roads loaded from ${endpoint}`);
                                 updateDataStatus();
-                                success = true;
+                                resolve(true);
+                                return;
                             }
                         }
                     } catch (directError) {
-                        log('Direct API access failed: ' + directError.message);
+                        log(`Direct access to ${endpoint} failed: ${directError.message}`);
                         lastError = directError;
                     }
-
-                    // Method 2: Try CORS proxies if direct access failed
-                    if (!success) {
-                        for (let i = 0; i < corsProxies.length && !success; i++) {
-                            const proxy = corsProxies[i];
-                            try {
-                                log(`Attempting proxy ${i + 1}/${corsProxies.length}: ${proxy}`);
-                                const proxyUrl = proxy + encodeURIComponent(OVERPASS_URL);
-                                const response = await fetch(proxyUrl, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                                    body: `data=${encodeURIComponent(query)}`
-                                });
-
-                                if (response.ok) {
-                                    const contentType = response.headers.get('content-type');
-                                    const responseText = await response.text();
-
-                                    log(`Proxy ${i + 1} response content-type: ${contentType}`);
-                                    log(`Proxy ${i + 1} response preview: ${responseText.substring(0, 100)}...`);
-
-                                    if (responseText.startsWith('<?xml') || responseText.includes('<osm')) {
-                                        log(`Proxy ${i + 1} returned XML instead of JSON, skipping...`);
-                                        continue;
-                                    }
-
-                                    let data;
-                                    try {
-                                        data = JSON.parse(responseText);
-                                    } catch (parseError) {
-                                        log(`Proxy ${i + 1} JSON parse failed: ${parseError.message}`);
-                                        continue;
-                                    }
-
-                                    const roads = processOverpassData(data);
-                                    if (roads.length > 0) {
-                                        gameState.streetData = roads;
-                                        roadCache = gameState.streetData;
-                                        await ROAD_CACHE.save(regionKey, strategyKey, roads);
-                                        showSuccess(`✅ ${roads.length} roads loaded from OSM (proxy ${i + 1})`);
-                                        updateDataStatus();
-                                        success = true;
-                                        break;
-                                    }
-                                }
-                            } catch (proxyError) {
-                                log(`Proxy ${i + 1} failed: ${proxyError.message}`);
-                                lastError = proxyError;
+                    
+                    // 2. CORSプロキシ経由で試行
+                    for (let proxyIndex = 0; proxyIndex < corsProxies.length; proxyIndex++) {
+                        const proxy = corsProxies[proxyIndex];
+                        
+                        try {
+                            log(`Trying proxy ${proxyIndex + 1}/${corsProxies.length}: ${proxy.type}`);
+                            
+                            const controller = new AbortController();
+                            const timeoutId = setTimeout(() => controller.abort(), 30000);
+                            
+                            let proxyUrl;
+                            if (proxy.type === 'codetabs') {
+                                proxyUrl = proxy.url + encodeURIComponent(endpoint);
+                            } else {
+                                proxyUrl = proxy.url + encodeURIComponent(endpoint);
                             }
+                            
+                            const response = await fetch(proxyUrl, {
+                                method: 'POST',
+                                headers: { 
+                                    'Content-Type': 'application/x-www-form-urlencoded',
+                                    'Accept': 'application/json'
+                                },
+                                body: `data=${encodeURIComponent(query)}`,
+                                signal: controller.signal
+                            });
+                            
+                            clearTimeout(timeoutId);
+                            
+                            if (response.ok) {
+                                let data;
+                                const responseText = await response.text();
+                                
+                                try {
+                                    data = JSON.parse(responseText);
+                                } catch (parseError) {
+                                    log(`JSON parse failed for ${proxy.type}: ${parseError.message}`);
+                                    continue;
+                                }
+                                
+                                const roads = processOverpassData(data);
+                                
+                                if (roads.length > 0) {
+                                    gameState.streetData = roads;
+                                    roadCache = gameState.streetData;
+                                    await ROAD_CACHE.save(regionKey, strategyKey, roads);
+                                    
+                                    if (progressCallback) progressCallback(100);
+                                    showSuccess(`✅ ${roads.length} roads loaded via ${proxy.type}`);
+                                    updateDataStatus();
+                                    resolve(true);
+                                    return;
+                                }
+                            }
+                        } catch (proxyError) {
+                            log(`Proxy ${proxy.type} failed: ${proxyError.message}`);
+                            lastError = proxyError;
                         }
                     }
-
-                    // Method 3: All external sources failed
-                    if (!success) {
-                        log('All external APIs failed.');
-                        showError('OSMデータを取得できませんでした。インターネット接続または設定を確認してください。');
-                        updateDataStatus();
-                    }
-                } catch (err) {
-                    console.error('Complete OSM load failure:', err);
-                    log('Final fallback: Unable to retrieve road data from OSM');
-                    showError('道路データを取得できませんでした。再度お試しください。');
-                    updateDataStatus();
-                } finally {
-                    gameState.isLoadingData = false;
-                    if (loadBtn) {
-                        loadBtn.textContent = success ? '✅ Data Ready' : '🔄 Retry Load';
-                        loadBtn.disabled = false;
-                        loadBtn.classList.remove('loading');
-                    }
-                    hideLoading();
-
-                    const finalCount = gameState.streetData ? gameState.streetData.length : 0;
-                    const finalSource = gameState.streetData && gameState.streetData[0] ? gameState.streetData[0].source : 'none';
-                    log(`Data loading complete: ${finalCount} roads from ${finalSource} source`);
-
-                    if (success && finalCount > 0) {
-                        log('✅ Street mode is now ready for gameplay');
-                        setTimeout(() => {
-                            const currentDataStatus = document.getElementById('data-status');
-                            if (currentDataStatus && finalSource === 'fallback') {
-                                currentDataStatus.style.border = '2px solid #4CAF50';
-                                currentDataStatus.style.animation = 'pulse 2s ease-in-out';
-                                setTimeout(() => {
-                                    currentDataStatus.style.border = '';
-                                    currentDataStatus.style.animation = '';
-                                }, 3000);
-                            }
-                        }, 500);
-                    }
                 }
-
-                resolve(success);
+                
+                // すべて失敗した場合の代替案を提示
+                showAlternativeDataOptions();
+                resolve(false);
+                
+                gameState.isLoadingData = false;
+                hideLoading();
             });
+        }
+
+        // 代替データ取得オプションを表示
+        function showAlternativeDataOptions() {
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.8);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 10000;
+            `;
+            
+            modal.innerHTML = `
+                <div style="background: #2d2d2d; color: white; padding: 2rem; border-radius: 12px; max-width: 500px; width: 90%;">
+                    <h2 style="color: #ff9800; margin-bottom: 1rem;">⚠️ ダウンロード失敗</h2>
+                    <p style="margin-bottom: 1.5rem; line-height: 1.6;">
+                        OSMサーバーへの接続に失敗しました。以下の対処法をお試しください：
+                    </p>
+                    
+                    <div style="background: #3d3d3d; padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
+                        <h3 style="color: #4CAF50; margin-bottom: 0.5rem;">対処法1: VPNを使用</h3>
+                        <p style="font-size: 0.9rem; color: #aaa;">
+                            VPNを有効にすることで、CORS制限を回避できる場合があります。
+                        </p>
+                    </div>
+                    
+                    <div style="background: #3d3d3d; padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
+                        <h3 style="color: #4CAF50; margin-bottom: 0.5rem;">対処法2: ブラウザ拡張機能</h3>
+                        <p style="font-size: 0.9rem; color: #aaa;">
+                            "CORS Unblock" などのブラウザ拡張機能をインストールしてください。
+                            <br><br>
+                            Chrome: <a href="https://chrome.google.com/webstore/detail/cors-unblock/lfhmikememgdcahcdlaciloancbhjino" target="_blank" style="color: #4CAF50;">CORS Unblock</a>
+                        </p>
+                    </div>
+                    
+                    <div style="background: #3d3d3d; padding: 1rem; border-radius: 6px; margin-bottom: 1rem;">
+                        <h3 style="color: #4CAF50; margin-bottom: 0.5rem;">対処法3: プリセットデータ使用</h3>
+                        <p style="font-size: 0.9rem; color: #aaa;">
+                            事前に用意されたサンプルデータでプレイを開始できます。
+                        </p>
+                        <button id="use-preset-data" style="background: #2196F3; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; margin-top: 0.5rem; cursor: pointer;">
+                            プリセットデータを使用
+                        </button>
+                    </div>
+                    
+                    <div style="background: #3d3d3d; padding: 1rem; border-radius: 6px; margin-bottom: 1.5rem;">
+                        <h3 style="color: #4CAF50; margin-bottom: 0.5rem;">対処法4: 時間を置いて再試行</h3>
+                        <p style="font-size: 0.9rem; color: #aaa;">
+                            サーバーが一時的に混雑している可能性があります。
+                            少し時間を置いてから再度お試しください。
+                        </p>
+                    </div>
+                    
+                    <div style="display: flex; gap: 1rem;">
+                        <button id="retry-download" style="flex: 1; background: #4CAF50; color: white; border: none; padding: 1rem; border-radius: 6px; cursor: pointer;">
+                            再試行
+                        </button>
+                        <button id="close-modal" style="flex: 1; background: #666; color: white; border: none; padding: 1rem; border-radius: 6px; cursor: pointer;">
+                            閉じる
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // イベントハンドラ
+            modal.querySelector('#use-preset-data').addEventListener('click', () => {
+                loadPresetData();
+                modal.remove();
+            });
+            
+            modal.querySelector('#retry-download').addEventListener('click', async () => {
+                modal.remove();
+                const region = document.getElementById('region-select')?.value || 'south-kanto';
+                await loadRegionalRoadsOptimized(region, 'complete');
+            });
+            
+            modal.querySelector('#close-modal').addEventListener('click', () => {
+                modal.remove();
+            });
+        }
+
+        // プリセットデータを読み込む
+        function loadPresetData() {
+            // 東京の主要道路のサンプルデータ
+            const presetRoads = [
+                {
+                    name: "環状七号線",
+                    roadType: "primary",
+                    points: [[
+                        { lat: 35.7500, lng: 139.7000 },
+                        { lat: 35.7400, lng: 139.7100 },
+                        { lat: 35.7300, lng: 139.7200 }
+                    ]],
+                    importance: 90,
+                    isComplete: true,
+                    source: 'preset'
+                },
+                {
+                    name: "環状八号線",
+                    roadType: "primary",
+                    points: [[
+                        { lat: 35.6800, lng: 139.6500 },
+                        { lat: 35.6700, lng: 139.6600 },
+                        { lat: 35.6600, lng: 139.6700 }
+                    ]],
+                    importance: 85,
+                    isComplete: true,
+                    source: 'preset'
+                },
+                {
+                    name: "山手通り",
+                    roadType: "trunk",
+                    points: [[
+                        { lat: 35.7000, lng: 139.7000 },
+                        { lat: 35.6900, lng: 139.7100 }
+                    ]],
+                    importance: 80,
+                    isComplete: true,
+                    source: 'preset'
+                },
+                // ... 追加のプリセットデータ
+            ];
+            
+            gameState.streetData = presetRoads;
+            roadCache = gameState.streetData;
+            
+            showSuccess('✅ プリセットデータを読み込みました');
+            updateDataStatus();
+            
+            // UIを有効化
+            const streetTab = document.querySelector('.mode-tab[data-mode="street"]');
+            if (streetTab) streetTab.classList.remove('disabled');
+            const opt = document.querySelector('#game-mode-select option[value="street"]');
+            if (opt) opt.disabled = false;
+        }
+
+        // HTTPサーバー起動の案内を追加
+        function showLocalServerGuide() {
+            const guide = `
+            <div style="background: #3d3d3d; padding: 1rem; border-radius: 6px; margin: 1rem 0;">
+                <h3 style="color: #4CAF50;">ローカルサーバーでの実行（推奨）</h3>
+                <p style="font-size: 0.9rem; color: #aaa; line-height: 1.6;">
+                    ローカルファイルから実行するとCORS制限があります。<br>
+                    以下のコマンドでローカルサーバーを起動してください：<br><br>
+                    
+                    Python 3:<br>
+                    <code style="background: #2d2d2d; padding: 0.25rem 0.5rem; border-radius: 4px;">
+                        python -m http.server 8000
+                    </code><br><br>
+                    
+                    Node.js:<br>
+                    <code style="background: #2d2d2d; padding: 0.25rem 0.5rem; border-radius: 4px;">
+                        npx http-server -p 8000
+                    </code><br><br>
+                    
+                    その後、ブラウザで http://localhost:8000 にアクセスしてください。
+                </p>
+            </div>
+            `;
+            
+            return guide;
         }
 
         function loadFacilityDataFromOverpass() {
