@@ -2006,38 +2006,388 @@
             }
         };
 
-        // Cache system for loaded road data
-        const ROAD_CACHE = {
-            data: new Map(),
+        // IndexedDB-based road cache (first-run DB approach)
+        const ROAD_CACHE = (() => {
+            let db = null;
+            let dbReady = null;
+            const DB_NAME = 'street-sensei-db';
+            const DB_VERSION = 1;
+            const STORE_NAME = 'road-cache';
+            const TTL_DAYS = 30; // 30日でキャッシュ期限切れ
 
-            save: function(regionKey, strategyKey, roadData) {
-                const cacheKey = `${regionKey}-${strategyKey}`;
-                this.data.set(cacheKey, {
-                    roads: roadData,
-                    timestamp: Date.now(),
-                    version: '1.0'
+            function openDB() {
+                if (dbReady) return dbReady;
+
+                dbReady = new Promise((resolve, reject) => {
+                    const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+                    request.onupgradeneeded = (event) => {
+                        const database = event.target.result;
+                        if (!database.objectStoreNames.contains(STORE_NAME)) {
+                            const store = database.createObjectStore(STORE_NAME);
+                            store.createIndex('timestamp', 'timestamp', { unique: false });
+                        }
+                    };
+
+                    request.onsuccess = (event) => {
+                        db = event.target.result;
+                        log('IndexedDB opened successfully');
+                        resolve(db);
+                    };
+
+                    request.onerror = (event) => {
+                        console.error('IndexedDB open error:', event.target.error);
+                        reject(event.target.error);
+                    };
                 });
 
-                // localStorageへの保存を廃止
-                // try {
-                //     const compressed = JSON.stringify({
-                //         roads: roadData,
-                //         timestamp: Date.now()
-                //     });
-                //     localStorage.setItem(`roadCache_${cacheKey}`, compressed);
-                // } catch (error) {
-                //     console.warn('Could not save to localStorage:', error);
-                // }
-            },
-
-            load: function(regionKey, strategyKey) {
-                return null; // キャッシュからの読み込みは使わない
-            },
-
-            exists: function(regionKey, strategyKey) {
-                return this.load(regionKey, strategyKey) !== null;
+                return dbReady;
             }
-        };
+
+            async function get(key) {
+                try {
+                    await openDB();
+                    return new Promise((resolve, reject) => {
+                        const transaction = db.transaction([STORE_NAME], 'readonly');
+                        const store = transaction.objectStore(STORE_NAME);
+                        const request = store.get(key);
+
+                        request.onsuccess = () => {
+                            const result = request.result;
+                            if (result) {
+                                const now = Date.now();
+                                const age = now - result.timestamp;
+                                const maxAge = TTL_DAYS * 24 * 60 * 60 * 1000;
+
+                                if (age > maxAge) {
+                                    log(`Cache expired for ${key} (age: ${Math.floor(age / 86400000)} days)`);
+                                    resolve({ expired: true, data: result });
+                                } else {
+                                    resolve({ expired: false, data: result });
+                                }
+                            } else {
+                                resolve(null);
+                            }
+                        };
+
+                        request.onerror = () => reject(request.error);
+                    });
+                } catch (error) {
+                    console.error('IndexedDB get error:', error);
+                    return null;
+                }
+            }
+
+            async function set(key, value) {
+                try {
+                    await openDB();
+                    return new Promise((resolve, reject) => {
+                        const transaction = db.transaction([STORE_NAME], 'readwrite');
+                        const store = transaction.objectStore(STORE_NAME);
+                        const request = store.put(value, key);
+
+                        request.onsuccess = () => {
+                            log(`Data saved to IndexedDB: ${key}`);
+                            resolve();
+                        };
+
+                        request.onerror = () => reject(request.error);
+                    });
+                } catch (error) {
+                    console.error('IndexedDB set error:', error);
+                }
+            }
+
+            async function remove(key) {
+                try {
+                    await openDB();
+                    return new Promise((resolve, reject) => {
+                        const transaction = db.transaction([STORE_NAME], 'readwrite');
+                        const store = transaction.objectStore(STORE_NAME);
+                        const request = store.delete(key);
+
+                        request.onsuccess = () => resolve();
+                        request.onerror = () => reject(request.error);
+                    });
+                } catch (error) {
+                    console.error('IndexedDB delete error:', error);
+                }
+            }
+
+            async function clear() {
+                try {
+                    await openDB();
+                    return new Promise((resolve, reject) => {
+                        const transaction = db.transaction([STORE_NAME], 'readwrite');
+                        const store = transaction.objectStore(STORE_NAME);
+                        const request = store.clear();
+
+                        request.onsuccess = () => {
+                            log('IndexedDB cache cleared');
+                            resolve();
+                        };
+                        request.onerror = () => reject(request.error);
+                    });
+                } catch (error) {
+                    console.error('IndexedDB clear error:', error);
+                }
+            }
+
+            return {
+                async save(regionKey, strategyKey, roadData) {
+                    const cacheKey = `${regionKey}-${strategyKey}`;
+                    const record = {
+                        roads: roadData,
+                        timestamp: Date.now(),
+                        version: '2.0',
+                        region: regionKey,
+                        strategy: strategyKey,
+                        count: roadData.length
+                    };
+                    try {
+                        await set(cacheKey, record);
+                        log(`Cached ${roadData.length} roads for ${cacheKey}`);
+                    } catch (error) {
+                        console.warn('Failed to save to IndexedDB:', error);
+                    }
+                },
+
+                async load(regionKey, strategyKey) {
+                    const cacheKey = `${regionKey}-${strategyKey}`;
+                    try {
+                        const result = await get(cacheKey);
+                        if (!result) return null;
+
+                        if (result.data.version !== '2.0') {
+                            log(`Cache version mismatch for ${cacheKey}, ignoring`);
+                            await remove(cacheKey);
+                            return null;
+                        }
+
+                        if (result.expired) {
+                            showCacheExpiredNotification(regionKey, strategyKey);
+                            return result.data.roads;
+                        }
+
+                        log(`Loaded ${result.data.count} roads from cache for ${cacheKey}`);
+                        return result.data.roads;
+                    } catch (error) {
+                        console.warn('Failed to load from IndexedDB:', error);
+                        return null;
+                    }
+                },
+
+                async exists(regionKey, strategyKey) {
+                    const data = await this.load(regionKey, strategyKey);
+                    return data !== null;
+                },
+
+                async getInfo() {
+                    try {
+                        await openDB();
+                        return new Promise((resolve, reject) => {
+                            const transaction = db.transaction([STORE_NAME], 'readonly');
+                            const store = transaction.objectStore(STORE_NAME);
+                            const request = store.getAllKeys();
+
+                            request.onsuccess = async () => {
+                                const keys = request.result;
+                                const info = [];
+                                for (const key of keys) {
+                                    const result = await get(key);
+                                    if (result && result.data) {
+                                        const age = Date.now() - result.data.timestamp;
+                                        info.push({
+                                            key,
+                                            region: result.data.region,
+                                            strategy: result.data.strategy,
+                                            count: result.data.count,
+                                            age: Math.floor(age / 86400000),
+                                            expired: result.expired
+                                        });
+                                    }
+                                }
+                                resolve(info);
+                            };
+
+                            request.onerror = () => reject(request.error);
+                        });
+                    } catch (error) {
+                        console.error('Failed to get cache info:', error);
+                        return [];
+                    }
+                },
+
+                clear
+            };
+        })();
+
+        // Cache expiration notification
+        function showCacheExpiredNotification(regionKey, strategyKey) {
+            const notification = document.createElement('div');
+            notification.className = 'cache-notification';
+            notification.innerHTML = `
+        <div style="background: #ff9800; color: white; padding: 1rem; border-radius: 8px; margin: 1rem; position: fixed; top: 80px; right: 20px; z-index: 3000; max-width: 300px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+            <div style="font-weight: bold; margin-bottom: 0.5rem;">📅 データ更新のお知らせ</div>
+            <div style="font-size: 0.9rem; margin-bottom: 0.5rem;">道路データが30日以上経過しています。</div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button onclick="updateRoadCache('${regionKey}', '${strategyKey}')" style="background: white; color: #ff9800; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                    今すぐ更新
+                </button>
+                <button onclick="this.parentElement.parentElement.parentElement.remove()" style="background: transparent; color: white; border: 1px solid white; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">
+                    後で
+                </button>
+            </div>
+        </div>
+    `;
+            document.body.appendChild(notification);
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 10000);
+        }
+
+        // First time setup wizard
+        async function showFirstTimeSetup() {
+            const hasAnyCache = await checkAnyCache();
+            if (hasAnyCache) return false;
+
+            return new Promise((resolve) => {
+                const modal = document.createElement('div');
+                modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        `;
+                modal.innerHTML = `
+            <div style="background: #2d2d2d; color: white; padding: 2rem; border-radius: 12px; max-width: 500px; width: 90%;">
+                <h2 style="color: #4CAF50; margin-bottom: 1rem;">🗺️ 初回セットアップ</h2>
+                <p style="margin-bottom: 1.5rem; line-height: 1.6;">
+                    Street Senseiを快適にプレイするため、最初に地域の道路データをダウンロードします。
+                    これは初回のみで、次回以降は即座にプレイ開始できます。
+                </p>
+                
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: #4CAF50;">地域を選択:</label>
+                    <select id="setup-region" style="width: 100%; padding: 0.75rem; background: #3d3d3d; color: white; border: 1px solid #555; border-radius: 6px;">
+                        <option value="south-kanto">南関東全域 (推奨)</option>
+                        <option value="tokyo-center">東京都心のみ</option>
+                    </select>
+                </div>
+                
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; color: #4CAF50;">最大出題範囲 (km):</label>
+                    <input type="range" id="setup-range" min="5" max="50" value="10" style="width: 100%;">
+                    <div style="text-align: center; margin-top: 0.5rem;">
+                        <span id="setup-range-display" style="font-size: 1.2rem; color: #4CAF50;">10 km</span>
+                    </div>
+                </div>
+                
+                <div style="background: #3d3d3d; padding: 1rem; border-radius: 6px; margin-bottom: 1.5rem;">
+                    <div style="font-size: 0.9rem; color: #aaa;">
+                        ⚡ ダウンロード時間の目安:<br>
+                        • 南関東全域: 約30-60秒<br>
+                        • 東京都心: 約10-20秒<br>
+                        <br>
+                        💾 保存容量: 約10-30MB
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 1rem;">
+                    <button id="setup-start" style="flex: 1; background: #4CAF50; color: white; border: none; padding: 1rem; border-radius: 6px; font-size: 1.1rem; cursor: pointer;">
+                        セットアップ開始
+                    </button>
+                    <button id="setup-skip" style="flex: 1; background: #666; color: white; border: none; padding: 1rem; border-radius: 6px; font-size: 1.1rem; cursor: pointer;">
+                        スキップ
+                    </button>
+                </div>
+                
+                <div id="setup-progress" style="display: none; margin-top: 1rem;">
+                    <div style="background: #555; height: 4px; border-radius: 2px; overflow: hidden;">
+                        <div id="setup-progress-bar" style="background: #4CAF50; height: 100%; width: 0%; transition: width 0.3s;"></div>
+                    </div>
+                    <div id="setup-status" style="text-align: center; margin-top: 0.5rem; color: #aaa;">準備中...</div>
+                </div>
+            </div>
+        `;
+                document.body.appendChild(modal);
+
+                const rangeInput = modal.querySelector('#setup-range');
+                const rangeDisplay = modal.querySelector('#setup-range-display');
+                rangeInput.addEventListener('input', () => {
+                    rangeDisplay.textContent = `${rangeInput.value} km`;
+                });
+
+                modal.querySelector('#setup-start').addEventListener('click', async () => {
+                    const region = modal.querySelector('#setup-region').value;
+                    const range = parseInt(rangeInput.value);
+                    modal.querySelector('#setup-progress').style.display = 'block';
+                    modal.querySelector('#setup-start').disabled = true;
+                    modal.querySelector('#setup-skip').disabled = true;
+                    gameState.range = range;
+                    gameState.savedRange = range;
+                    saveSetting('boh_rangeKm', range);
+                    const success = await loadRegionalRoadsOptimized(region, 'complete', (progress) => {
+                        modal.querySelector('#setup-progress-bar').style.width = `${progress}%`;
+                        modal.querySelector('#setup-status').textContent = `ダウンロード中... ${progress}%`;
+                    });
+                    if (success) {
+                        modal.querySelector('#setup-status').textContent = '✅ セットアップ完了！';
+                        setTimeout(() => {
+                            modal.remove();
+                            resolve(true);
+                        }, 1500);
+                    } else {
+                        modal.querySelector('#setup-status').textContent = '❌ ダウンロード失敗';
+                        modal.querySelector('#setup-start').disabled = false;
+                        modal.querySelector('#setup-skip').disabled = false;
+                    }
+                });
+
+                modal.querySelector('#setup-skip').addEventListener('click', () => {
+                    modal.remove();
+                    resolve(false);
+                });
+            });
+        }
+
+        // Check if any cache exists
+        async function checkAnyCache() {
+            const regions = ['south-kanto', 'tokyo-center'];
+            const strategies = ['complete', 'balanced', 'immediate'];
+            for (const region of regions) {
+                for (const strategy of strategies) {
+                    if (await ROAD_CACHE.exists(region, strategy)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        // Manual cache update function
+        async function updateRoadCache(regionKey, strategyKey) {
+            showLoading();
+            try {
+                await ROAD_CACHE.clear();
+                const success = await loadRegionalRoadsOptimized(regionKey, strategyKey);
+                if (success) {
+                    showSuccess('✅ 道路データを最新版に更新しました');
+                } else {
+                    showError('更新に失敗しました。後でもう一度お試しください。');
+                }
+            } finally {
+                hideLoading();
+            }
+        }
 
         function saveSetting(key, value) {
             try {
@@ -2088,6 +2438,16 @@
                     log('Leaflet not loaded yet, retrying...');
                     setTimeout(initGame, 1000);
                     return;
+                }
+
+                // 初回セットアップチェック
+                const isFirstTime = !(await checkAnyCache());
+                if (isFirstTime) {
+                    log('First time setup detected');
+                    const setupCompleted = await showFirstTimeSetup();
+                    if (setupCompleted) {
+                        log('First time setup completed');
+                    }
                 }
 
                 window.kmlMap = await fetchKmlIndex();
@@ -2148,6 +2508,7 @@
                 updateAutoDifficultyDisplay();
                 updateDataStatus();
 
+                addCacheManagementUI();
                 promptInitialLocation();
 
                 log('Game initialization complete');
@@ -3311,40 +3672,39 @@
             }
         }
 
-        function loadRegionalRoadsOptimized(regionKey = 'south-kanto', strategyKey = 'immediate') {
+        function loadRegionalRoadsOptimized(regionKey = 'south-kanto', strategyKey = 'immediate', progressCallback = null) {
             return new Promise(async (resolve, reject) => {
                 if (gameState.isLoadingData) {
                     log('Already loading data...');
                     resolve(false);
                     return;
                 }
-                
+
                 const config = REGIONAL_CONFIGS[regionKey];
                 const strategy = LOADING_STRATEGIES[strategyKey];
-                
+
                 if (!config || !strategy) {
                     reject(new Error('Invalid configuration'));
                     return;
                 }
-                
+
                 currentRegionalConfig = config;
                 currentLoadingStrategy = strategy;
-                
-                // Check cache first
-                const cacheKey = `${regionKey}-${strategyKey}`;
-                const cachedData = ROAD_CACHE.load(regionKey, strategyKey);
+
+                // キャッシュチェック（非同期）
+                const cachedData = await ROAD_CACHE.load(regionKey, strategyKey);
                 if (cachedData && cachedData.length > 0) {
                     gameState.streetData = cachedData;
                     roadCache = gameState.streetData;
-                    log(`Loaded ${cachedData.length} roads from cache`);
+                    log(`Loaded ${cachedData.length} roads from IndexedDB cache`);
                     showSuccess(`✅ キャッシュから${cachedData.length}道路を読み込み完了！`);
                     updateDataStatus();
                     resolve(true);
                     return;
                 }
-                
+
                 gameState.isLoadingData = true;
-                
+
                 const loadBtn = document.getElementById('load-street-data');
                 if (loadBtn) {
                     loadBtn.textContent = 'Loading Roads...';
@@ -3353,30 +3713,32 @@
                 }
 
                 showLoading();
-                
+
                 log(`Loading roads with ${strategy.name} strategy for ${config.name}...`);
-                
+
+                if (progressCallback) progressCallback(10);
+
                 // Multiple API endpoints with fallback
                 const corsProxies = [
                     'https://corsproxy.io/?',
                     'https://api.allorigins.win/raw?url=',
                     'https://cors-anywhere.herokuapp.com/'
                 ];
-                
+
                 let lastError = null;
                 let success = false;
-                
+
                 try {
                     const { south, west, north, east } = config.bbox;
                     const query = `
-                    [out:json][timeout:60];
-                    (
-                        way["highway"]["name"](${south},${west},${north},${east});
-                    );
-                out geom;
-                `;
-                    
-                    // Method 1: Try direct access first (might work in some environments)
+            [out:json][timeout:60];
+            (
+                way["highway"]["name"](${south},${west},${north},${east});
+            );
+            out geom;
+            `;
+
+                    // Method 1: Try direct access first
                     try {
                         log('Attempting direct API access...');
                         const response = await fetch(OVERPASS_URL, {
@@ -3384,14 +3746,24 @@
                             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                             body: `data=${encodeURIComponent(query)}`
                         });
+
+                        if (progressCallback) progressCallback(50);
+
                         if (response.ok) {
                             const data = await response.json();
                             const roads = processOverpassData(data);
+
+                            if (progressCallback) progressCallback(80);
+
                             if (roads.length > 0) {
                                 gameState.streetData = roads;
                                 roadCache = gameState.streetData;
-                                ROAD_CACHE.save(regionKey, strategyKey, roads);
-                                showSuccess(`✅ ${roads.length} roads loaded from OSM (direct)`);
+
+                                await ROAD_CACHE.save(regionKey, strategyKey, roads);
+
+                                if (progressCallback) progressCallback(100);
+
+                                showSuccess(`✅ ${roads.length} roads loaded and cached`);
                                 updateDataStatus();
                                 success = true;
                             }
@@ -3400,7 +3772,7 @@
                         log('Direct API access failed: ' + directError.message);
                         lastError = directError;
                     }
-                    
+
                     // Method 2: Try CORS proxies if direct access failed
                     if (!success) {
                         for (let i = 0; i < corsProxies.length && !success; i++) {
@@ -3413,34 +3785,32 @@
                                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                                     body: `data=${encodeURIComponent(query)}`
                                 });
-                                
+
                                 if (response.ok) {
-                                    let data;
                                     const contentType = response.headers.get('content-type');
                                     const responseText = await response.text();
-                                    
+
                                     log(`Proxy ${i + 1} response content-type: ${contentType}`);
                                     log(`Proxy ${i + 1} response preview: ${responseText.substring(0, 100)}...`);
-                                    
-                                    // Handle different response formats
+
                                     if (responseText.startsWith('<?xml') || responseText.includes('<osm')) {
-                                        // XML response - skip this proxy
                                         log(`Proxy ${i + 1} returned XML instead of JSON, skipping...`);
                                         continue;
                                     }
-                                    
+
+                                    let data;
                                     try {
                                         data = JSON.parse(responseText);
                                     } catch (parseError) {
                                         log(`Proxy ${i + 1} JSON parse failed: ${parseError.message}`);
                                         continue;
                                     }
-                                    
+
                                     const roads = processOverpassData(data);
                                     if (roads.length > 0) {
                                         gameState.streetData = roads;
                                         roadCache = gameState.streetData;
-                                        ROAD_CACHE.save(regionKey, strategyKey, roads);
+                                        await ROAD_CACHE.save(regionKey, strategyKey, roads);
                                         showSuccess(`✅ ${roads.length} roads loaded from OSM (proxy ${i + 1})`);
                                         updateDataStatus();
                                         success = true;
@@ -3453,18 +3823,15 @@
                             }
                         }
                     }
-                    
+
                     // Method 3: All external sources failed
                     if (!success) {
                         log('All external APIs failed.');
                         showError('OSMデータを取得できませんでした。インターネット接続または設定を確認してください。');
                         updateDataStatus();
                     }
-                    
                 } catch (err) {
                     console.error('Complete OSM load failure:', err);
-                    
-                    // Final fallback: report failure without sample data
                     log('Final fallback: Unable to retrieve road data from OSM');
                     showError('道路データを取得できませんでした。再度お試しください。');
                     updateDataStatus();
@@ -3476,16 +3843,13 @@
                         loadBtn.classList.remove('loading');
                     }
                     hideLoading();
-                    
-                    // Always log final status
+
                     const finalCount = gameState.streetData ? gameState.streetData.length : 0;
                     const finalSource = gameState.streetData && gameState.streetData[0] ? gameState.streetData[0].source : 'none';
                     log(`Data loading complete: ${finalCount} roads from ${finalSource} source`);
-                    
+
                     if (success && finalCount > 0) {
                         log('✅ Street mode is now ready for gameplay');
-                        
-                        // Show clear success message to user
                         setTimeout(() => {
                             const currentDataStatus = document.getElementById('data-status');
                             if (currentDataStatus && finalSource === 'fallback') {
@@ -6046,19 +6410,101 @@
         /** Load Street data on-demand and enable UI when ready */
         async function prepareStreetMode() {
             if (roadCache) return;
+
             showLoading();
             try {
-                const region = document.getElementById('region-select') ? document.getElementById('region-select').value : 'south-kanto';
-                const strategy = document.getElementById('loading-strategy') ? document.getElementById('loading-strategy').value : 'immediate';
+                const region = document.getElementById('region-select')?.value || 'south-kanto';
+
+                // completeキャッシュがあるか確認
+                const hasComplete = await ROAD_CACHE.exists(region, 'complete');
+
+                // UIの戦略選択も考慮
+                const uiStrategy = document.getElementById('loading-strategy')?.value;
+
+                // キャッシュがあればimmediate、なければcomplete
+                const strategy = hasComplete ? (uiStrategy || 'immediate') : 'complete';
+
+                log(`PrepareStreetMode: region=${region}, strategy=${strategy}, hasComplete=${hasComplete}`);
+
                 await loadRegionalRoadsOptimized(region, strategy);
                 roadCache = gameState.streetData;
+
+                // UIを有効化
                 const streetTab = document.querySelector('.mode-tab[data-mode="street"]');
                 if (streetTab) streetTab.classList.remove('disabled');
                 const opt = document.querySelector('#game-mode-select option[value="street"]');
                 if (opt) opt.disabled = false;
+
             } finally {
                 hideLoading();
             }
+        }
+        // Cache management UI
+        function addCacheManagementUI() {
+            const settingsSection = document.querySelector('.advanced-settings');
+            if (!settingsSection) return;
+
+            const cacheSection = document.createElement('div');
+            cacheSection.innerHTML = `
+        <h4>💾 キャッシュ管理</h4>
+        <div style="background: #2d2d2d; padding: 1rem; border-radius: 6px; margin-top: 0.5rem;">
+            <div id="cache-info" style="font-size: 0.8rem; color: #aaa; margin-bottom: 1rem;">
+                計算中...
+            </div>
+            <button id="refresh-cache" style="background: #2196F3; margin-right: 0.5rem;">
+                🔄 キャッシュ更新
+            </button>
+            <button id="clear-cache" style="background: #f44336;">
+                🗑️ キャッシュクリア
+            </button>
+        </div>
+    `;
+
+            settingsSection.appendChild(cacheSection);
+
+            updateCacheInfo();
+
+            document.getElementById('refresh-cache').addEventListener('click', async () => {
+                const region = document.getElementById('region-select')?.value || 'south-kanto';
+                await updateRoadCache(region, 'complete');
+                updateCacheInfo();
+            });
+
+            document.getElementById('clear-cache').addEventListener('click', async () => {
+                if (confirm('すべてのキャッシュデータを削除しますか？\n次回起動時に再ダウンロードが必要になります。')) {
+                    await ROAD_CACHE.clear();
+                    gameState.streetData = null;
+                    roadCache = null;
+                    updateCacheInfo();
+                    showInfo('キャッシュをクリアしました');
+                }
+            });
+        }
+
+        async function updateCacheInfo() {
+            const infoEl = document.getElementById('cache-info');
+            if (!infoEl) return;
+
+            const info = await ROAD_CACHE.getInfo();
+
+            if (info.length === 0) {
+                infoEl.innerHTML = 'キャッシュなし';
+                return;
+            }
+
+            let html = '<div style="line-height: 1.6;">';
+            info.forEach(item => {
+                const status = item.expired ? '⚠️ 期限切れ' : '✅ 有効';
+                html += `
+            <div style="margin-bottom: 0.5rem;">
+                ${status} <strong>${item.region}-${item.strategy}</strong><br>
+                道路数: ${item.count} | 経過: ${item.age}日
+            </div>
+        `;
+            });
+            html += '</div>';
+
+            infoEl.innerHTML = html;
         }
 
         // Background loading for remaining roads
