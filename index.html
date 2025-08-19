@@ -2455,11 +2455,7 @@
                 window.kmlMap = await fetchKmlIndex();
 
                 gameState.difficulty = loadSetting('boh_difficulty', 'tourist');
-                gameState.currentMode = loadSetting('boh_mode', 'street');
-                if (gameState.currentMode === 'street') {
-                    gameState.currentMode = 'facility';
-                    saveSetting('boh_mode', gameState.currentMode);
-                }
+                gameState.currentMode = loadSetting('boh_mode', 'facility');
                 gameState.range = loadSetting('boh_rangeKm', 5);
                 gameState.savedRange = gameState.range;
                 const savedLoc = loadSetting('boh_lastLocation', null);
@@ -2513,9 +2509,8 @@
                 addCacheManagementUI();
                 promptInitialLocation();
 
+                await prepareStreetMode();
                 log('Game initialization complete');
-                // Start loading Street data in background
-                prepareStreetMode();
             } catch (error) {
                 log('Error initializing game: ' + error.message);
                 console.error('Game initialization error:', error);
@@ -3699,6 +3694,7 @@
                     gameState.streetData = cachedData;
                     roadCache = gameState.streetData;
                     log(`Loaded ${cachedData.length} roads from IndexedDB cache`);
+                    enableStreetMode();
                     showSuccess(`✅ キャッシュから${cachedData.length}道路を読み込み完了！`);
                     updateDataStatus();
                     resolve(true);
@@ -3785,7 +3781,9 @@
                                 gameState.streetData = roads;
                                 roadCache = gameState.streetData;
                                 await ROAD_CACHE.save(regionKey, strategyKey, roads);
-                                
+
+                                enableStreetMode();
+
                                 if (progressCallback) progressCallback(100);
                                 showSuccess(`✅ ${roads.length} roads loaded from ${endpoint}`);
                                 updateDataStatus();
@@ -3839,12 +3837,14 @@
                                 }
                                 
                                 const roads = processOverpassData(data);
-                                
+
                                 if (roads.length > 0) {
                                     gameState.streetData = roads;
                                     roadCache = gameState.streetData;
                                     await ROAD_CACHE.save(regionKey, strategyKey, roads);
-                                    
+
+                                    enableStreetMode();
+
                                     if (progressCallback) progressCallback(100);
                                     showSuccess(`✅ ${roads.length} roads loaded via ${proxy.type}`);
                                     updateDataStatus();
@@ -6578,34 +6578,63 @@
 
         /** Load Street data on-demand and enable UI when ready */
         async function prepareStreetMode() {
-            if (roadCache) return;
-
-            showLoading();
             try {
+                log('Preparing Street mode...');
+
+                if (roadCache && roadCache.length > 0) {
+                    log('Using existing road cache');
+                    gameState.streetData = roadCache;
+                    enableStreetMode();
+                    return;
+                }
+
+                showLoading();
+
                 const region = document.getElementById('region-select')?.value || 'south-kanto';
-
-                // completeキャッシュがあるか確認
                 const hasComplete = await ROAD_CACHE.exists(region, 'complete');
-
-                // UIの戦略選択も考慮
                 const uiStrategy = document.getElementById('loading-strategy')?.value;
-
-                // キャッシュがあればimmediate、なければcomplete
                 const strategy = hasComplete ? (uiStrategy || 'immediate') : 'complete';
 
                 log(`PrepareStreetMode: region=${region}, strategy=${strategy}, hasComplete=${hasComplete}`);
 
-                await loadRegionalRoadsOptimized(region, strategy);
-                roadCache = gameState.streetData;
+                const success = await loadRegionalRoadsOptimized(region, strategy);
 
-                // UIを有効化
-                const streetTab = document.querySelector('.mode-tab[data-mode="street"]');
-                if (streetTab) streetTab.classList.remove('disabled');
-                const opt = document.querySelector('#game-mode-select option[value="street"]');
-                if (opt) opt.disabled = false;
+                if (success && gameState.streetData && gameState.streetData.length > 0) {
+                    roadCache = gameState.streetData;
+                    enableStreetMode();
+                    log('Street mode prepared successfully');
+                } else {
+                    log('Failed to prepare street mode');
+                }
 
+            } catch (error) {
+                log('Error preparing street mode: ' + error.message);
             } finally {
                 hideLoading();
+            }
+        }
+
+        function enableStreetMode() {
+            try {
+                // UIを有効化
+                const streetTab = document.querySelector('.mode-tab[data-mode="street"]');
+                if (streetTab) {
+                    streetTab.classList.remove('disabled');
+                    log('Street tab enabled');
+                }
+
+                const streetOption = document.querySelector('#game-mode-select option[value="street"]');
+                if (streetOption) {
+                    streetOption.disabled = false;
+                    log('Street option enabled');
+                }
+
+                // データ状況を更新
+                updateDataStatus();
+
+                log('Street mode UI successfully enabled');
+            } catch (error) {
+                log('Error enabling street mode UI: ' + error.message);
             }
         }
         // Cache management UI
