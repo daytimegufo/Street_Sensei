@@ -1816,6 +1816,7 @@
             initRetryCount: 0,            
             isMobileDevice: false,
             networkStatus: 'unknown',
+            apiCallsDisabled: false,
             // New fields for problem source management
             problemSource: 'mixed', // 'osm-only', 'custom-only', 'mixed'
             osmCustomRatio: 0.7, // Default 70% OSM, 30% custom
@@ -2392,6 +2393,9 @@ async function updateRoadCache(regionKey, strategyKey) {
                 }
             }
             log(`❌ All ${maxRetries} attempts failed. Last error: ${lastError?.message}`);
+            if (lastError) {
+                handleNetworkError(lastError);
+            }
             return false;
         }
 
@@ -2949,6 +2953,8 @@ async function prepareGameDataBackground() {
             updateImportanceDisplay();
             updateAutoDifficultyDisplay();
             addCacheManagementUI();
+            addErrorRecoveryUI();
+            setupNetworkMonitoring();
             promptInitialLocation();
         }
 
@@ -4932,6 +4938,7 @@ async function prepareGameDataBackground() {
                 return roadInfo.slice(0, 5).map(r => r.name);
             } catch (error) {
                 clearTimeout(timeoutId);
+                handleNetworkError(error);
                 if (error.name === 'AbortError') {
                     throw new Error('API call timed out');
                 }
@@ -6640,6 +6647,100 @@ async function prepareGameDataBackground() {
             infoEl.innerHTML = html;
         }
 
+        function addErrorRecoveryUI() {
+            const sidebar = document.querySelector('.sidebar');
+            if (!sidebar) return;
+
+            const recoverySection = document.createElement('div');
+            recoverySection.innerHTML = `
+        <div class="setup-section" style="background: #3d3d3d; border: 1px solid #666;">
+            <h3 style="color: #ff9800;">🔧 エラー復旧</h3>
+            <button id="retry-street-data" style="background: #2196F3; margin-bottom: 0.5rem;">
+                Street データ再読み込み
+            </button>
+            <button id="clear-all-cache" style="background: #f44336; margin-bottom: 0.5rem;">
+                全キャッシュクリア
+            </button>
+            <button id="reset-network-settings" style="background: #ff9800;">
+                ネットワーク設定リセット
+            </button>
+        </div>
+    `;
+
+            sidebar.appendChild(recoverySection);
+
+            document.getElementById('retry-street-data')?.addEventListener('click', async () => {
+                showLoading();
+                try {
+                    const region = document.getElementById('region-select')?.value || 'south-kanto';
+                    const success = await loadRegionalRoadsWithRetry(region, 'complete');
+                    if (success) {
+                        showSuccess('Street データの再読み込みが完了しました');
+                        updateDataStatus();
+                    } else {
+                        showError('データの再読み込みに失敗しました');
+                    }
+                } finally {
+                    hideLoading();
+                }
+            });
+
+            document.getElementById('clear-all-cache')?.addEventListener('click', async () => {
+                if (confirm('全てのキャッシュデータを削除しますか？')) {
+                    await ROAD_CACHE.clear();
+                    gameState.streetData = null;
+                    roadCache = null;
+                    showSuccess('キャッシュをクリアしました');
+                    updateDataStatus();
+                }
+            });
+
+            document.getElementById('reset-network-settings')?.addEventListener('click', () => {
+                gameState.apiCallsDisabled = false;
+                gameState.networkStatus = navigator.onLine ? 'online' : 'offline';
+                showSuccess('ネットワーク設定をリセットしました');
+            });
+        }
+
+        function handleNetworkError(error) {
+            console.error('Network error:', error);
+            if (!navigator.onLine) {
+                gameState.networkStatus = 'offline';
+                showError('ネットワーク接続がありません');
+            } else {
+                gameState.networkStatus = 'error';
+                showError('ネットワークエラーが発生しました');
+            }
+            gameState.apiCallsDisabled = true;
+        }
+
+        function setupNetworkMonitoring() {
+            const updateStatus = () => {
+                if (navigator.onLine) {
+                    gameState.networkStatus = 'online';
+                } else {
+                    gameState.networkStatus = 'offline';
+                    gameState.apiCallsDisabled = true;
+                }
+            };
+
+            window.addEventListener('online', () => {
+                gameState.apiCallsDisabled = false;
+                updateStatus();
+                showSuccess('ネットワーク接続を回復しました');
+                if (!gameState.isMapInitialized) {
+                    initGame();
+                }
+            });
+
+            window.addEventListener('offline', () => {
+                updateStatus();
+                showError('ネットワーク接続が失われました');
+            });
+
+            updateStatus();
+        }
+
         // Background loading for remaining roads
         let backgroundLoadingActive = false;
 
@@ -6773,19 +6874,7 @@ async function prepareGameDataBackground() {
             }, false);
         }
 
-        if ('onLine' in navigator) {
-            window.addEventListener('online', function() {
-                log('Network connection restored');
-                if (!gameState.isMapInitialized) {
-                    log('Attempting to reinitialize map...');
-                    initGame();
-                }
-            });
-            
-            window.addEventListener('offline', function() {
-                log('Network connection lost');
-            });
-        }
+        // Network monitoring handled by setupNetworkMonitoring()
 
         if ('visibilityState' in document) {
             document.addEventListener('visibilitychange', function() {
