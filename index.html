@@ -4820,6 +4820,7 @@ async function prepareGameDataBackground() {
             const intersectionPoint = { lat: q.points[0][0].lat, lng: q.points[0][0].lng };
 
             let roadNames = [];
+            let roadInfo = [];
 
             const knownIntersections = getKnownIntersectionInfo(q.name);
             if (knownIntersections && knownIntersections.length > 0) {
@@ -4836,7 +4837,7 @@ async function prepareGameDataBackground() {
 
                 if (roadNames.length === 0 && navigator.onLine && !gameState.apiCallsDisabled) {
                     try {
-                        roadNames = await fetchIntersectionRoadsWithTimeout(intersectionPoint, 5000);
+                        await fetchIntersectionRoadsWithTimeout(intersectionPoint, 5000);
                     } catch (error) {
                         log(`API call failed, using fallback: ${error.message}`);
                         roadNames = ['道路情報取得失敗'];
