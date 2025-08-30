@@ -162,58 +162,6 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          NaN,
-          NaN
-        ]
-      },
-      "properties": {
-        "鉄道会社名": null,
-        "路線名": null,
-        "鉄道駅名": null,
-        "トイレ名": null,
-        "設置フロア": null,
-        "備考": null,
-        "写真データ（トイレの入り口）": null,
-        "写真データ（トイレ内）": null,
-        "title": "nan（nan）nan",
-        "出入口の有効幅員（単位：mm）": null,
-        "ベビーベッド": null,
-        "ベビーシート": null,
-        "オストメイト": null,
-        "車いす用手すり（洋）": null
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          NaN,
-          NaN
-        ]
-      },
-      "properties": {
-        "鉄道会社名": null,
-        "路線名": null,
-        "鉄道駅名": null,
-        "トイレ名": null,
-        "設置フロア": null,
-        "備考": null,
-        "写真データ（トイレの入り口）": null,
-        "写真データ（トイレ内）": null,
-        "title": "nan（nan）nan",
-        "出入口の有効幅員（単位：mm）": null,
-        "ベビーベッド": null,
-        "ベビーシート": null,
-        "オストメイト": null,
-        "車いす用手すり（洋）": null
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
           139.688794,
           35.669666
         ]
@@ -2256,58 +2204,6 @@
         "写真データ（トイレの入り口）": "http://www.opendata.metro.tokyo.jp/fukushihoken/wc-photos/02_041_01_1.jpg",
         "写真データ（トイレ内）": "http://www.opendata.metro.tokyo.jp/fukushihoken/wc-photos/02_041_01_2.jpg",
         "title": "狭間（高尾線）だれでもトイレ",
-        "出入口の有効幅員（単位：mm）": null,
-        "ベビーベッド": null,
-        "ベビーシート": null,
-        "オストメイト": null,
-        "車いす用手すり（洋）": null
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          NaN,
-          NaN
-        ]
-      },
-      "properties": {
-        "鉄道会社名": null,
-        "路線名": null,
-        "鉄道駅名": null,
-        "トイレ名": null,
-        "設置フロア": null,
-        "備考": null,
-        "写真データ（トイレの入り口）": null,
-        "写真データ（トイレ内）": null,
-        "title": "nan（nan）nan",
-        "出入口の有効幅員（単位：mm）": null,
-        "ベビーベッド": null,
-        "ベビーシート": null,
-        "オストメイト": null,
-        "車いす用手すり（洋）": null
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          NaN,
-          NaN
-        ]
-      },
-      "properties": {
-        "鉄道会社名": null,
-        "路線名": null,
-        "鉄道駅名": null,
-        "トイレ名": null,
-        "設置フロア": null,
-        "備考": null,
-        "写真データ（トイレの入り口）": null,
-        "写真データ（トイレ内）": null,
-        "title": "nan（nan）nan",
         "出入口の有効幅員（単位：mm）": null,
         "ベビーベッド": null,
         "ベビーシート": null,
@@ -4492,32 +4388,6 @@
         "写真データ（トイレの入り口）": "http://www.opendata.metro.tokyo.jp/fukushihoken/wc-photos/06_005_01_1.jpg",
         "写真データ（トイレ内）": "http://www.opendata.metro.tokyo.jp/fukushihoken/wc-photos/06_005_01_2.jpg",
         "title": "桜台（池袋線）だれでもトイレ",
-        "出入口の有効幅員（単位：mm）": null,
-        "ベビーベッド": null,
-        "ベビーシート": null,
-        "オストメイト": null,
-        "車いす用手すり（洋）": null
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          NaN,
-          NaN
-        ]
-      },
-      "properties": {
-        "鉄道会社名": null,
-        "路線名": null,
-        "鉄道駅名": null,
-        "トイレ名": null,
-        "設置フロア": null,
-        "備考": null,
-        "写真データ（トイレの入り口）": null,
-        "写真データ（トイレ内）": null,
-        "title": "nan（nan）nan",
         "出入口の有効幅員（単位：mm）": null,
         "ベビーベッド": null,
         "ベビーシート": null,
@@ -14384,32 +14254,6 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          NaN,
-          NaN
-        ]
-      },
-      "properties": {
-        "鉄道会社名": null,
-        "路線名": null,
-        "鉄道駅名": null,
-        "トイレ名": null,
-        "設置フロア": null,
-        "備考": null,
-        "写真データ（トイレの入り口）": null,
-        "写真データ（トイレ内）": null,
-        "title": "nan（nan）nan",
-        "出入口の有効幅員（単位：mm）": null,
-        "ベビーベッド": null,
-        "ベビーシート": null,
-        "オストメイト": null,
-        "車いす用手すり（洋）": null
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
           139.827232,
           35.646164
         ]
@@ -14450,32 +14294,6 @@
         "写真データ（トイレの入り口）": "http://www.opendata.metro.tokyo.jp/fukushihoken/wc-photos/12_001_03_1.jpg",
         "写真データ（トイレ内）": "http://www.opendata.metro.tokyo.jp/fukushihoken/wc-photos/12_001_03_2.jpg",
         "title": "新木場（りんかい線）多目的トイレ",
-        "出入口の有効幅員（単位：mm）": null,
-        "ベビーベッド": null,
-        "ベビーシート": null,
-        "オストメイト": null,
-        "車いす用手すり（洋）": null
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          NaN,
-          NaN
-        ]
-      },
-      "properties": {
-        "鉄道会社名": null,
-        "路線名": null,
-        "鉄道駅名": null,
-        "トイレ名": null,
-        "設置フロア": null,
-        "備考": null,
-        "写真データ（トイレの入り口）": null,
-        "写真データ（トイレ内）": null,
-        "title": "nan（nan）nan",
         "出入口の有効幅員（単位：mm）": null,
         "ベビーベッド": null,
         "ベビーシート": null,
@@ -17816,32 +17634,6 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          NaN,
-          NaN
-        ]
-      },
-      "properties": {
-        "鉄道会社名": null,
-        "路線名": null,
-        "鉄道駅名": null,
-        "トイレ名": null,
-        "設置フロア": null,
-        "備考": null,
-        "写真データ（トイレの入り口）": null,
-        "写真データ（トイレ内）": null,
-        "title": "nan（nan）nan",
-        "出入口の有効幅員（単位：mm）": null,
-        "ベビーベッド": null,
-        "ベビーシート": null,
-        "オストメイト": null,
-        "車いす用手すり（洋）": null
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
           139.702623,
           35.670298
         ]
@@ -19402,32 +19194,6 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          NaN,
-          NaN
-        ]
-      },
-      "properties": {
-        "鉄道会社名": null,
-        "路線名": null,
-        "鉄道駅名": null,
-        "トイレ名": null,
-        "設置フロア": null,
-        "備考": null,
-        "写真データ（トイレの入り口）": null,
-        "写真データ（トイレ内）": null,
-        "title": "nan（nan）nan",
-        "出入口の有効幅員（単位：mm）": null,
-        "ベビーベッド": null,
-        "ベビーシート": null,
-        "オストメイト": null,
-        "車いす用手すり（洋）": null
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
           139.857724,
           35.716643
         ]
@@ -19494,32 +19260,6 @@
         "写真データ（トイレの入り口）": "http://www.opendata.metro.tokyo.jp/fukushihoken/wc-photos/14_113_01_1.jpg",
         "写真データ（トイレ内）": "http://www.opendata.metro.tokyo.jp/fukushihoken/wc-photos/14_113_01_2.jpg",
         "title": "潮見（京葉線）多機能トイレ",
-        "出入口の有効幅員（単位：mm）": null,
-        "ベビーベッド": null,
-        "ベビーシート": null,
-        "オストメイト": null,
-        "車いす用手すり（洋）": null
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          NaN,
-          NaN
-        ]
-      },
-      "properties": {
-        "鉄道会社名": null,
-        "路線名": null,
-        "鉄道駅名": null,
-        "トイレ名": null,
-        "設置フロア": null,
-        "備考": null,
-        "写真データ（トイレの入り口）": null,
-        "写真データ（トイレ内）": null,
-        "title": "nan（nan）nan",
         "出入口の有効幅員（単位：mm）": null,
         "ベビーベッド": null,
         "ベビーシート": null,
@@ -19832,58 +19572,6 @@
         "写真データ（トイレの入り口）": "http://www.opendata.metro.tokyo.jp/fukushihoken/wc-photos/17_001_03_1.jpg",
         "写真データ（トイレ内）": "http://www.opendata.metro.tokyo.jp/fukushihoken/wc-photos/17_001_03_2.jpg",
         "title": "新橋（東京臨海新交通臨海線）多機能トイレ（東口）",
-        "出入口の有効幅員（単位：mm）": null,
-        "ベビーベッド": null,
-        "ベビーシート": null,
-        "オストメイト": null,
-        "車いす用手すり（洋）": null
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          NaN,
-          NaN
-        ]
-      },
-      "properties": {
-        "鉄道会社名": null,
-        "路線名": null,
-        "鉄道駅名": null,
-        "トイレ名": null,
-        "設置フロア": null,
-        "備考": null,
-        "写真データ（トイレの入り口）": null,
-        "写真データ（トイレ内）": null,
-        "title": "nan（nan）nan",
-        "出入口の有効幅員（単位：mm）": null,
-        "ベビーベッド": null,
-        "ベビーシート": null,
-        "オストメイト": null,
-        "車いす用手すり（洋）": null
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          NaN,
-          NaN
-        ]
-      },
-      "properties": {
-        "鉄道会社名": null,
-        "路線名": null,
-        "鉄道駅名": null,
-        "トイレ名": null,
-        "設置フロア": null,
-        "備考": null,
-        "写真データ（トイレの入り口）": null,
-        "写真データ（トイレ内）": null,
-        "title": "nan（nan）nan",
         "出入口の有効幅員（単位：mm）": null,
         "ベビーベッド": null,
         "ベビーシート": null,
