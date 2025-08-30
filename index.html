@@ -791,6 +791,18 @@
             to { opacity: 1; transform: translate(-50%, -50%); }
         }
 
+        /* アイコンの簡易スタイル（必要なら好みで調整） */
+        .wc-icon {
+            background: rgba(0,0,0,0.55);
+            color: #fff;
+            font-size: 14px;
+            line-height: 24px;
+            text-align: center;
+            border-radius: 50%;
+            width: 24px; height: 24px;
+            box-shadow: 0 0 4px rgba(0,0,0,0.25);
+        }
+
         /* ========== Debug Info ========== */
         .debug-info {
             position: absolute;
@@ -2721,7 +2733,9 @@ async function prepareGameDataBackground() {
                     'Labels On': layerWithLabels,
                     'Labels Off': layerWithoutLabels
                 };
-                
+
+                const layerControl = L.control.layers(baseMaps, null, { collapsed: false }).addTo(gameState.map);
+
                 // レイヤー切り替えイベントを監視
                 gameState.map.on('baselayerchange', function(e) {
                     gameState.showLabels = (e.name === 'Labels On');
@@ -2731,6 +2745,66 @@ async function prepareGameDataBackground() {
                 
                 gameState.streetLayer = L.layerGroup().addTo(gameState.map);
                 gameState.facilityLayer = L.layerGroup().addTo(gameState.map);
+
+                // ============================
+                // ♿ 駅トイレ（80cm+）レイヤ
+                // ============================
+                const accessibleWcLayer = L.layerGroup();
+
+                const wcIcon = L.divIcon({
+                    html: '♿',
+                    className: 'wc-icon',
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 12]
+                });
+
+                function wcPopup(props) {
+                    const title = props.title || `${props['鉄道駅名'] || ''} ${props['トイレ名'] || ''}`;
+                    const line  = props['路線名'] ? `（${props['路線名']}）` : '';
+                    const width = props['出入口の有効幅員（単位：mm）'] ? `${props['出入口の有効幅員（単位：mm）']}mm` : '幅員情報なし';
+                    const floor = props['設置フロア'] ? `・設置フロア：${props['設置フロア']}<br>` : '';
+                    const bb    = props['ベビーベッド'] ? `・ベビーベッド：${props['ベビーベッド']}<br>` : '';
+                    const bs    = props['ベビーシート'] ? `・ベビーシート：${props['ベビーシート']}<br>` : '';
+                    const os    = props['オストメイト'] ? `・オストメイト：${props['オストメイト']}<br>` : '';
+                    const rail  = props['車いす用手すり（洋）'] ? `・車いす用手すり（洋）：${props['車いす用手すり（洋）']}<br>` : '';
+                    const note  = props['備考'] ? `<div style="margin-top:4px;">${props['備考']}</div>` : '';
+                    const photo = props['写真データ（トイレの入り口）'] ?
+                        `<div style="margin-top:6px;"><a href="${props['写真データ（トイレの入り口）']}" target="_blank" rel="noopener">入口写真</a></div>` : '';
+                    return `
+        <div style="min-width:220px">
+          <b>${title}${line}</b><br>
+          出入口有効幅員：${width}<br>
+          ${floor}${bb}${bs}${os}${rail}
+          ${note}
+          ${photo}
+        </div>
+      `;
+                }
+
+                async function loadAccessibleWcLayer() {
+                    try {
+                        const res = await fetch('./assets/geo/tokyo_wc_80cm_plus.geojson', { cache: 'no-store' });
+                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                        const gj = await res.json();
+                        const geo = L.geoJSON(gj, {
+                            pointToLayer: (feature, latlng) => L.marker(latlng, { icon: wcIcon }),
+                            onEachFeature: (feature, layer) => {
+                                layer.bindPopup(wcPopup(feature.properties || {}));
+                            }
+                        });
+                        accessibleWcLayer.addLayer(geo);
+
+                        accessibleWcLayer.addTo(gameState.map);
+
+                        if (layerControl && layerControl.addOverlay) {
+                            layerControl.addOverlay(accessibleWcLayer, '♿ 駅トイレ（80cm+）');
+                        }
+                    } catch (e) {
+                        console.error('WC Layer load error:', e);
+                    }
+                }
+
+                loadAccessibleWcLayer();
 
                 updateGameArea();
                 
